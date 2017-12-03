@@ -78,6 +78,8 @@ main = do
   args <- getArgs
   st <- getCurrentTime
 
+  hSetBuffering stdin NoBuffering
+
   let realProg = case prog of
         "git"  -> "/usr/bin/git"
         "stak" -> homeDir </> ".local/bin/stack"
@@ -85,7 +87,7 @@ main = do
 
   (_, _, _, procHandle) <- createProcess
                                    (proc realProg args)
-                                   { std_in = Inherit, std_out = Inherit, std_err = Inherit, create_group = True }
+                                   { std_in = Inherit, std_out = Inherit, std_err = Inherit }
 
   ex <- waitForProcess procHandle
   en <- getCurrentTime
