@@ -73,13 +73,15 @@ send trace = do
 
 main :: IO ()
 main = do
+  homeDir <- getHomeDirectory
   prog <- getProgName
   args <- getArgs
   st <- getCurrentTime
 
   let realProg = case prog of
-        "git" -> "/usr/bin/git"
-        _     -> error $ "Don't know how to handle program " <> prog
+        "git"  -> "/usr/bin/git"
+        "stak" -> homeDir </> ".local/bin/stack"
+        _      -> error $ "Don't know how to handle program " <> prog
 
   (_, _, _, procHandle) <- createProcess
                                    (proc realProg args)
@@ -87,5 +89,5 @@ main = do
 
   ex <- waitForProcess procHandle
   en <- getCurrentTime
-  send (Trace en prog args ex (diffUTCTime en st))
+  send (Trace en realProg args ex (diffUTCTime en st))
   exitWith ex
