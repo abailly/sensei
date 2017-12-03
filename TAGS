@@ -1,0 +1,24 @@
+
+./Setup.hs,15
+main main1,2
+
+./app/Main.hs,334
+module Main Main4,5
+data Trace Trace17,18
+data Trace = Trace Trace17,18
+data Trace = Trace { timestamp timestamp17,18
+                   , process process18,19
+                   , args args19,20
+                   , exit_code exit_code20,21
+                   , elapsed elapsed21,22
+main main28,29
+main main29,30
+
+./test/Spec.hs,30
+main main0,1
+main main1,2
+
+./src/Lib.hs,65
+module LibLib0,1
+someFunc someFunc4,5
+someFunc someFunc5,6
