@@ -48,6 +48,7 @@ sensei output = do
 
 
 data Trace = Trace { timestamp :: UTCTime
+                   , directory :: FilePath
                    , process   :: String
                    , args      :: [ String ]
                    , exit_code :: ExitCode
@@ -73,17 +74,19 @@ send trace = do
 
 main :: IO ()
 main = do
-  homeDir <- getHomeDirectory
-  prog <- getProgName
-  args <- getArgs
-  st <- getCurrentTime
+  homeDir    <- getHomeDirectory
+  currentDir <- getCurrentDirectory
+  prog       <- getProgName
+  args       <- getArgs
+  st         <- getCurrentTime
 
   hSetBuffering stdin NoBuffering
 
   let realProg = case prog of
-        "git"  -> "/usr/bin/git"
-        "stak" -> homeDir </> ".local/bin/stack"
-        _      -> error $ "Don't know how to handle program " <> prog
+        "git"    -> "/usr/bin/git"
+        "stak"   -> homeDir </> ".local/bin/stack"
+        "docker" -> "/usr/local/bin/docker"
+        _        -> error $ "Don't know how to handle program " <> prog
 
   (_, _, _, procHandle) <- createProcess
                                    (proc realProg args)
@@ -91,5 +94,5 @@ main = do
 
   ex <- waitForProcess procHandle
   en <- getCurrentTime
-  send (Trace en realProg args ex (diffUTCTime en st))
+  send (Trace en currentDir realProg args ex (diffUTCTime en st))
   exitWith ex
