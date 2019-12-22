@@ -63,13 +63,15 @@ send :: Trace -> IO ()
 send trace = do
   mgr <- newManager defaultManagerSettings
   let baseUrl = BaseUrl Http "127.0.0.1"  23456 ""
-  res <- runClientM (traceC trace) (ClientEnv mgr baseUrl)
+  res <- runClientM (traceC trace) (ClientEnv mgr baseUrl Nothing)
   case res of
     -- server is not running, fork it
     Left (ConnectionError _) -> do
       homeDir <- getHomeDirectory
       let senseiLog = homeDir </> ".sensei.log"
       daemonize $ sensei senseiLog
+      -- retry sending the trace to server
+      send trace
     Right () -> pure ()
 
 main :: IO ()
