@@ -1,0 +1,6 @@
+cradle:
+  stack:
+  - path: "./src"
+    component: "sensei:lib"
+  - path: "./app"
+    component: "sensei:exe:sensei-exe"
