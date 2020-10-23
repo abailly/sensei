@@ -1,7 +1,7 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -14,8 +14,9 @@ import qualified Control.Exception.Safe as Exc
 import Control.Monad.Trans
 import Data.Aeson hiding (Options)
 import qualified Data.ByteString.Lazy as LBS
+import Data.Function (on, (&))
+import qualified Data.List as List
 import qualified Data.Text as Text
-import Options.Applicative
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.IO as Text
 import qualified Data.Text.Lazy.Encoding as LT
@@ -25,6 +26,7 @@ import Data.Time.Format.ISO8601
 import GHC.Generics
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.Wai.Handler.Warp
+import Options.Applicative
 import Servant
 import Servant.Client
 import System.Directory
@@ -51,8 +53,9 @@ usage =
 
 type SenseiAPI =
   "trace" :> ReqBody '[JSON] Trace :> Post '[JSON] ()
-    :<|> "flow"
+    :<|> "flows"
       :> ( Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
+             :<|> Capture "user" String :> Capture "day" Day :> "summary" :> Get '[JSON] [(FlowType, NominalDiffTime)]
              :<|> Capture "user" String :> Capture "day" Day :> Get '[JSON] [FlowView]
              :<|> Capture "user" String :> Get '[JSON] [FlowView]
          )
@@ -66,11 +69,15 @@ data FlowView = FlowView
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
+sameDayThan :: Day -> FlowView -> Bool
+sameDayThan day FlowView {flowStart} =
+  utctDay flowStart == day
+
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
 
 data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Other
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+  deriving (Eq, Show, Ord, Generic, ToJSON, FromJSON)
 
 instance ToHttpApiData FlowType where
   toUrlPiece f = Text.pack (show f)
@@ -102,7 +109,8 @@ traceC :: Trace -> ClientM ()
 flowC :: FlowType -> FlowState -> ClientM ()
 queryFlowC :: String -> ClientM [FlowView]
 queryFlowDayC :: String -> Day -> ClientM [FlowView]
-traceC :<|> (flowC :<|> queryFlowDayC :<|> queryFlowC) = client senseiAPI
+queryFlowDaySummaryC :: String -> Day -> ClientM [(FlowType, NominalDiffTime)]
+traceC :<|> (flowC :<|> queryFlowDaySummaryC :<|> queryFlowDayC :<|> queryFlowC) = client senseiAPI
 
 -- * Server
 
@@ -118,23 +126,46 @@ flowS file flowTyp flow = liftIO $
     LBS.hPutStr out $ encode (Flow flowTyp flow) <> "\n"
     hFlush out
 
+-- | Read all the views for a given `usr`
+--  It seems we could simply not filter on user name at this stage but
+--  actually it does not make sense to build a streamm of `FlowView` for
+--  different users as each `Flow` is supposed to be contiguous to the
+--  previous one and `flowView` uses next `Flow`'s start time as end time
+--  for previous `Flow`.
+readViews :: FilePath -> String -> IO [FlowView]
+readViews file usr = withBinaryFile file ReadMode $ \hdl -> liftIO $ loop hdl []
+  where
+    loop :: Handle -> [FlowView] -> IO [FlowView]
+    loop hdl acc = do
+      res <- Exc.try $ liftIO $ LT.hGetLine hdl
+      case res of
+        Left (_ex :: Exc.IOException) -> pure (reverse acc)
+        Right ln ->
+          case eitherDecode (LT.encodeUtf8 ln) of
+            Left _err -> loop hdl acc
+            Right flow -> loop hdl (flowView flow usr acc)
+
 queryFlowDayS :: FilePath -> [Char] -> Day -> Handler [FlowView]
-queryFlowDayS file usr _day =
-  liftIO $ withBinaryFile file ReadMode $ \hdl -> liftIO $ loop hdl usr []
+queryFlowDayS file usr day = do
+  views <- liftIO $ readViews file usr
+  pure $ filter (sameDayThan day) views
+
+queryFlowDaySummaryS :: FilePath -> [Char] -> Day -> Handler [(FlowType, NominalDiffTime)]
+queryFlowDaySummaryS file usr day = do
+  views <- liftIO $ readViews file usr
+  pure $
+    views
+      & filter (sameDayThan day)
+      & List.sortBy (compare `on` flowType)
+      & List.groupBy ((==) `on` flowType)
+      & fmap summarize
+  where
+    summarize flows@(f : _) = (flowType f, sum $ fmap duration flows)
+    summarize _ = error "should not happen"
 
 queryFlowS :: FilePath -> [Char] -> Handler [FlowView]
 queryFlowS file usr =
-  liftIO $ withBinaryFile file ReadMode $ \hdl -> liftIO $ loop hdl usr []
-
-loop :: Handle -> String -> [FlowView] -> IO [FlowView]
-loop hdl usr acc = do
-  res <- Exc.try $ liftIO $ LT.hGetLine hdl
-  case res of
-    Left (_ex :: Exc.IOException) -> pure (reverse acc)
-    Right ln ->
-      case eitherDecode (LT.encodeUtf8 ln) of
-        Left _err -> loop hdl usr acc
-        Right flow -> loop hdl usr (flowView flow usr acc)
+  liftIO $ readViews file usr
 
 flowView :: Flow -> String -> [FlowView] -> [FlowView]
 flowView Flow {..} usr views =
@@ -149,7 +180,7 @@ flowView Flow {..} usr views =
 
 sensei :: FilePath -> IO ()
 sensei output =
-  run 23456 (serve senseiAPI $ traceS output :<|> (flowS output :<|> queryFlowDayS output :<|> queryFlowS output))
+  run 23456 (serve senseiAPI $ traceS output :<|> (flowS output :<|> queryFlowDaySummaryS output :<|> queryFlowDayS output :<|> queryFlowS output))
 
 data Trace = Trace
   { timestamp :: UTCTime,
@@ -194,8 +225,7 @@ send act = do
 
 -- * Command-line Actions
 
-data Options =
-  QueryOptions { queryDay :: Maybe Day }
+data Options = QueryOptions {queryDay :: Maybe Day, summarize :: Bool}
 
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo =
@@ -205,7 +235,7 @@ optionsParserInfo =
 
 optionsParser :: Parser Options
 optionsParser =
-  QueryOptions <$> optional dayParser
+  QueryOptions <$> optional dayParser <*> summarizeParser
 
 dayParser :: Parser Day
 dayParser =
@@ -217,21 +247,30 @@ dayParser =
         <> help "date (default: 8899)"
     )
 
+summarizeParser :: Parser Bool
+summarizeParser =
+  flag
+    False
+    True
+    ( long "summary"
+        <> short 's'
+        <> help "summarize by flow type"
+    )
+
+display :: ToJSON a => a -> IO ()
+display = Text.putStrLn . decodeUtf8 . LBS.toStrict . encode
 
 queryFlow :: Options -> String -> IO ()
-queryFlow (QueryOptions Nothing) userName =
-  send (queryFlowC userName) >>= Text.putStrLn . decodeUtf8 . LBS.toStrict . encode
-queryFlow (QueryOptions (Just day)) userName = do
-  views <- filter (sameDayThan day) <$> send (queryFlowDayC userName day)
-  Text.putStrLn . decodeUtf8 . LBS.toStrict . encode $ views
-
-sameDayThan :: Day -> FlowView -> Bool
-sameDayThan day FlowView{flowStart} =
-  utctDay flowStart == day
+queryFlow (QueryOptions Nothing _) userName =
+  send (queryFlowC userName) >>= display
+queryFlow (QueryOptions (Just day) False) userName =
+  send (queryFlowDayC userName day) >>= display
+queryFlow (QueryOptions (Just day) True) userName =
+  send (queryFlowDaySummaryC userName day) >>= display
 
 recordFlow :: [String] -> String -> UTCTime -> FilePath -> IO ()
 recordFlow [] _ _ _ = pure ()
-recordFlow (ftype:_) curUser startDate curDir =
+recordFlow (ftype : _) curUser startDate curDir =
   send $ flowC (parseFlowType ftype) (FlowState curUser startDate curDir)
   where
     parseFlowType "e" = Experimenting
