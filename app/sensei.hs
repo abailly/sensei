@@ -2,15 +2,22 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Main where
 
+import qualified Control.Exception.Safe as Exc
 import Control.Monad.Trans
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as Text
+import Data.Text.Encoding (decodeUtf8)
+import qualified Data.Text.IO as Text
+import qualified Data.Text.Lazy.Encoding as LT
+import qualified Data.Text.Lazy.IO as LT
 import Data.Time
 import GHC.Generics
 import Network.HTTP.Client (defaultManagerSettings, newManager)
@@ -29,23 +36,35 @@ import System.Process
 -- * Doc
 
 usage :: IO ()
-usage = mapM_ putStrLn $ [
-  "Usage: ep <flow type>",
-  "Record start time of some flow type for current user",
-  "Arguments:",
-  "  <flow type> : One of l(earning), e(xperimenting), t(troubleshooting), f(lowing), o(ther)"
-  ]
+usage =
+  mapM_ putStrLn $
+    [ "Usage: ep <flow type>",
+      "Record start time of some flow type for current user",
+      "Arguments:",
+      "  <flow type> : One of l(earning), e(xperimenting), t(troubleshooting), f(lowing), r(ework), o(ther)"
+    ]
 
 -- * API
 
 type SenseiAPI =
   "trace" :> ReqBody '[JSON] Trace :> Post '[JSON] ()
-    :<|> "flow" :> Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
+    :<|> "flow"
+      :> ( Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
+             :<|> Capture "user" String :> Get '[JSON] [FlowView]
+         )
+
+-- | An ordered sequence of flows for a given user
+data FlowView = FlowView
+  { flowStart :: UTCTime,
+    flowEnd :: UTCTime,
+    flowType :: FlowType
+  }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
 
-data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Other
+data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Other
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 instance ToHttpApiData FlowType where
@@ -56,6 +75,7 @@ instance FromHttpApiData FlowType where
   parseUrlPiece "Experimenting" = pure Experimenting
   parseUrlPiece "Troubleshooting" = pure Troubleshooting
   parseUrlPiece "Flowing" = pure Flowing
+  parseUrlPiece "Rework" = pure Rework
   parseUrlPiece _txt = pure Other
 
 data FlowState = FlowState
@@ -75,24 +95,51 @@ data Flow = Flow
 
 traceC :: Trace -> ClientM ()
 flowC :: FlowType -> FlowState -> ClientM ()
-traceC :<|> flowC = client senseiAPI
+queryFlowC :: String -> ClientM [FlowView]
+traceC :<|> (flowC :<|> queryFlowC) = client senseiAPI
 
 -- * Server
 
-traceS :: Handle -> Trace -> Handler ()
-traceS out trace = liftIO $ do
-  LBS.hPutStr out $ encode trace <> "\n"
-  hFlush out
+traceS :: FilePath -> Trace -> Handler ()
+traceS file trace = liftIO $
+  withBinaryFile file AppendMode $ \out -> do
+    LBS.hPutStr out $ encode trace <> "\n"
+    hFlush out
 
-flowS :: Handle -> FlowType -> FlowState -> Handler ()
-flowS out flowType flow = liftIO $ do
-  LBS.hPutStr out $ encode (Flow flowType flow) <> "\n"
-  hFlush out
+flowS :: FilePath -> FlowType -> FlowState -> Handler ()
+flowS file flowTyp flow = liftIO $
+  withBinaryFile file AppendMode $ \out -> do
+    LBS.hPutStr out $ encode (Flow flowTyp flow) <> "\n"
+    hFlush out
+
+queryFlowS :: FilePath -> [Char] -> Handler [FlowView]
+queryFlowS file usr =
+  liftIO $ withBinaryFile file ReadMode $ \hdl -> liftIO $ loop hdl usr []
+
+loop :: Handle -> String -> [FlowView] -> IO [FlowView]
+loop hdl usr acc = do
+  res <- Exc.try $ liftIO $ LT.hGetLine hdl
+  case res of
+    Left (_ex :: Exc.IOException) -> pure (reverse acc)
+    Right ln ->
+      case eitherDecode (LT.encodeUtf8 ln) of
+        Left _err -> loop hdl usr acc
+        Right flow -> loop hdl usr (flowView flow usr acc)
+
+flowView :: Flow -> String -> [FlowView] -> [FlowView]
+flowView Flow {..} usr views =
+  if _flowUser _flowState == usr
+    then
+      let view = FlowView st st _flowType
+          st = _flowStart _flowState
+       in case views of
+            (v : vs) -> view : v {flowEnd = st} : vs
+            [] -> [view]
+    else views
 
 sensei :: FilePath -> IO ()
-sensei output = do
-  hdl <- openBinaryFile output AppendMode
-  run 23456 (serve senseiAPI $ traceS hdl :<|> flowS hdl)
+sensei output =
+  run 23456 (serve senseiAPI $ traceS output :<|> (flowS output :<|> queryFlowS output))
 
 data Trace = Trace
   { timestamp :: UTCTime,
@@ -108,7 +155,19 @@ deriving instance ToJSON ExitCode
 
 deriving instance FromJSON ExitCode
 
-send :: ClientM () -> IO ()
+daemonizeServer :: IO ()
+daemonizeServer = do
+  homeDir <- getHomeDirectory
+  let senseiLog = homeDir </> ".sensei.log"
+  daemonize $ sensei senseiLog
+
+startServer :: IO ()
+startServer = do
+  homeDir <- getHomeDirectory
+  let senseiLog = homeDir </> ".sensei.log"
+  sensei senseiLog
+
+send :: ClientM a -> IO a
 send act = do
   mgr <- newManager defaultManagerSettings
   let base = BaseUrl Http "127.0.0.1" 23456 ""
@@ -116,30 +175,27 @@ send act = do
   case res of
     -- server is not running, fork it
     Left (ConnectionError _) -> do
-      homeDir <- getHomeDirectory
-      let senseiLog = homeDir </> ".sensei.log"
-      daemonize $ sensei senseiLog
+      daemonizeServer
       -- retry sending the trace to server
       send act
     -- something is wrong, bail out
     Left otherError -> error $ "failed to connect to server: " <> show otherError
-    Right () -> pure ()
+    Right v -> pure v
 
 -- * Command-line Actions
 
 recordFlow :: [String] -> String -> UTCTime -> FilePath -> IO ()
-recordFlow [] _ _ _ = do
-  usage
-  exitWith (ExitFailure 1)
-recordFlow (ftype:_) curUser st curDir =
+recordFlow [] userN _ _ =
+  send (queryFlowC userN) >>= Text.putStrLn . decodeUtf8 . LBS.toStrict . encode
+recordFlow (ftype : _) curUser st curDir =
   send $ flowC (parseFlowType ftype) (FlowState curUser st curDir)
   where
     parseFlowType "e" = Experimenting
     parseFlowType "l" = Learning
     parseFlowType "t" = Troubleshooting
     parseFlowType "f" = Flowing
+    parseFlowType "r" = Rework
     parseFlowType _ = Other
-
 
 wrapProg :: [Char] -> [String] -> UTCTime -> FilePath -> IO ()
 wrapProg realProg progArgs st currentDir = do
@@ -169,7 +225,8 @@ main = do
 
   case prog of
     "git" -> wrapProg "/usr/bin/git" progArgs st currentDir
-    "stak" -> wrapProg (homeDir </> ".local/bin/stack")  progArgs st currentDir
-    "docker" -> wrapProg "/usr/local/bin/docker"  progArgs st currentDir
+    "stak" -> wrapProg (homeDir </> ".local/bin/stack") progArgs st currentDir
+    "docker" -> wrapProg "/usr/local/bin/docker" progArgs st currentDir
     "ep" -> recordFlow progArgs curUser st currentDir
+    "sensei-exe" -> startServer
     _ -> error $ "Don't know how to handle program " <> prog

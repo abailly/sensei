@@ -36,6 +36,7 @@ executable sensei-exe
                      , http-client
                      , mtl
                      , process
+                     , safe-exceptions
                      , sensei
                      , servant
                      , servant-server
