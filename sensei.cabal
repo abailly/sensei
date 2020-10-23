@@ -35,6 +35,7 @@ executable sensei-exe
                      , hdaemonize
                      , http-client
                      , mtl
+                     , optparse-applicative
                      , process
                      , safe-exceptions
                      , sensei
