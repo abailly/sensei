@@ -16,6 +16,7 @@ import Data.Aeson hiding (Options)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Function (on, (&))
 import qualified Data.List as List
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as Text
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.IO as Text
@@ -29,6 +30,7 @@ import Network.Wai.Handler.Warp
 import Options.Applicative
 import Servant
 import Servant.Client
+import System.Console.ANSI
 import System.Directory
 import System.Environment
 import System.Exit
@@ -76,7 +78,7 @@ sameDayThan day FlowView {flowStart} =
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
 
-data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Other
+data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Note | Other
   deriving (Eq, Show, Ord, Generic, ToJSON, FromJSON)
 
 instance ToHttpApiData FlowType where
@@ -90,11 +92,18 @@ instance FromHttpApiData FlowType where
   parseUrlPiece "Rework" = pure Rework
   parseUrlPiece _txt = pure Other
 
-data FlowState = FlowState
-  { _flowUser :: String,
-    _flowStart :: UTCTime,
-    _flowDir :: String
-  }
+data FlowState
+  = FlowState
+      { _flowUser :: String,
+        _flowStart :: UTCTime,
+        _flowDir :: String
+      }
+  | FlowNote
+      { _flowUser :: String,
+        _flowStart :: UTCTime,
+        _flowDir :: String,
+        _flowNote :: Text.Text
+      }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 data Flow = Flow
@@ -133,35 +142,41 @@ flowS file flowTyp flow = liftIO $
 --  previous one and `flowView` uses next `Flow`'s start time as end time
 --  for previous `Flow`.
 readViews :: FilePath -> String -> IO [FlowView]
-readViews file usr = withBinaryFile file ReadMode $ \hdl -> liftIO $ loop hdl []
+readViews file usr = withBinaryFile file ReadMode $ loop []
   where
-    loop :: Handle -> [FlowView] -> IO [FlowView]
-    loop hdl acc = do
-      res <- Exc.try $ liftIO $ LT.hGetLine hdl
+    loop :: [FlowView] -> Handle -> IO [FlowView]
+    loop acc hdl = do
+      res <- Exc.try $ LT.hGetLine hdl
       case res of
         Left (_ex :: Exc.IOException) -> pure (reverse acc)
         Right ln ->
           case eitherDecode (LT.encodeUtf8 ln) of
-            Left _err -> loop hdl acc
-            Right flow -> loop hdl (flowView flow usr acc)
+            Left _err -> loop acc hdl
+            Right flow -> loop (flowView flow usr acc) hdl
 
 queryFlowDayS :: FilePath -> [Char] -> Day -> Handler [FlowView]
 queryFlowDayS file usr day = do
   views <- liftIO $ readViews file usr
   pure $ filter (sameDayThan day) views
 
+-- | "pipe" operator common in other languages
+-- this is basically `flip apply` which is defined as `&` in
+-- the standard library
+(|>) :: a -> (a -> b) -> b
+(|>) = (&)
+
 queryFlowDaySummaryS :: FilePath -> [Char] -> Day -> Handler [(FlowType, NominalDiffTime)]
 queryFlowDaySummaryS file usr day = do
   views <- liftIO $ readViews file usr
   pure $
     views
-      & filter (sameDayThan day)
-      & List.sortBy (compare `on` flowType)
-      & List.groupBy ((==) `on` flowType)
-      & fmap summarize
+      |> filter (sameDayThan day)
+      |> List.sortBy (compare `on` flowType)
+      |> NE.groupBy ((==) `on` flowType)
+      |> fmap summarize
   where
-    summarize flows@(f : _) = (flowType f, sum $ fmap duration flows)
-    summarize _ = error "should not happen"
+    summarize :: NE.NonEmpty FlowView -> (FlowType, NominalDiffTime)
+    summarize flows@(f NE.:| _) = (flowType f, sum $ fmap duration flows)
 
 queryFlowS :: FilePath -> [Char] -> Handler [FlowView]
 queryFlowS file usr =
@@ -196,17 +211,16 @@ deriving instance ToJSON ExitCode
 
 deriving instance FromJSON ExitCode
 
+senseiLog :: IO FilePath
+senseiLog = (</> ".sensei.log") <$> getHomeDirectory
+
 daemonizeServer :: IO ()
-daemonizeServer = do
-  homeDir <- getHomeDirectory
-  let senseiLog = homeDir </> ".sensei.log"
-  daemonize $ sensei senseiLog
+daemonizeServer =
+  daemonize startServer
 
 startServer :: IO ()
-startServer = do
-  homeDir <- getHomeDirectory
-  let senseiLog = homeDir </> ".sensei.log"
-  sensei senseiLog
+startServer =
+  senseiLog >>= sensei
 
 send :: ClientM a -> IO a
 send act = do
@@ -225,7 +239,9 @@ send act = do
 
 -- * Command-line Actions
 
-data Options = QueryOptions {queryDay :: Maybe Day, summarize :: Bool}
+data Options
+  = QueryOptions {queryDay :: Maybe Day, summarize :: Bool}
+  | RecordOptions {recordType :: FlowType}
 
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo =
@@ -236,6 +252,7 @@ optionsParserInfo =
 optionsParser :: Parser Options
 optionsParser =
   QueryOptions <$> optional dayParser <*> summarizeParser
+    <|> RecordOptions <$> flowTypeParser
 
 dayParser :: Parser Day
 dayParser =
@@ -257,28 +274,56 @@ summarizeParser =
         <> help "summarize by flow type"
     )
 
+flowTypeParser :: Parser FlowType
+flowTypeParser =
+  flag' Experimenting (short 'e' <> help "Experimenting period")
+    <|> flag' Learning (short 'l' <> help "Learning period")
+    <|> flag' Troubleshooting (short 't' <> help "Troubleshooting period")
+    <|> flag' Flowing (short 'f' <> help "Flowing period")
+    <|> flag' Rework (short 'r' <> help "Rework period")
+    <|> flag' Other (short 'o' <> help "Other period")
+    <|> flag' Note (short 'n' <> help "Taking some note")
+
 display :: ToJSON a => a -> IO ()
 display = Text.putStrLn . decodeUtf8 . LBS.toStrict . encode
 
-queryFlow :: Options -> String -> IO ()
-queryFlow (QueryOptions Nothing _) userName =
+recordFlow :: Options -> String -> UTCTime -> FilePath -> IO ()
+recordFlow (QueryOptions Nothing _) userName _ _ =
   send (queryFlowC userName) >>= display
-queryFlow (QueryOptions (Just day) False) userName =
+recordFlow (QueryOptions (Just day) False) userName _ _ =
   send (queryFlowDayC userName day) >>= display
-queryFlow (QueryOptions (Just day) True) userName =
+recordFlow (QueryOptions (Just day) True) userName _ _ =
   send (queryFlowDaySummaryC userName day) >>= display
+recordFlow (RecordOptions ftype) curUser startDate curDir =
+  case ftype of
+    Note -> do
+      txt <- captureNote
+      send $ flowC Note (FlowNote curUser startDate curDir txt)
+    other ->
+      send $ flowC other (FlowState curUser startDate curDir)
 
-recordFlow :: [String] -> String -> UTCTime -> FilePath -> IO ()
-recordFlow [] _ _ _ = pure ()
-recordFlow (ftype : _) curUser startDate curDir =
-  send $ flowC (parseFlowType ftype) (FlowState curUser startDate curDir)
+captureNote :: IO Text.Text
+captureNote = do
+  setSGR
+    [ SetConsoleIntensity NormalIntensity,
+      SetColor Foreground Vivid White,
+      SetColor Background Dull Blue
+    ]
+  putStr "Record a note, type Ctrl+D at beginning of line when done"
+  setSGR [Reset]
+  putStrLn ""
+  capture []
   where
-    parseFlowType "e" = Experimenting
-    parseFlowType "l" = Learning
-    parseFlowType "t" = Troubleshooting
-    parseFlowType "f" = Flowing
-    parseFlowType "r" = Rework
-    parseFlowType _ = Other
+    capture :: [Text.Text] -> IO Text.Text
+    capture acc = do
+      eof <- isEOF
+      if eof
+        then pure $ Text.unlines (reverse acc)
+        else do
+          res <- Exc.try $ hGetLine stdin
+          case res of
+            Left (_ex :: Exc.IOException) -> pure $ Text.unlines (reverse acc)
+            Right txt -> capture (Text.pack txt : acc)
 
 wrapProg :: [Char] -> [String] -> UTCTime -> FilePath -> IO ()
 wrapProg realProg progArgs st currentDir = do
@@ -297,6 +342,7 @@ wrapProg realProg progArgs st currentDir = do
 
 main :: IO ()
 main = do
+  hSetBuffering stdout NoBuffering
   homeDir <- getHomeDirectory
   currentDir <- getCurrentDirectory
   prog <- getProgName
@@ -304,15 +350,12 @@ main = do
   st <- getCurrentTime
   curUser <- getLoginName
 
-  hSetBuffering stdin NoBuffering
-
   case prog of
     "git" -> wrapProg "/usr/bin/git" progArgs st currentDir
     "stak" -> wrapProg (homeDir </> ".local/bin/stack") progArgs st currentDir
     "docker" -> wrapProg "/usr/local/bin/docker" progArgs st currentDir
-    "epq" -> do
+    "ep" -> do
       opts <- execParser optionsParserInfo
-      queryFlow opts curUser
-    "ep" -> recordFlow progArgs curUser st currentDir
+      recordFlow opts curUser st currentDir
     "sensei-exe" -> startServer
     _ -> error $ "Don't know how to handle program " <> prog
