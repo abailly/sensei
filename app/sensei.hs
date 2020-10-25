@@ -261,7 +261,7 @@ dayParser =
     ( long "date"
         <> short 'd'
         <> metavar "DATE"
-        <> help "date (default: 8899)"
+        <> help "date to filter on, in ISO8601 format (YYYY-mm-dd)"
     )
 
 summarizeParser :: Parser Bool
