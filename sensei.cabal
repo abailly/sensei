@@ -23,6 +23,8 @@ library
                      , Sensei.Client
                      , Sensei.App
                      , Sensei.Server
+                     , Sensei.CLI
+                     , Sensei.Wrapper
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , ansi-terminal
