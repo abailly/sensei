@@ -11,7 +11,6 @@
 module Main where
 
 import Data.Time
-import Options.Applicative
 import Sensei.App
 import Sensei.CLI
 import Sensei.Wrapper
@@ -37,7 +36,7 @@ main = do
     "stak" -> wrapProg (homeDir </> ".local/bin/stack") progArgs st currentDir
     "docker" -> wrapProg "/usr/local/bin/docker" progArgs st currentDir
     "ep" -> do
-      opts <- execParser optionsParserInfo
+      opts <- parseSenseiOptions
       recordFlow opts curUser st currentDir
     "sensei-exe" -> startServer
     _ -> hPutStrLn stderr ("Don't know how to handle program " <> prog) >> exitWith (ExitFailure 1)

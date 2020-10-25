@@ -16,15 +16,6 @@ import System.Console.ANSI
 import System.IO
 
 
-usage :: IO ()
-usage =
-  mapM_ putStrLn $
-    [ "Usage: ep <flow type>",
-      "Record start time of some flow type for current user",
-      "Arguments:",
-      "  <flow type> : One of l(earning), e(xperimenting), t(troubleshooting), f(lowing), r(ework), o(ther)"
-    ]
-
 data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool}
   | RecordOptions {recordType :: FlowType}
@@ -33,7 +24,7 @@ optionsParserInfo :: ParserInfo Options
 optionsParserInfo =
   info
     (optionsParser <**> helper)
-    (progDesc "Eopché")
+    (progDesc "Eopché - Record start time of some flow type for current user")
 
 optionsParser :: Parser Options
 optionsParser =
@@ -69,6 +60,10 @@ flowTypeParser =
     <|> flag' Rework (short 'r' <> help "Rework period")
     <|> flag' Other (short 'o' <> help "Other period")
     <|> flag' Note (short 'n' <> help "Taking some note")
+
+
+parseSenseiOptions :: IO Options
+parseSenseiOptions = execParser optionsParserInfo
 
 display :: ToJSON a => a -> IO ()
 display = Text.putStrLn . decodeUtf8 . LBS.toStrict . encode
