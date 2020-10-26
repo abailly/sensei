@@ -45,8 +45,15 @@ readViews file usr = withBinaryFile file ReadMode $ loop f usr []
       let view = FlowView st st 0 _flowType
           st = _flowStart _flowState
        in case views of
-            (v : vs) -> view : v {flowEnd = st, duration = diffUTCTime st (flowStart v)} : vs
+            (v : vs) -> view : fillFlowEnd v st : vs
             [] -> [view]
+
+fillFlowEnd :: FlowView -> UTCTime -> FlowView
+fillFlowEnd v st =
+  if utctDay st == utctDay (flowStart v)
+  then v {flowEnd = st, duration = diffUTCTime st (flowStart v)}
+  else let end = UTCTime (utctDay (flowStart v)) endOfWorkDay
+       in v {flowEnd = end, duration = diffUTCTime end (flowStart v)}
 
 loop :: (Flow -> [a] -> [a]) -> String -> [a] -> Handle -> IO [a]
 loop f usr acc hdl = do

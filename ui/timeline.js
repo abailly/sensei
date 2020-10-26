@@ -7,16 +7,20 @@ function drawChart(target, flowData) {
   const chart = new google.visualization.Timeline(container);
   const dataTable = new google.visualization.DataTable();
 
+  dataTable.addColumn({ type: 'string', id: 'Role' });
   dataTable.addColumn({ type: 'string', id: 'Flow Type' });
   dataTable.addColumn({ type: 'date', id: 'Start' });
   dataTable.addColumn({ type: 'date', id: 'End' });
-  flowData.forEach(flow => dataTable.addRow([flow.flowType, new Date(flow.flowStart), new Date(flow.flowEnd)]));
-  chart.draw(dataTable);
+  flowData.forEach(flow => dataTable.addRow(['1', flow.flowType, new Date(flow.flowStart), new Date(flow.flowEnd)]));
+  var options = {
+    timeline: { showRowLabels: false }
+  };
+  chart.draw(dataTable, options);
 }
 
-function fetchFlowData() {
+function fetchFlowData(selectedDate) {
   const xhr = new XMLHttpRequest();
-  xhr.open('GET', '/flows/arnaud/2020-10-26');
+  xhr.open('GET', '/flows/arnaud/' + selectedDate);
   xhr.onload = function() {
     if (xhr.status >= 200 && xhr.status < 300) {
       try {
@@ -36,9 +40,18 @@ function fetchFlowData() {
   xhr.send();
 };
 
-function draw() {
+document.addEventListener('DOMContentLoaded', () => {
   google.charts.load('current', { 'packages': ['timeline'] });
-  google.charts.setOnLoadCallback(fetchFlowData);
-}
+  document.getElementById('flowDate').addEventListener('change', (e) => {
+    const selectedDate = e.target.value;
+    fetchFlowData(selectedDate);
+  });
 
-document.addEventListener('DOMContentLoaded', draw);
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    if (e.target.checked) {
+      document.getElementById('flowDate').disabled = true;
+    } else {
+      document.getElementById('flowDate').disabled = false;
+    }
+  });
+});

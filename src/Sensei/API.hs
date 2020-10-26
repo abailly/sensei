@@ -95,3 +95,8 @@ data Flow = Flow
     _flowState :: FlowState
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+-- | End of work day is assumed to be 6:30pm UTC
+-- TODO fix this value which is incorrect and locale dependent
+endOfWorkDay :: DiffTime
+endOfWorkDay = secondsToDiffTime (3600 * 16 + 1800)
