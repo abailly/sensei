@@ -40,6 +40,7 @@ flowS file flowTyp flow = liftIO $
 readViews :: FilePath -> String -> IO [FlowView]
 readViews file usr = withBinaryFile file ReadMode $ loop f usr []
   where
+    f Flow {_flowType=Note} views = views
     f Flow {..} views =
       let view = FlowView st st 0 _flowType
           st = _flowStart _flowState
