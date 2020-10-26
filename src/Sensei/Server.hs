@@ -53,7 +53,11 @@ fillFlowEnd v st =
   if utctDay st == utctDay (flowStart v)
   then v {flowEnd = st, duration = diffUTCTime st (flowStart v)}
   else let end = UTCTime (utctDay (flowStart v)) endOfWorkDay
-       in v {flowEnd = end, duration = diffUTCTime end (flowStart v)}
+           oneHour = secondsToNominalDiffTime 3600
+           plus1hour = addUTCTime oneHour (flowStart v)
+       in if end < (flowStart v)
+          then v {flowEnd = plus1hour, duration = oneHour }
+          else v {flowEnd = end, duration = diffUTCTime end (flowStart v)}
 
 loop :: (Flow -> [a] -> [a]) -> String -> [a] -> Handle -> IO [a]
 loop f usr acc hdl = do
