@@ -26,7 +26,7 @@ sensei output =
 
 -- | Serve static resources under `public/` directory
 staticResources :: Application
-staticResources = staticApp (defaultFileServerSettings "public")
+staticResources = staticApp (defaultFileServerSettings "ui")
 
 senseiLog :: IO FilePath
 senseiLog = (</> ".sensei.log") <$> getHomeDirectory

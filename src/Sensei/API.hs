@@ -28,7 +28,7 @@ type SenseiAPI =
              :<|> Capture "user" String :> Capture "day" Day :> Get '[JSON] [FlowView]
              :<|> Capture "user" String :> Get '[JSON] [FlowView]
          )
-    :<|> Raw
+  :<|> Raw
 
 -- | Execution "trace" of a program
 data Trace = Trace
