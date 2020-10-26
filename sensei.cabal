@@ -44,6 +44,7 @@ library
                      , text
                      , time
                      , unix
+                     , wai-app-static
                      , warp
   default-language:    Haskell2010
 

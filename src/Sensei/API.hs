@@ -24,9 +24,11 @@ type SenseiAPI =
     :<|> "flows"
       :> ( Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
              :<|> Capture "user" String :> Capture "day" Day :> "summary" :> Get '[JSON] [(FlowType, NominalDiffTime)]
+             :<|> Capture "user" String :> Capture "day" Day :> "notes" :> Get '[JSON] [(UTCTime,Text.Text)]
              :<|> Capture "user" String :> Capture "day" Day :> Get '[JSON] [FlowView]
              :<|> Capture "user" String :> Get '[JSON] [FlowView]
          )
+    :<|> Raw
 
 -- | Execution "trace" of a program
 data Trace = Trace
@@ -52,9 +54,9 @@ data FlowView = FlowView
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-sameDayThan :: Day -> FlowView -> Bool
-sameDayThan day FlowView {flowStart} =
-  utctDay flowStart == day
+sameDayThan :: Day -> (a -> UTCTime) -> a -> Bool
+sameDayThan day selector a =
+  utctDay (selector a) == day
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
@@ -71,7 +73,7 @@ instance FromHttpApiData FlowType where
   parseUrlPiece "Troubleshooting" = pure Troubleshooting
   parseUrlPiece "Flowing" = pure Flowing
   parseUrlPiece "Rework" = pure Rework
-  parseUrlPiece "Note" = pure Rework
+  parseUrlPiece "Note" = pure Note
   parseUrlPiece _txt = pure Other
 
 data FlowState

@@ -1,6 +1,7 @@
 module Sensei.Client where
 
 import Data.Time
+import Data.Text(Text)
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Sensei.API
 import Servant
@@ -13,7 +14,8 @@ flowC :: FlowType -> FlowState -> ClientM ()
 queryFlowC :: String -> ClientM [FlowView]
 queryFlowDayC :: String -> Day -> ClientM [FlowView]
 queryFlowDaySummaryC :: String -> Day -> ClientM [(FlowType, NominalDiffTime)]
-traceC :<|> (flowC :<|> queryFlowDaySummaryC :<|> queryFlowDayC :<|> queryFlowC) = client senseiAPI
+notesDayC :: String -> Day -> ClientM [(UTCTime, Text)]
+traceC :<|> (flowC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> queryFlowDayC:<|> queryFlowC) :<|> _ = client senseiAPI
 
 send :: ClientM a -> IO a
 send act = do

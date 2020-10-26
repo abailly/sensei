@@ -37,6 +37,6 @@ main = do
     "docker" -> wrapProg "/usr/local/bin/docker" progArgs st currentDir
     "ep" -> do
       opts <- parseSenseiOptions
-      recordFlow opts curUser st currentDir
+      flowAction opts curUser st currentDir
     "sensei-exe" -> startServer
     _ -> hPutStrLn stderr ("Don't know how to handle program " <> prog) >> exitWith (ExitFailure 1)
