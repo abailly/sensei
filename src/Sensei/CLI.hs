@@ -72,6 +72,7 @@ flowTypeParser =
     <|> flag' Flowing (short 'f' <> help "Flowing period")
     <|> flag' Rework (short 'r' <> help "Rework period")
     <|> flag' Other (short 'o' <> help "Other period")
+    <|> flag' End (short 'E' <> help "End previous period")
     <|> flag' Note (short 'n' <> help "Taking some note")
 
 parseSenseiOptions :: IO Options

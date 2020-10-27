@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -41,6 +42,9 @@ readViews :: FilePath -> String -> IO [FlowView]
 readViews file usr = withBinaryFile file ReadMode $ loop f usr []
   where
     f Flow {_flowType=Note} views = views
+    f Flow {_flowType=End} [] = []
+    f Flow {_flowType=End,_flowState} (v:vs) =
+      v {flowEnd = _flowStart _flowState } : vs
     f Flow {..} views =
       let view = FlowView st st 0 _flowType
           st = _flowStart _flowState
@@ -48,6 +52,7 @@ readViews file usr = withBinaryFile file ReadMode $ loop f usr []
             (v : vs) -> view : fillFlowEnd v st : vs
             [] -> [view]
 
+-- OUCH
 fillFlowEnd :: FlowView -> UTCTime -> FlowView
 fillFlowEnd v st =
   if utctDay st == utctDay (flowStart v)

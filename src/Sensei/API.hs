@@ -61,7 +61,7 @@ sameDayThan day selector a =
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
 
-data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Note | Other
+data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Note | Other | End
   deriving (Eq, Show, Ord, Generic, ToJSON, FromJSON)
 
 instance ToHttpApiData FlowType where
@@ -74,6 +74,7 @@ instance FromHttpApiData FlowType where
   parseUrlPiece "Flowing" = pure Flowing
   parseUrlPiece "Rework" = pure Rework
   parseUrlPiece "Note" = pure Note
+  parseUrlPiece "End" = pure End
   parseUrlPiece _txt = pure Other
 
 data FlowState
