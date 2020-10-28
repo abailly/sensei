@@ -11,7 +11,7 @@ import Sensei.App
 
 traceC :: Trace -> ClientM ()
 flowC :: FlowType -> FlowState -> ClientM ()
-queryFlowC :: String -> ClientM [FlowView]
+queryFlowC :: String -> [Group] -> ClientM [GroupViews]
 queryFlowDayC :: String -> Day -> ClientM [FlowView]
 queryFlowDaySummaryC :: String -> Day -> ClientM [(FlowType, NominalDiffTime)]
 notesDayC :: String -> Day -> ClientM [(UTCTime, Text)]

@@ -1,31 +1,94 @@
+function formatISODate(date) {
+  const year = date.getFullYear();
+  let month = date.getMonth() + 1;
+  let dt = date.getDate();
+
+  if (dt < 10) {
+    dt = '0' + dt;
+  }
+  if (month < 10) {
+    month = '0' + month;
+  }
+
+  return year + '-' + month + '-' + dt;
+}
+
+function colorOf(flowType) {
+  switch (flowType) {
+    case 'Learning':
+      return "#aaaa00";
+    case 'Experimenting':
+      return "#0022dd";
+    case 'Troubleshooting':
+      return "#ee1111";
+    case 'Flowing':
+      return "#00dd22";
+    case 'Rework':
+      return "#4500dd";
+    case 'Note':
+      return "#000000";
+    default:
+      return "#ffffff";
+  }
+}
 
 /**
    Draw a timeline chart in given element with given data
 */
-function drawChart(target, flowData) {
-  const container = document.getElementById(target);
+function drawChart(container, selectedDate, flowData) {
   const chart = new google.visualization.Timeline(container);
   const dataTable = new google.visualization.DataTable();
 
   dataTable.addColumn({ type: 'string', id: 'Role' });
   dataTable.addColumn({ type: 'string', id: 'Flow Type' });
+  dataTable.addColumn({ type: 'string', id: 'style', role: 'style' });
   dataTable.addColumn({ type: 'date', id: 'Start' });
   dataTable.addColumn({ type: 'date', id: 'End' });
-  flowData.forEach(flow => dataTable.addRow(['1', flow.flowType, new Date(flow.flowStart), new Date(flow.flowEnd)]));
+  flowData.forEach(flow => dataTable.addRow([selectedDate, flow.flowType, colorOf(flow.flowType), new Date(flow.flowStart), new Date(flow.flowEnd)]));
   var options = {
-    timeline: { showRowLabels: false }
   };
   chart.draw(dataTable, options);
 }
 
-function fetchFlowData(selectedDate) {
+/**
+   Create a new div container for a timeline
+*/
+function createTimelineContainer(name) {
+  const container = document.createElement("div");
+  container.setAttribute('id', name);
+  container.setAttribute('style', 'height: 100px;');
+  document.getElementById('timelines').appendChild(container);
+  return container;
+}
+
+function clearTimelines() {
+  const timelines = document.getElementById('timelines').getElementsByTagName('div');
+  for (let tl of timelines) {
+    tl.remove();
+  }
+}
+
+/**
+   Draw several timeline charts within the `timelines` container, each for a different
+   data
+   For now, we assume the data is a list of days
+*/
+function drawCharts(flowData) {
+  flowData.forEach((f) => {
+    const day = formatISODate(new Date(f.groupTime));
+    const container = createTimelineContainer('timeline_' + day);
+    drawChart(container, day, f.subGroup.leafViews);
+  });
+}
+
+function get(url, callback) {
   const xhr = new XMLHttpRequest();
-  xhr.open('GET', '/flows/arnaud/' + selectedDate);
+  xhr.open('GET', url);
   xhr.onload = function() {
     if (xhr.status >= 200 && xhr.status < 300) {
       try {
         const flowData = JSON.parse(xhr.responseText);
-        drawChart('timeline', flowData);
+        callback(flowData);
       } catch (e) {
         // JSON.parse can throw a SyntaxError
         if (e instanceof SyntaxError) {
@@ -38,18 +101,34 @@ function fetchFlowData(selectedDate) {
     }
   };
   xhr.send();
+}
+
+function fetchFlowData(selectedDate) {
+  const xhr = new XMLHttpRequest();
+  get('/flows/arnaud/' + selectedDate, (flowData) => {
+    const container = createTimelineContainer('timeline_' + selectedDate);
+    // assumes flowData is a single leaf group
+    drawChart(container, selectedDate, flowData);
+  });
+};
+
+function fetchAllFlowData() {
+  get('/flows/arnaud?group=Day', drawCharts);
 };
 
 document.addEventListener('DOMContentLoaded', () => {
   google.charts.load('current', { 'packages': ['timeline'] });
   document.getElementById('flowDate').addEventListener('change', (e) => {
+    clearTimelines();
     const selectedDate = e.target.value;
     fetchFlowData(selectedDate);
   });
 
   document.getElementById('selectAll').addEventListener('change', (e) => {
+    clearTimelines();
     if (e.target.checked) {
       document.getElementById('flowDate').disabled = true;
+      fetchAllFlowData();
     } else {
       document.getElementById('flowDate').disabled = false;
     }

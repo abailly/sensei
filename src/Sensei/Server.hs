@@ -9,7 +9,7 @@ import qualified Control.Exception.Safe as Exc
 import Control.Monad.Trans
 import Data.Aeson hiding (Options)
 import qualified Data.ByteString.Lazy as LBS
-import Data.Function (on, (&))
+import Data.Function (on)
 import qualified Data.List as List
 import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
@@ -93,12 +93,6 @@ queryFlowDayS file usr day = do
   views <- liftIO $ readViews file usr
   pure $ filter (sameDayThan day flowStart) views
 
--- | "pipe" operator common in other languages
--- this is basically `flip apply` which is defined as `&` in
--- the standard library
-(|>) :: a -> (a -> b) -> b
-(|>) = (&)
-
 queryFlowDaySummaryS :: FilePath -> [Char] -> Day -> Handler [(FlowType, NominalDiffTime)]
 queryFlowDaySummaryS file usr day = do
   views <- liftIO $ readViews file usr
@@ -112,9 +106,9 @@ queryFlowDaySummaryS file usr day = do
     summarize :: NE.NonEmpty FlowView -> (FlowType, NominalDiffTime)
     summarize flows@(f NE.:| _) = (flowType f, sum $ fmap duration flows)
 
-queryFlowS :: FilePath -> [Char] -> Handler [FlowView]
-queryFlowS file usr =
-  liftIO $ readViews file usr
+queryFlowS :: FilePath -> String -> [Group] -> Handler [GroupViews]
+queryFlowS file usr groups =
+  liftIO $ groupViews (List.sort groups) <$> readViews file usr
 
 flowView :: Flow -> String -> (Flow -> [a] -> [a]) -> [a] -> [a]
 flowView f@Flow {..} usr mkView views =

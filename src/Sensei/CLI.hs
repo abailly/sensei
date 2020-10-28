@@ -18,7 +18,7 @@ import System.Console.ANSI
 import System.IO
 
 data Options
-  = QueryOptions {queryDay :: Maybe Day, summarize :: Bool}
+  = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group] }
   | RecordOptions {recordType :: FlowType}
   | NotesOptions {notesDay :: Day}
 
@@ -30,7 +30,7 @@ optionsParserInfo =
 
 optionsParser :: Parser Options
 optionsParser =
-  QueryOptions <$> optional dayParser <*> summarizeParser
+  QueryOptions <$> optional dayParser <*> summarizeParser <*> many groupParser
     <|> RecordOptions <$> flowTypeParser
     <|> NotesOptions <$> dayParser <* notesParser
 
@@ -53,6 +53,15 @@ summarizeParser =
         <> short 's'
         <> help "summarize by flow type"
     )
+
+groupParser :: Parser Group
+groupParser =
+  option
+  auto ( long "group"
+       <> short 'g'
+       <> metavar "GROUP"
+       <> help "groups for retrieving daily views, one of Week, Month, Quarter or Year"
+       )
 
 notesParser :: Parser ()
 notesParser =
@@ -82,11 +91,11 @@ display :: ToJSON a => a -> IO ()
 display = Text.putStrLn . decodeUtf8 . LBS.toStrict . encode
 
 flowAction :: Options -> String -> UTCTime -> FilePath -> IO ()
-flowAction (QueryOptions Nothing _) userName _ _ =
-  send (queryFlowC userName) >>= display
-flowAction (QueryOptions (Just day) False) userName _ _ =
+flowAction (QueryOptions Nothing _ grps) userName _ _ =
+  send (queryFlowC userName grps) >>= display
+flowAction (QueryOptions (Just day) False _) userName _ _ =
   send (queryFlowDayC userName day) >>= display
-flowAction (QueryOptions (Just day) True) userName _ _ =
+flowAction (QueryOptions (Just day) True _) userName _ _ =
   send (queryFlowDaySummaryC userName day) >>= display
 flowAction (NotesOptions day) userName _ _ =
   send (notesDayC userName day) >>= mapM_ Text.putStrLn . formatNotes
