@@ -1,14 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Sensei.CLI where
 
 import qualified Control.Exception.Safe as Exc
 import Data.Aeson hiding (Options)
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as BS
 import Data.Text(Text)
 import qualified Data.Text as Text
-import Data.Text.Encoding (decodeUtf8)
-import qualified Data.Text.IO as Text
+import Data.Text.Encoding(encodeUtf8)
 import Data.Time
 import Data.Time.Format.ISO8601
 import Options.Applicative
@@ -88,7 +89,7 @@ parseSenseiOptions :: IO Options
 parseSenseiOptions = execParser optionsParserInfo
 
 display :: ToJSON a => a -> IO ()
-display = Text.putStrLn . decodeUtf8 . LBS.toStrict . encode
+display = LBS.putStr . encode
 
 flowAction :: Options -> String -> UTCTime -> FilePath -> IO ()
 flowAction (QueryOptions Nothing _ grps) userName _ _ =
@@ -98,7 +99,7 @@ flowAction (QueryOptions (Just day) False _) userName _ _ =
 flowAction (QueryOptions (Just day) True _) userName _ _ =
   send (queryFlowDaySummaryC userName day) >>= display
 flowAction (NotesOptions day) userName _ _ =
-  send (notesDayC userName day) >>= mapM_ Text.putStrLn . formatNotes
+  send (notesDayC userName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes
 flowAction (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do
@@ -106,6 +107,10 @@ flowAction (RecordOptions ftype) curUser startDate curDir =
       send $ flowC Note (FlowNote curUser startDate curDir txt)
     other ->
       send $ flowC other (FlowState curUser startDate curDir)
+
+println :: BS.ByteString -> IO ()
+println bs =
+  BS.putStr bs >> BS.putStr "\n"
 
 formatNotes  :: [(UTCTime, Text)] -> [Text]
 formatNotes = concatMap timestamped
