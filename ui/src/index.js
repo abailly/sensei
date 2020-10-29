@@ -1,4 +1,6 @@
 import timeline from './timeline.js';
+import style from './style.css';
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const tl = timeline();

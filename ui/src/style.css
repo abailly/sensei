@@ -1,0 +1,8 @@
+div#timelines {
+    margin: 1em;
+    padding: .5em;
+}
+
+.timeline {
+    height: 100px;
+}
