@@ -56,15 +56,15 @@ function drawChart(container, selectedDate, flowData) {
 function createTimelineContainer(name) {
   const container = document.createElement("div");
   container.setAttribute('id', name);
-  container.setAttribute('style', 'height: 100px;');
+  container.setAttribute('class', 'timeline');
   document.getElementById('timelines').appendChild(container);
   return container;
 }
 
 function clearTimelines() {
-  const timelines = document.getElementById('timelines').getElementsByTagName('div');
-  for (let tl of timelines) {
-    tl.remove();
+  const timelines = document.getElementById('timelines');
+  while (timelines.firstChild) {
+    timelines.removeChild(timelines.firstChild);
   }
 }
 
@@ -116,21 +116,13 @@ function fetchAllFlowData() {
   get('/flows/arnaud?group=Day', drawCharts);
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  google.charts.load('current', { 'packages': ['timeline'] });
-  document.getElementById('flowDate').addEventListener('change', (e) => {
-    clearTimelines();
-    const selectedDate = e.target.value;
-    fetchFlowData(selectedDate);
-  });
 
-  document.getElementById('selectAll').addEventListener('change', (e) => {
-    clearTimelines();
-    if (e.target.checked) {
-      document.getElementById('flowDate').disabled = true;
-      fetchAllFlowData();
-    } else {
-      document.getElementById('flowDate').disabled = false;
-    }
-  });
-});
+export default function timeline() {
+  const obj = {};
+  // assumes google object exists
+  google.charts.load('current', { 'packages': ['timeline'] });
+  obj.fetchFlowData = fetchFlowData;
+  obj.fetchAllFlowData = fetchAllFlowData;
+  obj.clearTimelines = clearTimelines;
+  return obj;
+}
