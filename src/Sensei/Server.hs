@@ -9,9 +9,7 @@ import qualified Control.Exception.Safe as Exc
 import Control.Monad.Trans
 import Data.Aeson hiding (Options)
 import qualified Data.ByteString.Lazy as LBS
-import Data.Function (on)
 import qualified Data.List as List
-import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
 import qualified Data.Text.Lazy.Encoding as LT
 import qualified Data.Text.Lazy.IO as LT
@@ -41,10 +39,10 @@ flowS file flowTyp flow = liftIO $
 readViews :: FilePath -> String -> IO [FlowView]
 readViews file usr = withBinaryFile file ReadMode $ loop f usr []
   where
-    f Flow {_flowType=Note} views = views
-    f Flow {_flowType=End} [] = []
-    f Flow {_flowType=End,_flowState} (v:vs) =
-      v {flowEnd = _flowStart _flowState } : vs
+    f Flow {_flowType = Note} views = views
+    f Flow {_flowType = End} [] = []
+    f Flow {_flowType = End, _flowState} (v : vs) =
+      v {flowEnd = _flowStart _flowState} : vs
     f Flow {..} views =
       let view = FlowView st st 0 _flowType
           st = _flowStart _flowState
@@ -54,14 +52,13 @@ readViews file usr = withBinaryFile file ReadMode $ loop f usr []
 
 loop :: (Flow -> [a] -> [a]) -> String -> [a] -> Handle -> IO [a]
 loop f usr acc hdl = do
-      res <- Exc.try $ LT.hGetLine hdl
-      case res of
-        Left (_ex :: Exc.IOException) -> pure (reverse acc)
-        Right ln ->
-          case eitherDecode (LT.encodeUtf8 ln) of
-            Left _err -> loop f usr acc hdl
-            Right flow -> loop f usr (flowView flow usr f acc) hdl
-
+  res <- Exc.try $ LT.hGetLine hdl
+  case res of
+    Left (_ex :: Exc.IOException) -> pure (reverse acc)
+    Right ln ->
+      case eitherDecode (LT.encodeUtf8 ln) of
+        Left _err -> loop f usr acc hdl
+        Right flow -> loop f usr (flowView flow usr f acc) hdl
 
 readNotes :: FilePath -> String -> IO [(UTCTime, Text)]
 readNotes file usr = withBinaryFile file ReadMode $ loop f usr []
@@ -87,14 +84,24 @@ queryFlowDaySummaryS file usr day = do
   pure $
     views
       |> filter (sameDayThan day flowStart)
-      |> List.sortBy (compare `on` flowType)
-      |> NE.groupBy ((==) `on` flowType)
-      |> fmap summarize
+      |> summarize
   where
-    summarize :: NE.NonEmpty FlowView -> (FlowType, NominalDiffTime)
-    summarize flows@(f NE.:| _) = (flowType f, sum $ fmap duration flows)
 
-queryFlowS :: FilePath -> String -> [Group] -> Handler [GroupViews]
+queryFlowSummaryS :: FilePath -> [Char] -> Handler [GroupViews (FlowType, NominalDiffTime)]
+queryFlowSummaryS file usr = do
+  views <- liftIO $ groupViews [Day] <$> readViews file usr
+  pure $ views |> fmap summary
+  where
+    summary :: GroupViews FlowView -> GroupViews (FlowType, NominalDiffTime)
+    summary grp = (case grp of
+                       NoViews -> NoViews
+                       (Leaf []) -> Leaf []
+                       (Leaf vs) -> Leaf (summarize vs)
+                       (GroupLevel g u gf) -> GroupLevel g u (summary gf))
+
+-- summarize flows@(f NE.:| _) = (flowType f, sum $ fmap duration flows)
+
+queryFlowS :: FilePath -> String -> [Group] -> Handler [GroupViews FlowView]
 queryFlowS file usr groups =
   liftIO $ groupViews (List.sort groups) <$> readViews file usr
 

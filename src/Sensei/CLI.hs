@@ -93,8 +93,10 @@ display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encode
 
 flowAction :: Options -> String -> UTCTime -> FilePath -> IO ()
-flowAction (QueryOptions Nothing _ grps) userName _ _ =
+flowAction (QueryOptions Nothing False grps) userName _ _ =
   send (queryFlowC userName grps) >>= display
+flowAction (QueryOptions Nothing True _) userName _ _ =
+  send (queryFlowSummaryC userName) >>= display
 flowAction (QueryOptions (Just day) False _) userName _ _ =
   send (queryFlowDayC userName day) >>= display
 flowAction (QueryOptions (Just day) True _) userName _ _ =

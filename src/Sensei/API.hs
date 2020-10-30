@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -13,6 +14,7 @@ module Sensei.API where
 
 import Data.Aeson hiding (Options)
 import Data.Function (on, (&))
+import qualified Data.List as List
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as Text
@@ -27,10 +29,11 @@ type SenseiAPI =
   "trace" :> ReqBody '[JSON] Trace :> Post '[JSON] ()
     :<|> "flows"
       :> ( Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
+             :<|> Capture "user" String :> "summary" :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
              :<|> Capture "user" String :> Capture "day" Day :> "summary" :> Get '[JSON] [(FlowType, NominalDiffTime)]
              :<|> Capture "user" String :> Capture "day" Day :> "notes" :> Get '[JSON] [(UTCTime, Text.Text)]
              :<|> Capture "user" String :> Capture "day" Day :> Get '[JSON] [FlowView]
-             :<|> Capture "user" String :> QueryParams "group" Group :> Get '[JSON] [GroupViews]
+             :<|> Capture "user" String :> QueryParams "group" Group :> Get '[JSON] [GroupViews FlowView]
          )
     :<|> Raw
 
@@ -62,13 +65,14 @@ data FlowView = FlowView
 fillFlowEnd :: FlowView -> UTCTime -> FlowView
 fillFlowEnd v st =
   if utctDay st == utctDay (flowStart v)
-  then v {flowEnd = st, duration = diffUTCTime st (flowStart v)}
-  else let end = UTCTime (utctDay (flowStart v)) endOfWorkDay
-           oneHour = secondsToNominalDiffTime 3600
-           plus1hour = addUTCTime oneHour (flowStart v)
+    then v {flowEnd = st, duration = diffUTCTime st (flowStart v)}
+    else
+      let end = UTCTime (utctDay (flowStart v)) endOfWorkDay
+          oneHour = secondsToNominalDiffTime 3600
+          plus1hour = addUTCTime oneHour (flowStart v)
        in if end < (flowStart v)
-          then v {flowEnd = plus1hour, duration = oneHour }
-          else v {flowEnd = end, duration = diffUTCTime end (flowStart v)}
+            then v {flowEnd = plus1hour, duration = oneHour}
+            else v {flowEnd = end, duration = diffUTCTime end (flowStart v)}
 
 -- | Normalize the given list of views to ensure it starts and ends at "standard" time.
 -- This function is useful to provide a common scale when comparing flows across several days
@@ -79,15 +83,24 @@ fillFlowEnd v st =
 normalizeViewsForDay :: UTCTime -> UTCTime -> [FlowView] -> [FlowView]
 normalizeViewsForDay startOfDay endOfDay [] =
   [FlowView startOfDay endOfDay (diffUTCTime endOfDay startOfDay) Other]
-normalizeViewsForDay startOfDay endOfDay views@(st:_) =
+normalizeViewsForDay startOfDay endOfDay views@(st : _) =
   let end = last views
-      st' = if flowStart st > startOfDay
-            then [FlowView startOfDay (flowStart st) (diffUTCTime startOfDay (flowStart st)) Other]
-            else []
-      end' = if flowEnd end < endOfDay
-             then [FlowView (flowEnd end) endOfDay (diffUTCTime (flowEnd end) endOfDay) Other]
-             else []
-  in st' <> views <> end'
+      st' =
+        if flowStart st > startOfDay
+          then [FlowView startOfDay (flowStart st) (diffUTCTime startOfDay (flowStart st)) Other]
+          else []
+      end' =
+        if flowEnd end < endOfDay
+          then [FlowView (flowEnd end) endOfDay (diffUTCTime (flowEnd end) endOfDay) Other]
+          else []
+   in st' <> views <> end'
+
+summarize :: [FlowView] -> [(FlowType, NominalDiffTime)]
+summarize views =
+  views
+    |> List.sortBy (compare `on` flowType)
+    |> NE.groupBy ((==) `on` flowType)
+    |> fmap (\ flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
 
 sameDayThan :: Day -> (a -> UTCTime) -> a -> Bool
 sameDayThan day selector a =
@@ -143,16 +156,16 @@ instance ToHttpApiData Group where
 instance FromHttpApiData Group where
   parseUrlPiece txt =
     case reads (Text.unpack txt) of
-      ((g,_):_) -> pure g
+      ((g, _) : _) -> pure g
       _ -> Left $ "cannot parse group " <> txt
 
-data GroupViews
+data GroupViews a
   = NoViews
-  | Leaf {leafViews :: [FlowView]}
-  | GroupLevel {level :: Group, groupTime :: UTCTime, subGroup :: GroupViews}
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+  | Leaf {leafViews :: [a]}
+  | GroupLevel {level :: Group, groupTime :: UTCTime, subGroup :: GroupViews a}
+  deriving (Eq, Show, Generic, ToJSON, FromJSON, Functor)
 
-groupViews :: [Group] -> [FlowView] -> [GroupViews]
+groupViews :: [Group] -> [FlowView] -> [GroupViews FlowView]
 groupViews [] views = [Leaf views]
 groupViews (Day : _groups) views =
   views
@@ -160,16 +173,16 @@ groupViews (Day : _groups) views =
     |> mkGroupViewsBy Day
 groupViews _ _ = error "unsupported group"
 
-mkGroupViewsBy :: Group -> [NE.NonEmpty FlowView] -> [GroupViews]
+mkGroupViewsBy :: Group -> [NE.NonEmpty FlowView] -> [GroupViews FlowView]
 mkGroupViewsBy Day =
   fmap mkGroup
   where
     normalized :: NE.NonEmpty FlowView -> [FlowView]
     normalized (view :| rest) =
       let viewDay = utctDay (flowStart view)
-      in normalizeViewsForDay (UTCTime viewDay startOfWorkDay) (UTCTime viewDay endOfWorkDay) (view : rest)
+       in normalizeViewsForDay (UTCTime viewDay startOfWorkDay) (UTCTime viewDay endOfWorkDay) (view : rest)
 
-    mkGroup :: NE.NonEmpty FlowView -> GroupViews
+    mkGroup :: NE.NonEmpty FlowView -> GroupViews FlowView
     mkGroup (view :| rest) = GroupLevel Day (flowStart view) (Leaf (normalized (view :| rest)))
 mkGroupViewsBy _ = error "unsupported group"
 

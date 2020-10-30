@@ -16,6 +16,7 @@ sensei output =
     ( serve senseiAPI $
         traceS output
           :<|> ( flowS output
+                   :<|> queryFlowSummaryS output
                    :<|> queryFlowDaySummaryS output
                    :<|> notesDayS output
                    :<|> queryFlowDayS output
@@ -34,10 +35,10 @@ senseiLog = (</> ".sensei.log") <$> getHomeDirectory
 daemonizeServer :: IO ()
 daemonizeServer =
   daemonize $
-  -- TODO fix this silly hardcoded path
-  -- this is so because I want to ensure the server is started in a location
-  -- where it can find the FE resources...
-  withCurrentDirectory "/Users/arnaud/projects/pankzsoft/sensei/" $ startServer
+    -- TODO fix this silly hardcoded path
+    -- this is so because I want to ensure the server is started in a location
+    -- where it can find the FE resources...
+    withCurrentDirectory "/Users/arnaud/projects/pankzsoft/sensei/" $ startServer
 
 startServer :: IO ()
 startServer = senseiLog >>= sensei

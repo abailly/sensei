@@ -11,11 +11,12 @@ import Sensei.App
 
 traceC :: Trace -> ClientM ()
 flowC :: FlowType -> FlowState -> ClientM ()
-queryFlowC :: String -> [Group] -> ClientM [GroupViews]
+queryFlowC :: String -> [Group] -> ClientM [GroupViews FlowView]
+queryFlowSummaryC :: String -> ClientM [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: String -> Day -> ClientM [FlowView]
 queryFlowDaySummaryC :: String -> Day -> ClientM [(FlowType, NominalDiffTime)]
 notesDayC :: String -> Day -> ClientM [(UTCTime, Text)]
-traceC :<|> (flowC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> queryFlowDayC:<|> queryFlowC) :<|> _ = client senseiAPI
+traceC :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> queryFlowDayC:<|> queryFlowC) :<|> _ = client senseiAPI
 
 send :: ClientM a -> IO a
 send act = do
