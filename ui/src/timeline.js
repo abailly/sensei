@@ -1,17 +1,5 @@
-function formatISODate(date) {
-  const year = date.getFullYear();
-  let month = date.getMonth() + 1;
-  let dt = date.getDate();
-
-  if (dt < 10) {
-    dt = '0' + dt;
-  }
-  if (month < 10) {
-    month = '0' + month;
-  }
-
-  return year + '-' + month + '-' + dt;
-}
+import { get } from './request.js';
+import { formatISODate } from './date.js';
 
 function colorOf(flowType) {
   switch (flowType) {
@@ -81,28 +69,6 @@ function drawCharts(flowData) {
   });
 }
 
-function get(url, callback) {
-  const xhr = new XMLHttpRequest();
-  xhr.open('GET', url);
-  xhr.onload = function() {
-    if (xhr.status >= 200 && xhr.status < 300) {
-      try {
-        const flowData = JSON.parse(xhr.responseText);
-        callback(flowData);
-      } catch (e) {
-        // JSON.parse can throw a SyntaxError
-        if (e instanceof SyntaxError) {
-          alert("invalid JSON payload" + xhr.responseText);
-        }
-        throw e;
-      }
-    } else {
-      alert('Request failed.  Returned status of ' + xhr.status);
-    }
-  };
-  xhr.send();
-}
-
 function fetchFlowData(selectedDate) {
   const xhr = new XMLHttpRequest();
   get('/flows/arnaud/' + selectedDate, (flowData) => {
@@ -120,7 +86,6 @@ function fetchAllFlowData() {
 export default function timeline() {
   const obj = {};
   // assumes google object exists
-  google.charts.load('current', { 'packages': ['timeline'] });
   obj.fetchFlowData = fetchFlowData;
   obj.fetchAllFlowData = fetchAllFlowData;
   obj.clearTimelines = clearTimelines;
