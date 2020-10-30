@@ -58,6 +58,37 @@ data FlowView = FlowView
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
+-- OUCH
+fillFlowEnd :: FlowView -> UTCTime -> FlowView
+fillFlowEnd v st =
+  if utctDay st == utctDay (flowStart v)
+  then v {flowEnd = st, duration = diffUTCTime st (flowStart v)}
+  else let end = UTCTime (utctDay (flowStart v)) endOfWorkDay
+           oneHour = secondsToNominalDiffTime 3600
+           plus1hour = addUTCTime oneHour (flowStart v)
+       in if end < (flowStart v)
+          then v {flowEnd = plus1hour, duration = oneHour }
+          else v {flowEnd = end, duration = diffUTCTime end (flowStart v)}
+
+-- | Normalize the given list of views to ensure it starts and ends at "standard" time.
+-- This function is useful to provide a common scale when comparing flows across several days
+-- which might not start nor end at the same time.
+-- This function assumes that:
+-- 1. The given `FlowView` list is sorted
+-- 2. All `FLowView` are for the same day
+normalizeViewsForDay :: UTCTime -> UTCTime -> [FlowView] -> [FlowView]
+normalizeViewsForDay startOfDay endOfDay [] =
+  [FlowView startOfDay endOfDay (diffUTCTime endOfDay startOfDay) Other]
+normalizeViewsForDay startOfDay endOfDay views@(st:_) =
+  let end = last views
+      st' = if flowStart st > startOfDay
+            then [FlowView startOfDay (flowStart st) (diffUTCTime startOfDay (flowStart st)) Other]
+            else []
+      end' = if flowEnd end < endOfDay
+             then [FlowView (flowEnd end) endOfDay (diffUTCTime (flowEnd end) endOfDay) Other]
+             else []
+  in st' <> views <> end'
+
 sameDayThan :: Day -> (a -> UTCTime) -> a -> Bool
 sameDayThan day selector a =
   utctDay (selector a) == day
@@ -133,14 +164,24 @@ mkGroupViewsBy :: Group -> [NE.NonEmpty FlowView] -> [GroupViews]
 mkGroupViewsBy Day =
   fmap mkGroup
   where
+    normalized :: NE.NonEmpty FlowView -> [FlowView]
+    normalized (view :| rest) =
+      let viewDay = utctDay (flowStart view)
+      in normalizeViewsForDay (UTCTime viewDay startOfWorkDay) (UTCTime viewDay endOfWorkDay) (view : rest)
+
     mkGroup :: NE.NonEmpty FlowView -> GroupViews
-    mkGroup (view :| rest) = GroupLevel Day (flowStart view) (Leaf (view : rest))
+    mkGroup (view :| rest) = GroupLevel Day (flowStart view) (Leaf (normalized (view :| rest)))
 mkGroupViewsBy _ = error "unsupported group"
 
 -- | End of work day is assumed to be 6:30pm UTC
 -- TODO fix this value which is incorrect and locale dependent
+startOfWorkDay :: DiffTime
+startOfWorkDay = secondsToDiffTime (3600 * 8)
+
+-- | End of work day is assumed to be 6:30pm UTC
+-- TODO fix this value which is incorrect and locale dependent
 endOfWorkDay :: DiffTime
-endOfWorkDay = secondsToDiffTime (3600 * 16 + 1800)
+endOfWorkDay = secondsToDiffTime (3600 * 17 + 1800)
 
 -- | "pipe" operator common in other languages
 -- this is basically `flip apply` which is defined as `&` in
