@@ -1,5 +1,5 @@
 import { get } from './request.js';
-import { formatISODate } from './date.js';
+import dom from './dom.js';
 
 function clearSummaries() {
   const summaries = document.getElementById('summaries');
@@ -26,9 +26,7 @@ function groupByTypes(summaryData) {
 }
 
 function createSummaryContainer(name) {
-  const container = document.createElement("div");
-  container.setAttribute('id', name);
-  container.setAttribute('class', 'summary');
+  const container = <div id={name} class='summary' />;
   document.getElementById('summaries').appendChild(container);
   return container;
 }

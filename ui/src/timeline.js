@@ -1,10 +1,12 @@
 import { get } from './request.js';
 import { formatISODate } from './date.js';
+import dom from './dom.js';
+
 
 function colorOf(flowType) {
   switch (flowType) {
     case 'Learning':
-      return "#aaaa00";
+      return "#ff8822";
     case 'Experimenting':
       return "#0022dd";
     case 'Troubleshooting':
@@ -42,9 +44,7 @@ function drawChart(container, selectedDate, flowData) {
    Create a new div container for a timeline
 */
 function createTimelineContainer(name) {
-  const container = document.createElement("div");
-  container.setAttribute('id', name);
-  container.setAttribute('class', 'timeline');
+  const container = <div id={name} class='timeline' />;
   document.getElementById('timelines').appendChild(container);
   return container;
 }
