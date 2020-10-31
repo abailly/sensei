@@ -34,7 +34,9 @@ function drawChart(container, selectedDate, flowData) {
   dataTable.addColumn({ type: 'string', id: 'style', role: 'style' });
   dataTable.addColumn({ type: 'date', id: 'Start' });
   dataTable.addColumn({ type: 'date', id: 'End' });
-  flowData.forEach(flow => dataTable.addRow([selectedDate, flow.flowType, colorOf(flow.flowType), new Date(flow.flowStart), new Date(flow.flowEnd)]));
+  flowData.forEach(flow =>
+    dataTable.addRow([selectedDate, flow.flowType, colorOf(flow.flowType), new Date(flow.flowStart), new Date(flow.flowEnd)])
+  );
   var options = {
   };
   chart.draw(dataTable, options);
