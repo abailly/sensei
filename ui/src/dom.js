@@ -17,12 +17,12 @@
  * @returns {Object} a newly initialized DOM element with given attributes and children
  */
 function dom(tagName, attrs = {}, ...children) {
-  const elem = Object.assign(document.createElement(tagName), attrs)
+  const elem = Object.assign(document.createElement(tagName), attrs);
   for (const child of children) {
-    if (Array.isArray(child)) elem.append(...child)
-    else elem.append(child)
+    if (Array.isArray(child)) elem.append(...child);
+    else elem.append(child);
   }
-  return elem
+  return elem;
 }
 
 export default dom;
