@@ -11,19 +11,21 @@ import System.Posix.Daemonize
 
 sensei :: FilePath -> IO ()
 sensei output =
-  run
-    23456
-    ( serve senseiAPI $
-        traceS output
-          :<|> ( flowS output
-                   :<|> queryFlowSummaryS output
-                   :<|> queryFlowDaySummaryS output
-                   :<|> notesDayS output
-                   :<|> queryFlowDayS output
-                   :<|> queryFlowS output
-               )
-          :<|> Tagged staticResources
-    )
+  run 23456 (senseiApp output)
+
+senseiApp :: FilePath -> Application
+senseiApp output =
+  serve senseiAPI $
+    traceS output
+      :<|> ( flowS output
+               :<|> queryFlowSummaryS output
+               :<|> queryFlowDaySummaryS output
+               :<|> notesDayS output
+               :<|> queryFlowDayS output
+               :<|> queryFlowS output
+           )
+      :<|> userProfileS
+      :<|> Tagged staticResources
 
 -- | Serve static resources under `public/` directory
 staticResources :: Application

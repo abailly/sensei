@@ -4,3 +4,5 @@ cradle:
     component: "sensei:lib"
   - path: "./app"
     component: "sensei:exe:sensei-exe"
+  - path: "./test"
+    component: "sensei:test:sensei-test"

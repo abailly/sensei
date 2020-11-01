@@ -22,6 +22,7 @@ import Data.Time
 import GHC.Generics
 import Servant
 import System.Exit
+import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 
 -- * API
 
@@ -35,6 +36,7 @@ type SenseiAPI =
              :<|> Capture "user" String :> Capture "day" Day :> Get '[JSON] [FlowView]
              :<|> Capture "user" String :> QueryParams "group" Group :> Get '[JSON] [GroupViews FlowView]
          )
+    :<|> "users" :> (Capture "user" String :> Get '[JSON] UserProfile)
     :<|> Raw
 
 -- | Execution "trace" of a program
@@ -100,7 +102,7 @@ summarize views =
   views
     |> List.sortBy (compare `on` flowType)
     |> NE.groupBy ((==) `on` flowType)
-    |> fmap (\ flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
+    |> fmap (\flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
 
 sameDayThan :: Day -> (a -> UTCTime) -> a -> Bool
 sameDayThan day selector a =
@@ -201,3 +203,16 @@ endOfWorkDay = secondsToDiffTime (3600 * 17 + 1800)
 -- the standard library
 (|>) :: a -> (a -> b) -> b
 (|>) = (&)
+
+data UserProfile = UserProfile
+  { userTimezone :: TimeZone,
+    userStartOfDay :: TimeOfDay,
+    userEndOfDay :: TimeOfDay
+  }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+instance ToJSON TimeZone where
+  toJSON = String . Text.pack . iso8601Show
+
+instance FromJSON TimeZone where
+  parseJSON = withText "TimeZone" $ iso8601ParseM . Text.unpack

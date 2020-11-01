@@ -110,3 +110,6 @@ flowView f@Flow {..} usr mkView views =
   if _flowUser _flowState == usr
     then mkView f views
     else views
+
+userProfileS :: String -> Handler UserProfile
+userProfileS _ = pure UserProfile { userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00  }
