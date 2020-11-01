@@ -58,7 +58,6 @@ deriving instance FromJSON ExitCode
 data FlowView = FlowView
   { flowStart :: UTCTime,
     flowEnd :: UTCTime,
-    duration :: NominalDiffTime,
     flowType :: FlowType
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
@@ -67,14 +66,14 @@ data FlowView = FlowView
 fillFlowEnd :: FlowView -> UTCTime -> FlowView
 fillFlowEnd v st =
   if utctDay st == utctDay (flowStart v)
-    then v {flowEnd = st, duration = diffUTCTime st (flowStart v)}
+    then v {flowEnd = st}
     else
       let end = UTCTime (utctDay (flowStart v)) endOfWorkDay
           oneHour = secondsToNominalDiffTime 3600
           plus1hour = addUTCTime oneHour (flowStart v)
        in if end < (flowStart v)
-            then v {flowEnd = plus1hour, duration = oneHour}
-            else v {flowEnd = end, duration = diffUTCTime end (flowStart v)}
+            then v {flowEnd = plus1hour}
+            else v {flowEnd = end}
 
 -- | Normalize the given list of views to ensure it starts and ends at "standard" time.
 -- This function is useful to provide a common scale when comparing flows across several days
@@ -84,16 +83,16 @@ fillFlowEnd v st =
 -- 2. All `FLowView` are for the same day
 normalizeViewsForDay :: UTCTime -> UTCTime -> [FlowView] -> [FlowView]
 normalizeViewsForDay startOfDay endOfDay [] =
-  [FlowView startOfDay endOfDay (diffUTCTime endOfDay startOfDay) Other]
+  [FlowView startOfDay endOfDay Other]
 normalizeViewsForDay startOfDay endOfDay views@(st : _) =
   let end = last views
       st' =
         if flowStart st > startOfDay
-          then [FlowView startOfDay (flowStart st) (diffUTCTime startOfDay (flowStart st)) Other]
+          then [FlowView startOfDay (flowStart st) Other]
           else []
       end' =
         if flowEnd end < endOfDay
-          then [FlowView (flowEnd end) endOfDay (diffUTCTime (flowEnd end) endOfDay) Other]
+          then [FlowView (flowEnd end) endOfDay Other]
           else []
    in st' <> views <> end'
 
@@ -103,6 +102,9 @@ summarize views =
     |> List.sortBy (compare `on` flowType)
     |> NE.groupBy ((==) `on` flowType)
     |> fmap (\flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
+
+duration :: FlowView -> NominalDiffTime
+duration FlowView{flowStart, flowEnd} = diffUTCTime flowEnd flowStart
 
 sameDayThan :: Day -> (a -> UTCTime) -> a -> Bool
 sameDayThan day selector a =

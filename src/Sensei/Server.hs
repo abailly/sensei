@@ -44,7 +44,7 @@ readViews file usr = withBinaryFile file ReadMode $ loop f usr []
     f Flow {_flowType = End, _flowState} (v : vs) =
       v {flowEnd = _flowStart _flowState} : vs
     f Flow {..} views =
-      let view = FlowView st st 0 _flowType
+      let view = FlowView st st _flowType
           st = _flowStart _flowState
        in case views of
             (v : vs) -> view : fillFlowEnd v st : vs
