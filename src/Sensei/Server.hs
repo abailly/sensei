@@ -30,12 +30,7 @@ flowS file _ flowTyp flow = liftIO $
     LBS.hPutStr out $ encode (Flow flowTyp flow) <> "\n"
     hFlush out
 
--- | Read all the views for a given `usr`
---  It seems we could simply not filter on user name at this stage but
---  actually it does not make sense to build a streamm of `FlowView` for
---  different users as each `Flow` is supposed to be contiguous to the
---  previous one and `flowView` uses next `Flow`'s start time as end time
---  for previous `Flow`.
+-- | Read all the views for a given `UserProfile`
 readViews :: FilePath -> UserProfile -> IO [FlowView]
 readViews file (UserProfile usr tz _ dayEnd) =
   withBinaryFile file ReadMode $ loop (appendFlow tz dayEnd) usr []

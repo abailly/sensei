@@ -1,2 +1,4 @@
 node_modules/
-/ui/dist/*.js
+dist/
+coverage/
+docs/

@@ -2,35 +2,33 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Sensei.TestHelper where
 
-import Control.Exception.Safe(bracket, catch, IOException)
+import Control.Exception.Safe(bracket, catch, finally, throwIO)
 import Sensei.App
+import Control.Concurrent(threadDelay)
 import System.Directory
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
-import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (toStrict)
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.List as List
-import Data.Text (Text, unpack)
-import Data.Text.Encoding (encodeUtf8)
 import Data.Text.Encoding (decodeUtf8)
+import Data.Text(unpack)
 import Network.Wai (Application)
 import Network.Wai.Test (SResponse)
+import Test.Hspec
 import System.Posix.Temp (mkstemp)
 import Test.Hspec.Wai as W
 import System.IO
 
-withTempFile :: (String -> IO a) -> IO a
-withTempFile =
-  bracket mkTempFile tryRemove
+withApp :: SpecWith ((), Application) -> Spec
+withApp = around mkApp
+
+mkApp :: ActionWith ((), Application) -> IO ()
+mkApp act = do
+  file <- mkTempFile
+  let app = senseiApp file
+  act ((), app)
+    `finally` removePathForcibly file
   where
     mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
-    tryRemove fp =
-      removeFile fp
-      `catch` \ (e :: IOException) -> hPutStrLn stderr (show e) >> removePathForcibly fp
-
-mkApp :: IO Application
-mkApp = withTempFile $ \file -> pure (senseiApp file)
 
 postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
 postJSON path payload = request "POST" path [("Content-type", "application/json")] (A.encode payload)
