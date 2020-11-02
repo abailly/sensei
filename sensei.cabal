@@ -25,6 +25,8 @@ library
                      , Sensei.Server
                      , Sensei.CLI
                      , Sensei.Wrapper
+                     , Sensei.Utils
+  other-modules: Sensei.Flow, Sensei.FlowView
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , ansi-terminal
@@ -64,7 +66,8 @@ test-suite sensei-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Sensei.APISpec
+  other-modules:       Sensei.FlowAPISpec
+                     , Sensei.FlowViewSpec
                      , Sensei.TestHelper
                      , Sensei.UserSpec
   build-depends:       aeson

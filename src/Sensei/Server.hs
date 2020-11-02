@@ -24,8 +24,8 @@ traceS file trace = liftIO $
     LBS.hPutStr out $ encode trace <> "\n"
     hFlush out
 
-flowS :: FilePath -> FlowType -> FlowState -> Handler ()
-flowS file flowTyp flow = liftIO $
+flowS :: FilePath -> String -> FlowType -> FlowState -> Handler ()
+flowS file _ flowTyp flow = liftIO $
   withBinaryFile file AppendMode $ \out -> do
     LBS.hPutStr out $ encode (Flow flowTyp flow) <> "\n"
     hFlush out
@@ -36,19 +36,9 @@ flowS file flowTyp flow = liftIO $
 --  different users as each `Flow` is supposed to be contiguous to the
 --  previous one and `flowView` uses next `Flow`'s start time as end time
 --  for previous `Flow`.
-readViews :: FilePath -> String -> IO [FlowView]
-readViews file usr = withBinaryFile file ReadMode $ loop f usr []
-  where
-    f Flow {_flowType = Note} views = views
-    f Flow {_flowType = End} [] = []
-    f Flow {_flowType = End, _flowState} (v : vs) =
-      v {flowEnd = _flowStart _flowState} : vs
-    f Flow {..} views =
-      let view = FlowView st st _flowType
-          st = _flowStart _flowState
-       in case views of
-            (v : vs) -> view : fillFlowEnd v st : vs
-            [] -> [view]
+readViews :: FilePath -> UserProfile -> IO [FlowView]
+readViews file (UserProfile usr tz _ dayEnd) =
+  withBinaryFile file ReadMode $ loop (appendFlow tz dayEnd) usr []
 
 loop :: (Flow -> [a] -> [a]) -> String -> [a] -> Handle -> IO [a]
 loop f usr acc hdl = do
@@ -60,36 +50,40 @@ loop f usr acc hdl = do
         Left _err -> loop f usr acc hdl
         Right flow -> loop f usr (flowView flow usr f acc) hdl
 
-readNotes :: FilePath -> String -> IO [(UTCTime, Text)]
-readNotes file usr = withBinaryFile file ReadMode $ loop f usr []
+readNotes :: FilePath -> UserProfile -> IO [(LocalTime, Text)]
+readNotes file UserProfile{userName,userTimezone} = withBinaryFile file ReadMode $ loop f userName []
   where
-    f :: Flow -> [(UTCTime, Text)] -> [(UTCTime, Text)]
+    f :: Flow -> [(LocalTime, Text)] -> [(LocalTime, Text)]
     f (Flow Note (FlowNote _ st _ note)) fragments =
-      (st, note) : fragments
+      (utcToLocalTime userTimezone st, note) : fragments
     f _ fragments = fragments
 
-notesDayS :: FilePath -> [Char] -> Day -> Handler [(UTCTime, Text)]
+notesDayS :: FilePath -> [Char] -> Day -> Handler [(LocalTime, Text)]
 notesDayS file usr day = do
-  notes <- liftIO $ readNotes file usr
-  pure $ filter (sameDayThan day fst) notes
+  usrProfile <- userProfileS usr
+  notes <- liftIO $ readNotes file usrProfile
+  pure $ filter (sameDayThan day (localDay . fst)) notes
 
 queryFlowDayS :: FilePath -> [Char] -> Day -> Handler [FlowView]
 queryFlowDayS file usr day = do
-  views <- liftIO $ readViews file usr
-  pure $ filter (sameDayThan day flowStart) views
+  usrProfile <- userProfileS usr
+  views <- liftIO $ readViews file usrProfile
+  pure $ filter (sameDayThan day (localDay . flowStart)) views
 
 queryFlowDaySummaryS :: FilePath -> [Char] -> Day -> Handler [(FlowType, NominalDiffTime)]
 queryFlowDaySummaryS file usr day = do
-  views <- liftIO $ readViews file usr
+  usrProfile <- userProfileS usr
+  views <- liftIO $ readViews file usrProfile
   pure $
     views
-      |> filter (sameDayThan day flowStart)
+      |> filter (sameDayThan day (localDay . flowStart))
       |> summarize
   where
 
 queryFlowSummaryS :: FilePath -> [Char] -> Handler [GroupViews (FlowType, NominalDiffTime)]
 queryFlowSummaryS file usr = do
-  views <- liftIO $ groupViews [Day] <$> readViews file usr
+  usrProfile <- userProfileS usr
+  views <- liftIO $ groupViews [Day] <$> readViews file usrProfile
   pure $ views |> fmap summary
   where
     summary :: GroupViews FlowView -> GroupViews (FlowType, NominalDiffTime)
@@ -102,8 +96,9 @@ queryFlowSummaryS file usr = do
 -- summarize flows@(f NE.:| _) = (flowType f, sum $ fmap duration flows)
 
 queryFlowS :: FilePath -> String -> [Group] -> Handler [GroupViews FlowView]
-queryFlowS file usr groups =
-  liftIO $ groupViews (List.sort groups) <$> readViews file usr
+queryFlowS file usr groups = do
+  usrProfile <- userProfileS usr
+  liftIO $ groupViews (List.sort groups) <$> readViews file usrProfile
 
 flowView :: Flow -> String -> (Flow -> [a] -> [a]) -> [a] -> [a]
 flowView f@Flow {..} usr mkView views =
@@ -112,4 +107,4 @@ flowView f@Flow {..} usr mkView views =
     else views
 
 userProfileS :: String -> Handler UserProfile
-userProfileS _ = pure UserProfile { userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00  }
+userProfileS usr = pure UserProfile { userName = usr, userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00  }

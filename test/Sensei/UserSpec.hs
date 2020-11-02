@@ -15,6 +15,6 @@ spec =
   with mkApp $ describe "Users API" $ do
 
   it "GET /users/<user> retrieves user profile" $ do
-    let defaultProfile = UserProfile { userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00  }
+    let defaultProfile = UserProfile { userName = "arnaud", userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00  }
     getJSON "/users/arnaud"
       `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode defaultProfile)

@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Sensei.TestHelper where
 
-import Control.Exception.Safe(bracket)
+import Control.Exception.Safe(bracket, catch, IOException)
 import Sensei.App
 import System.Directory
 import qualified Data.Aeson as A
@@ -21,9 +22,12 @@ import System.IO
 
 withTempFile :: (String -> IO a) -> IO a
 withTempFile =
-  bracket mkTempFile removePathForcibly
+  bracket mkTempFile tryRemove
   where
     mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
+    tryRemove fp =
+      removeFile fp
+      `catch` \ (e :: IOException) -> hPutStrLn stderr (show e) >> removePathForcibly fp
 
 mkApp :: IO Application
 mkApp = withTempFile $ \file -> pure (senseiApp file)

@@ -93,32 +93,32 @@ display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encode
 
 flowAction :: Options -> String -> UTCTime -> FilePath -> IO ()
-flowAction (QueryOptions Nothing False grps) userName _ _ =
-  send (queryFlowC userName grps) >>= display
-flowAction (QueryOptions Nothing True _) userName _ _ =
-  send (queryFlowSummaryC userName) >>= display
-flowAction (QueryOptions (Just day) False _) userName _ _ =
-  send (queryFlowDayC userName day) >>= display
-flowAction (QueryOptions (Just day) True _) userName _ _ =
-  send (queryFlowDaySummaryC userName day) >>= display
-flowAction (NotesOptions day) userName _ _ =
-  send (notesDayC userName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes
+flowAction (QueryOptions Nothing False grps) usrName _ _ =
+  send (queryFlowC usrName grps) >>= display
+flowAction (QueryOptions Nothing True _) usrName _ _ =
+  send (queryFlowSummaryC usrName) >>= display
+flowAction (QueryOptions (Just day) False _) usrName _ _ =
+  send (queryFlowDayC usrName day) >>= display
+flowAction (QueryOptions (Just day) True _) usrName _ _ =
+  send (queryFlowDaySummaryC usrName day) >>= display
+flowAction (NotesOptions day) usrName _ _ =
+  send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes
 flowAction (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
-      send $ flowC Note (FlowNote curUser startDate curDir txt)
+      send $ flowC curUser Note (FlowNote curUser startDate curDir txt)
     other ->
-      send $ flowC other (FlowState curUser startDate curDir)
+      send $ flowC curUser other (FlowState curUser startDate curDir)
 
 println :: BS.ByteString -> IO ()
 println bs =
   BS.putStr bs >> BS.putStr "\n"
 
-formatNotes  :: [(UTCTime, Text)] -> [Text]
+formatNotes  :: [(LocalTime, Text)] -> [Text]
 formatNotes = concatMap timestamped
 
-timestamped :: (UTCTime, Text) -> [Text]
+timestamped :: (LocalTime, Text) -> [Text]
 timestamped (st, note) =
   Text.pack (formatTime defaultTimeLocale "%H:%M" st) : Text.lines note
 
