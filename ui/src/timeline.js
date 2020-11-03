@@ -17,6 +17,8 @@ function colorOf(flowType) {
       return "#4500dd";
     case 'Note':
       return "#000000";
+    case 'Meeting':
+      return "#fff203";
     default:
       return "#ffffff";
   }
