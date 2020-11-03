@@ -65,21 +65,27 @@ fillFlowEnd endOfDay v st
 -- which might not start nor end at the same time.
 -- This function assumes that:
 -- 1. The given `FlowView` list is sorted
--- 2. All `FLowView` are for the same day
+-- 2. All `FlowView` are for the same day
 normalizeViewsForDay :: LocalTime -> LocalTime -> [FlowView] -> [FlowView]
 normalizeViewsForDay startOfDay endOfDay [] =
   [FlowView startOfDay endOfDay Other]
 normalizeViewsForDay startOfDay endOfDay views@(st : _) =
-  let end = last views
-      st' =
+  let st' =
         if flowStart st > startOfDay
           then [FlowView startOfDay (flowStart st) Other]
           else []
-      end' =
-        if flowEnd end < endOfDay
-          then [FlowView (flowEnd end) endOfDay Other]
-          else []
-   in st' <> views <> end'
+      end' = normalizeLastView endOfDay views
+   in st' <> end'
+
+normalizeLastView :: LocalTime -> [FlowView] -> [FlowView]
+normalizeLastView _ [] = []
+normalizeLastView endOfDay [end] =
+  if flowEnd end < endOfDay
+  then if flowEnd end == flowStart end
+       then [end { flowEnd = endOfDay}]
+       else [end, FlowView (flowStart end) endOfDay Other]
+  else [end]
+normalizeLastView endOfDay (_ : rest@(_:_)) = normalizeLastView endOfDay rest
 
 summarize :: [FlowView] -> [(FlowType, NominalDiffTime)]
 summarize views =
