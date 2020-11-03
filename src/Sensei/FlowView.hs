@@ -85,7 +85,7 @@ normalizeLastView endOfDay [end] =
        then [end { flowEnd = endOfDay}]
        else [end, FlowView (flowStart end) endOfDay Other]
   else [end]
-normalizeLastView endOfDay (_ : rest@(_:_)) = normalizeLastView endOfDay rest
+normalizeLastView endOfDay (v : rest@(_:_)) = v : normalizeLastView endOfDay rest
 
 summarize :: [FlowView] -> [(FlowType, NominalDiffTime)]
 summarize views =

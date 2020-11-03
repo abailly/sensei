@@ -44,3 +44,12 @@ spec = describe "FlowViews Timings" $ do
 
       normalizeViewsForDay startTime endTime [view] `shouldBe`
         [FlowView (LocalTime (toEnum 5000)  (TimeOfDay 8 0 0)) (LocalTime (toEnum 5000)  (TimeOfDay 18 0 0)) Meeting]
+
+    it "extending last view preserves other views" $ do
+      let view1 = FlowView (LocalTime (toEnum 5000)  (TimeOfDay 8 0 0)) (LocalTime (toEnum 5000)  (TimeOfDay 9 0 0)) Learning
+          view2 = FlowView (LocalTime (toEnum 5000)  (TimeOfDay 10 0 0)) (LocalTime (toEnum 5000)  (TimeOfDay 10 0 0)) Meeting
+          startTime = LocalTime (toEnum 5000)  (TimeOfDay 8 0 0)
+          endTime = LocalTime (toEnum 5000)  (TimeOfDay 18 0 0)
+
+      normalizeViewsForDay startTime endTime [view1, view2] `shouldBe`
+        [view1, FlowView (LocalTime (toEnum 5000)  (TimeOfDay 10 0 0)) (LocalTime (toEnum 5000)  (TimeOfDay 18 0 0)) Meeting]
