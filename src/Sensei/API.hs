@@ -14,7 +14,7 @@ module Sensei.API
   ( SenseiAPI, senseiAPI,
     module Sensei.Flow, module Sensei.FlowView, module Sensei.Utils,
     GroupViews(..), Trace(..), Group(..), UserProfile(..),
-    sameDayThan, mkGroupViewsBy, groupViews, startOfWorkDay, endOfWorkDay
+    sameDayThan, mkGroupViewsBy, groupViews
   ) where
 
 import Data.Aeson
@@ -25,8 +25,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as Text
 import Data.Time
     ( Day, LocalTime(..), UTCTime,
-      TimeOfDay,timeToTimeOfDay,
-      secondsToDiffTime,
+      TimeOfDay,
       NominalDiffTime,
       TimeZone )
 import GHC.Generics ( Generic )
@@ -105,36 +104,26 @@ data GroupViews a
   | GroupLevel {level :: Group, groupTime :: LocalTime, subGroup :: GroupViews a}
   deriving (Eq, Show, Generic, ToJSON, FromJSON, Functor)
 
-groupViews :: [Group] -> [FlowView] -> [GroupViews FlowView]
-groupViews [] views = [Leaf views]
-groupViews (Day : _groups) views =
+groupViews :: TimeOfDay -> TimeOfDay -> [Group] -> [FlowView] -> [GroupViews FlowView]
+groupViews _ _ [] views = [Leaf views]
+groupViews startOfDay endOfDay (Day : _groups) views =
   views
     |> NE.groupBy ((==) `on` (localDay . flowStart))
-    |> mkGroupViewsBy Day
-groupViews _ _ = error "unsupported group"
+    |> mkGroupViewsBy startOfDay endOfDay Day
+groupViews _ _ _ _ = error "unsupported group"
 
-mkGroupViewsBy :: Group -> [NE.NonEmpty FlowView] -> [GroupViews FlowView]
-mkGroupViewsBy Day =
+mkGroupViewsBy :: TimeOfDay -> TimeOfDay -> Group -> [NE.NonEmpty FlowView] -> [GroupViews FlowView]
+mkGroupViewsBy startOfDay endOfDay Day =
   fmap mkGroup
   where
     normalized :: NE.NonEmpty FlowView -> [FlowView]
     normalized (view :| rest) =
       let viewDay = localDay (flowStart view)
-       in normalizeViewsForDay (LocalTime viewDay startOfWorkDay) (LocalTime viewDay endOfWorkDay) (view : rest)
+       in normalizeViewsForDay (LocalTime viewDay startOfDay) (LocalTime viewDay endOfDay) (view : rest)
 
     mkGroup :: NE.NonEmpty FlowView -> GroupViews FlowView
     mkGroup (view :| rest) = GroupLevel Day (flowStart view) (Leaf (normalized (view :| rest)))
-mkGroupViewsBy _ = error "unsupported group"
-
--- | End of work day is assumed to be 6:30pm UTC
--- TODO fix this value which is incorrect and locale dependent
-startOfWorkDay :: TimeOfDay
-startOfWorkDay = timeToTimeOfDay $ secondsToDiffTime (3600 * 8)
-
--- | End of work day is assumed to be 6:30pm UTC
--- TODO fix this value which is incorrect and locale dependent
-endOfWorkDay :: TimeOfDay
-endOfWorkDay = timeToTimeOfDay $ secondsToDiffTime (3600 * 17 + 1800)
+mkGroupViewsBy _ _ _ = error "unsupported group"
 
 data UserProfile = UserProfile
   { userName :: String,

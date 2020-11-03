@@ -34,7 +34,7 @@ spec = describe "FlowViews Timings" $ do
       let view = FlowView (LocalTime (toEnum 5000)  (TimeOfDay 12 0 0)) (LocalTime (toEnum 5000)  (TimeOfDay 12 0 0)) Other
           endTime = LocalTime (toEnum 5000)  (TimeOfDay 16 0 0)
 
-      fillFlowEnd endOfWorkDay view endTime `shouldBe` view {flowEnd = endTime}
+      fillFlowEnd endOfDay view endTime `shouldBe` view {flowEnd = endTime}
 
   describe "normalizeViewsForDay" $ do
     it "extend last view when it's not ended" $ do

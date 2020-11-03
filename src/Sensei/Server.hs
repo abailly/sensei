@@ -77,8 +77,8 @@ queryFlowDaySummaryS file usr day = do
 
 queryFlowSummaryS :: FilePath -> [Char] -> Handler [GroupViews (FlowType, NominalDiffTime)]
 queryFlowSummaryS file usr = do
-  usrProfile <- userProfileS usr
-  views <- liftIO $ groupViews [Day] <$> readViews file usrProfile
+  usrProfile@UserProfile{userStartOfDay,userEndOfDay} <- userProfileS usr
+  views <- liftIO $ groupViews userStartOfDay userEndOfDay [Day] <$> readViews file usrProfile
   pure $ views |> fmap summary
   where
     summary :: GroupViews FlowView -> GroupViews (FlowType, NominalDiffTime)
@@ -92,8 +92,8 @@ queryFlowSummaryS file usr = do
 
 queryFlowS :: FilePath -> String -> [Group] -> Handler [GroupViews FlowView]
 queryFlowS file usr groups = do
-  usrProfile <- userProfileS usr
-  liftIO $ groupViews (List.sort groups) <$> readViews file usrProfile
+  usrProfile@UserProfile{userStartOfDay,userEndOfDay} <- userProfileS usr
+  liftIO $ groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews file usrProfile
 
 flowView :: Flow -> String -> (Flow -> [a] -> [a]) -> [a] -> [a]
 flowView f@Flow {..} usr mkView views =
