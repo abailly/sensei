@@ -27,7 +27,7 @@ function colorOf(flowType) {
 /**
    Draw a timeline chart in given element with given data
 */
-function drawChart(container, selectedDate, flowData) {
+function drawChart(container, selectedDate, flowData, rowLabelling = (_ => selectedDate)) {
   const chart = new google.visualization.Timeline(container);
   const dataTable = new google.visualization.DataTable();
 
@@ -37,20 +37,36 @@ function drawChart(container, selectedDate, flowData) {
   dataTable.addColumn({ type: 'date', id: 'Start' });
   dataTable.addColumn({ type: 'date', id: 'End' });
   flowData.forEach(flow =>
-    dataTable.addRow([selectedDate, flow.flowType, colorOf(flow.flowType), new Date(flow.flowStart), new Date(flow.flowEnd)])
+    dataTable.addRow([rowLabelling(flow), flow.flowType, colorOf(flow.flowType), new Date(flow.flowStart), new Date(flow.flowEnd)])
   );
-  var options = {
-  };
-  chart.draw(dataTable, options);
+  chart.draw(dataTable);
 }
 
 /**
    Create a new div container for a timeline
 */
-function createTimelineContainer(name) {
-  const container = <div id={name} class='timeline' />;
+function createTimelineContainer(day, data) {
+  const chkBoxName = 'checkbox-' + name;
+  const chart = <div class="timeline-chart" />;
+  const input = <input type="checkbox" id={chkBoxName} />;
+  const container =
+    <div id={name} class='timeline'>
+      <div class='timeline-controls'>
+        <label for="detailed">Expand</label>
+        {input}
+      </div>
+      {chart}
+    </div>;
+
+  input.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      drawChart(chart, day, data, f => f.flowType);
+    } else {
+      drawChart(chart, day, data);
+    }
+  });
   document.getElementById('timelines').appendChild(container);
-  return container;
+  drawChart(chart, day, data);
 }
 
 function clearTimelines() {
@@ -68,17 +84,15 @@ function clearTimelines() {
 function drawCharts(flowData) {
   flowData.forEach((f) => {
     const day = formatISODate(new Date(f.groupTime));
-    const container = createTimelineContainer('timeline_' + day);
-    drawChart(container, day, f.subGroup.leafViews);
+    const data = f.subGroup.leafViews;
+    createTimelineContainer(day, data);
   });
 }
 
 function fetchFlowData(selectedDate) {
   const xhr = new XMLHttpRequest();
   get('/flows/arnaud/' + selectedDate, (flowData) => {
-    const container = createTimelineContainer('timeline_' + selectedDate);
-    // assumes flowData is a single leaf group
-    drawChart(container, selectedDate, flowData);
+    createTimelineContainer(selectedDate, flowData);
   });
 };
 
