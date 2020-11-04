@@ -58,6 +58,7 @@ executable sensei-exe
                      , directory
                      , filepath
                      , sensei
+                     , text
                      , time
                      , unix
   default-language:    Haskell2010

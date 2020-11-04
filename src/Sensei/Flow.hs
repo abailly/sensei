@@ -13,6 +13,7 @@ module Sensei.Flow where
 
 import Data.Aeson hiding (Options)
 import qualified Data.Text as Text
+import Data.Text(Text)
 import Data.Time
 import GHC.Generics
 import Servant
@@ -37,14 +38,14 @@ instance FromHttpApiData FlowType where
 
 data FlowState
   = FlowState
-      { _flowUser :: String,
+      { _flowUser :: Text,
         _flowStart :: UTCTime,
-        _flowDir :: String
+        _flowDir :: Text
       }
   | FlowNote
-      { _flowUser :: String,
+      { _flowUser :: Text,
         _flowStart :: UTCTime,
-        _flowDir :: String,
+        _flowDir :: Text,
         _flowNote :: Text.Text
       }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)

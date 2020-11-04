@@ -22,6 +22,7 @@ import Data.Aeson
 import Data.Function (on)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
+import Data.Text(Text)
 import qualified Data.Text as Text
 import Data.Time
     ( Day, LocalTime(..), UTCTime,
@@ -53,22 +54,22 @@ import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 type SenseiAPI =
   "trace" :> ReqBody '[JSON] Trace :> Post '[JSON] ()
     :<|> "flows"
-      :> ( Capture "user" String :> Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
-             :<|> Capture "user" String :> "summary" :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
-             :<|> Capture "user" String :> Capture "day" Day :> "summary" :> Get '[JSON] [(FlowType, NominalDiffTime)]
-             :<|> Capture "user" String :> Capture "day" Day :> "notes" :> Get '[JSON] [(LocalTime, Text.Text)]
-             :<|> Capture "user" String :> Capture "day" Day :> Get '[JSON] [FlowView]
-             :<|> Capture "user" String :> QueryParams "group" Group :> Get '[JSON] [GroupViews FlowView]
+      :> ( Capture "user" Text :> Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
+             :<|> Capture "user" Text :> "summary" :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
+             :<|> Capture "user" Text :> Capture "day" Day :> "summary" :> Get '[JSON] [(FlowType, NominalDiffTime)]
+             :<|> Capture "user" Text :> Capture "day" Day :> "notes" :> Get '[JSON] [(LocalTime, Text.Text)]
+             :<|> Capture "user" Text :> Capture "day" Day :> Get '[JSON] [FlowView]
+             :<|> Capture "user" Text :> QueryParams "group" Group :> Get '[JSON] [GroupViews FlowView]
          )
-    :<|> "users" :> (Capture "user" String :> Get '[JSON] UserProfile)
+    :<|> "users" :> (Capture "user" Text :> Get '[JSON] UserProfile)
     :<|> Raw
 
 -- | Execution "trace" of a program
 data Trace = Trace
   { timestamp :: UTCTime,
     directory :: FilePath,
-    process :: String,
-    args :: [String],
+    process :: Text,
+    args :: [Text],
     exit_code :: ExitCode,
     elapsed :: NominalDiffTime
   }
@@ -126,7 +127,7 @@ mkGroupViewsBy startOfDay endOfDay Day =
 mkGroupViewsBy _ _ _ = error "unsupported group"
 
 data UserProfile = UserProfile
-  { userName :: String,
+  { userName :: Text,
     userTimezone :: TimeZone,
     userStartOfDay :: TimeOfDay,
     userEndOfDay :: TimeOfDay

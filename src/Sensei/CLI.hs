@@ -92,7 +92,7 @@ parseSenseiOptions = execParser optionsParserInfo
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encode
 
-flowAction :: Options -> String -> UTCTime -> FilePath -> IO ()
+flowAction :: Options -> Text -> UTCTime -> Text -> IO ()
 flowAction (QueryOptions Nothing False grps) usrName _ _ =
   send (queryFlowC usrName grps) >>= display
 flowAction (QueryOptions Nothing True _) usrName _ _ =

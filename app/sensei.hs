@@ -10,6 +10,7 @@
 
 module Main where
 
+import Data.Text(pack)
 import Data.Time
 import Sensei.App
 import Sensei.CLI
@@ -39,6 +40,6 @@ main = do
     "npm" -> wrapProg "/usr/local/bin/npm" progArgs st currentDir
     "ep" -> do
       opts <- parseSenseiOptions
-      flowAction opts curUser st currentDir
+      flowAction opts (pack curUser) st (pack currentDir)
     "sensei-exe" -> startServer
     _ -> hPutStrLn stderr ("Don't know how to handle program " <> prog) >> exitWith (ExitFailure 1)
