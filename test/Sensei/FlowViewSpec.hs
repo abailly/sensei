@@ -30,11 +30,17 @@ spec = describe "FlowViews Timings" $ do
       summarize [view1, view2] `shouldBe` [(Other, 3600 * 2)]
 
   describe "flowEnd" $ do
-    it "set flowView's end time to given time given they are on the same day" $ do
+    it "set flowView's end time to default end time given its duration is 0" $ do
       let view = FlowView (LocalTime (toEnum 5000)  (TimeOfDay 12 0 0)) (LocalTime (toEnum 5000)  (TimeOfDay 12 0 0)) Other
           endTime = LocalTime (toEnum 5000)  (TimeOfDay 16 0 0)
 
       fillFlowEnd endOfDay view endTime `shouldBe` view {flowEnd = endTime}
+
+    it "set flowView's end time to one hour after start time given its duration is 0, it starts after end of day and next flow is on other day" $ do
+      let view = FlowView (LocalTime (toEnum 5000)  (TimeOfDay 18 30 0)) (LocalTime (toEnum 5000)  (TimeOfDay 18 30 0)) Other
+          endTime = LocalTime (toEnum 5001)  (TimeOfDay 16 0 0)
+
+      fillFlowEnd endOfDay view endTime `shouldBe` view {flowEnd = LocalTime (toEnum 5000)  (TimeOfDay 19 30 0)}
 
   describe "normalizeViewsForDay" $ do
     it "extend last view when it's not ended" $ do
