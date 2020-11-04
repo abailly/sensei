@@ -83,7 +83,7 @@ normalizeLastView endOfDay [end] =
   if flowEnd end < endOfDay
   then if flowEnd end == flowStart end
        then [end { flowEnd = endOfDay}]
-       else [end, FlowView (flowStart end) endOfDay Other]
+       else [end, FlowView (flowEnd end) endOfDay Other]
   else [end]
 normalizeLastView endOfDay (v : rest@(_:_)) = v : normalizeLastView endOfDay rest
 
