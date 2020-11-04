@@ -35,6 +35,8 @@ main = do
     "git" -> wrapProg "/usr/bin/git" progArgs st currentDir
     "stak" -> wrapProg (homeDir </> ".local/bin/stack") progArgs st currentDir
     "docker" -> wrapProg "/usr/local/bin/docker" progArgs st currentDir
+    "dotnet" -> wrapProg "/usr/local/share/dotnet/dotnet" progArgs st currentDir
+    "npm" -> wrapProg "/usr/local/bin/npm" progArgs st currentDir
     "ep" -> do
       opts <- parseSenseiOptions
       flowAction opts curUser st currentDir
