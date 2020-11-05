@@ -38,6 +38,7 @@ main = do
     "docker" -> wrapProg "/usr/local/bin/docker" progArgs st currentDir
     "dotnet" -> wrapProg "/usr/local/share/dotnet/dotnet" progArgs st currentDir
     "npm" -> wrapProg "/usr/local/bin/npm" progArgs st currentDir
+    "az" -> wrapProg "/usr/local/bin/az" progArgs st currentDir
     "ep" -> do
       opts <- parseSenseiOptions
       flowAction opts (pack curUser) st (pack currentDir)
