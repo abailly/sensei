@@ -1,15 +1,15 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.CLI where
 
 import qualified Control.Exception.Safe as Exc
 import Data.Aeson hiding (Options)
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
-import Data.Text(Text)
+import qualified Data.ByteString.Lazy as LBS
+import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Text.Encoding(encodeUtf8)
+import Data.Text.Encoding (encodeUtf8)
 import Data.Time
 import Data.Time.Format.ISO8601
 import Options.Applicative
@@ -17,11 +17,12 @@ import Sensei.API
 import Sensei.Client
 import System.Console.ANSI
 import System.IO
+import System.IO.Unsafe
 
 data Options
-  = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group] }
+  = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
   | RecordOptions {recordType :: FlowType}
-  | NotesOptions {notesDay :: Day}
+  | NotesOptions {notesDay :: Day, format :: NoteFormat}
 
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo =
@@ -33,7 +34,21 @@ optionsParser :: Parser Options
 optionsParser =
   QueryOptions <$> optional dayParser <*> summarizeParser <*> many groupParser
     <|> RecordOptions <$> flowTypeParser
-    <|> NotesOptions <$> dayParser <* notesParser
+    <|> NotesOptions <$> dayParser <* notesParser <*> formatParser
+
+{-# INLINE today #-}
+today :: Day
+today = unsafePerformIO $ localDay . zonedTimeToLocalTime <$> getZonedTime
+
+formatParser :: Parser NoteFormat
+formatParser =
+  option
+    (eitherReader parseNoteFormat)
+    ( long "format"
+        <> short 'f'
+        <> metavar "STRING"
+        <> help "notes formatting, can be 'plain' (default) or 'table'"
+    )
 
 dayParser :: Parser Day
 dayParser =
@@ -42,6 +57,7 @@ dayParser =
     ( long "date"
         <> short 'd'
         <> metavar "DATE"
+        <> value today
         <> help "date to filter on, in ISO8601 format (YYYY-mm-dd)"
     )
 
@@ -58,11 +74,12 @@ summarizeParser =
 groupParser :: Parser Group
 groupParser =
   option
-  auto ( long "group"
-       <> short 'g'
-       <> metavar "GROUP"
-       <> help "groups for retrieving daily views, one of Week, Month, Quarter or Year"
-       )
+    auto
+    ( long "group"
+        <> short 'g'
+        <> metavar "GROUP"
+        <> help "groups for retrieving daily views, one of Week, Month, Quarter or Year"
+    )
 
 notesParser :: Parser ()
 notesParser =
@@ -101,8 +118,8 @@ flowAction (QueryOptions (Just day) False _) usrName _ _ =
   send (queryFlowDayC usrName day) >>= display
 flowAction (QueryOptions (Just day) True _) usrName _ _ =
   send (queryFlowDaySummaryC usrName day) >>= display
-flowAction (NotesOptions day) usrName _ _ =
-  send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes
+flowAction (NotesOptions day noteFormat) usrName _ _ =
+  send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
 flowAction (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do
@@ -115,12 +132,29 @@ println :: BS.ByteString -> IO ()
 println bs =
   BS.putStr bs >> BS.putStr "\n"
 
-formatNotes  :: [(LocalTime, Text)] -> [Text]
-formatNotes = concatMap timestamped
+formatNotes :: NoteFormat -> [(LocalTime, Text)] -> [Text]
+formatNotes Plain = concatMap timestamped
+formatNotes MarkdownTable = (tblHeaders <>) . fmap tblRow
+formatNotes Section = concatMap sectionized
+
+sectionized :: (LocalTime, Text) -> [Text]
+sectionized (ts, note) =
+  [ "#### " <> formatTimestamp ts , "" , note ]
+
+tblHeaders :: [Text]
+tblHeaders = [ "Time | Note", "--- | ---" ]
+
+tblRow :: (LocalTime, Text) -> Text
+tblRow (ts, note) = formatTimestamp ts <> " | " <> replaceEOLs note
+
+replaceEOLs :: Text -> Text
+replaceEOLs = Text.replace "\n" "<br/>"
+
+formatTimestamp :: LocalTime -> Text
+formatTimestamp = Text.pack . formatTime defaultTimeLocale "%H:%M"
 
 timestamped :: (LocalTime, Text) -> [Text]
-timestamped (st, note) =
-  Text.pack (formatTime defaultTimeLocale "%H:%M" st) : Text.lines note
+timestamped (st, note) = formatTimestamp st : Text.lines note
 
 captureNote :: IO Text.Text
 captureNote = do

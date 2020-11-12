@@ -17,6 +17,7 @@ import Data.Text(Text)
 import Data.Time
 import GHC.Generics
 import Servant
+import Data.Bifunctor (Bifunctor(first))
 
 
 data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Note | Other | Meeting | End
@@ -55,3 +56,31 @@ data Flow = Flow
     _flowState :: FlowState
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+-- | Supported rendering formats for notes
+data NoteFormat =
+  Plain
+  -- ^Timestamp of note is on its own line, followed by note as it is typed
+  | MarkdownTable
+  -- ^Notes are formatted as a <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#tables Markdown table>
+  -- with the first column containing the timestamp and second containing the text.
+  -- EOLs are replaced with @<br/>@ so that underlying formatter can cope with newlines embedded in table cells. this
+  -- might or might not work depending on flavor of markdown
+  | Section
+  -- ^Notes are formatted with the time as a level 4 section header and
+  -- the notes within the section
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+parseNoteFormat :: String -> Either String NoteFormat
+parseNoteFormat = first Text.unpack . parseUrlPiece . Text.pack
+
+instance ToHttpApiData NoteFormat where
+  toUrlPiece Plain = "plain"
+  toUrlPiece MarkdownTable = "table"
+  toUrlPiece Section = "section"
+
+instance FromHttpApiData NoteFormat where
+  parseUrlPiece "plain" = pure Plain
+  parseUrlPiece "table" = pure MarkdownTable
+  parseUrlPiece "section" = pure Section
+  parseUrlPiece txt = Left $ "Unknown format: " <>  txt
