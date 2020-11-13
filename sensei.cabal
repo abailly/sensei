@@ -32,10 +32,13 @@ library
                      , ansi-terminal
                      , base
                      , bytestring
+                     , case-insensitive
+                     , containers
                      , directory
                      , filepath
                      , hdaemonize
                      , http-client
+                     , http-types
                      , lens
                      , mtl
                      , optparse-applicative
@@ -43,13 +46,17 @@ library
                      , safe-exceptions
                      , servant
                      , servant-server
+                     , servant-server-base
                      , servant-client
+                     , servant-client-core
                      , servant-swagger
                      , swagger2
                      , text
                      , time
                      , unix
                      , wai-app-static
+                     , wai-extra
+                     , wai-cors
                      , warp
   default-language:    Haskell2010
 

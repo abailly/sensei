@@ -1,11 +1,12 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.App where
 
 import Data.Swagger
 import Network.Wai.Application.Static
-import Network.Wai.Handler.Warp
 import Sensei.API
 import Sensei.Server
 import Sensei.Server.OpenApi
@@ -13,6 +14,7 @@ import Servant
 import System.Directory
 import System.FilePath
 import System.Posix.Daemonize
+import Preface.Server
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -23,7 +25,7 @@ fullAPI = Proxy
 
 sensei :: FilePath -> IO ()
 sensei output =
-  run 23456 (senseiApp output)
+  startAppServer "" [] 23456 (pure $ senseiApp output) >>= waitServer
 
 senseiApp :: FilePath -> Application
 senseiApp output =
@@ -56,4 +58,5 @@ daemonizeServer =
     withCurrentDirectory "/Users/arnaud/projects/pankzsoft/sensei/" $ startServer
 
 startServer :: IO ()
-startServer = senseiLog >>= sensei
+startServer =
+  senseiLog >>= sensei
