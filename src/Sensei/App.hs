@@ -1,13 +1,25 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
+
 module Sensei.App where
 
+import Data.Swagger
 import Network.Wai.Application.Static
 import Network.Wai.Handler.Warp
 import Sensei.API
 import Sensei.Server
+import Sensei.Server.OpenApi
 import Servant
 import System.Directory
 import System.FilePath
 import System.Posix.Daemonize
+
+type FullAPI =
+  "swagger.json" :> Get '[JSON] Swagger
+    :<|> SenseiAPI
+
+fullAPI :: Proxy FullAPI
+fullAPI = Proxy
 
 sensei :: FilePath -> IO ()
 sensei output =
@@ -15,8 +27,9 @@ sensei output =
 
 senseiApp :: FilePath -> Application
 senseiApp output =
-  serve senseiAPI $
-    traceS output
+  serve fullAPI $
+    pure senseiSwagger
+      :<|> traceS output
       :<|> ( flowS output
                :<|> queryFlowSummaryS output
                :<|> queryFlowDaySummaryS output

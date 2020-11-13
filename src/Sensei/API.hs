@@ -57,7 +57,7 @@ type SenseiAPI =
       :> ( Capture "user" Text :> Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
              :<|> Capture "user" Text :> "summary" :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
              :<|> Capture "user" Text :> Capture "day" Day :> "summary" :> Get '[JSON] [(FlowType, NominalDiffTime)]
-             :<|> Capture "user" Text :> Capture "day" Day :> "notes" :> Get '[JSON] [(LocalTime, Text.Text)]
+             :<|> Capture "user" Text :> Capture "day" Day :> "notes" :>  Get '[JSON] [(LocalTime, Text.Text)]
              :<|> Capture "user" Text :> Capture "day" Day :> Get '[JSON] [FlowView]
              :<|> Capture "user" Text :> QueryParams "group" Group :> Get '[JSON] [GroupViews FlowView]
          )
