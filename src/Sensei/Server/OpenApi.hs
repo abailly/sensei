@@ -9,17 +9,8 @@ import Sensei.API
 import Servant.Swagger
 import Data.Time
 
--- instance ToSchema Output
-
--- instance ToSchema PetType
-
--- instance ToSchema PetStoreError
-
--- instance ToSchema User
-
--- instance ToSchema Payment
-
 -- Orphan instances
+-- TODO: provide better/more specific return types in the API
 instance ToSchema ExitCode where
   declareNamedSchema proxy =
     genericDeclareNamedSchemaUnrestricted defaultSchemaOptions proxy
@@ -40,12 +31,6 @@ instance ToSchema a => ToSchema (GroupViews a) where
   declareNamedSchema proxy =
     genericDeclareNamedSchemaUnrestricted defaultSchemaOptions proxy
 
--- instance ToSchema Pet where
---   declareNamedSchema proxy =
---     genericDeclareNamedSchema defaultSchemaOptions proxy
---       & mapped . schema . description ?~ "A Pet for sale in the Store"
---       & mapped . schema . example
---         ?~ toJSON (Pet "Fifi" Dog 100)
 
 senseiSwagger :: Swagger
 senseiSwagger =

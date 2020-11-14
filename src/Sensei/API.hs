@@ -11,58 +11,108 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.API
-  ( SenseiAPI, senseiAPI,
-    module Sensei.Flow, module Sensei.FlowView, module Sensei.Utils,
-    GroupViews(..), Trace(..), Group(..), UserProfile(..),
-    sameDayThan, mkGroupViewsBy, groupViews
-  ) where
+  ( SenseiAPI,
+    senseiAPI,
+    module Sensei.Flow,
+    module Sensei.FlowView,
+    module Sensei.Group,
+    module Sensei.Utils,
+    GroupViews (..),
+    Trace (..),
+    Group (..),
+    UserProfile (..),
+  )
+where
 
 import Data.Aeson
-    ( withText, FromJSON(parseJSON), Value(String), ToJSON(toJSON) )
-import Data.Function (on)
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import qualified Data.List.NonEmpty as NE
-import Data.Text(Text)
+  ( FromJSON (parseJSON),
+    ToJSON (toJSON),
+    Value (String),
+    withText,
+  )
+import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
-    ( Day, LocalTime(..), UTCTime,
-      TimeOfDay,
-      NominalDiffTime,
-      TimeZone )
-import GHC.Generics ( Generic )
-import Servant
-    ( FromHttpApiData(parseUrlPiece),
-      ToHttpApiData(toUrlPiece),
-      type (:<|>),
-      type (:>),
-      ReqBody,
-      JSON,
-      Post,
-      Capture,
-      Get,
-      QueryParams,
-      Raw,
-      Proxy(..) )
-import System.Exit ( ExitCode(..) )
-import Sensei.FlowView
-import Sensei.Utils
-import Sensei.Flow
+  ( Day,
+    LocalTime (..),
+    NominalDiffTime,
+    TimeOfDay,
+    TimeZone,
+    UTCTime,
+  )
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
+import GHC.Generics (Generic)
+import Sensei.Flow
+import Sensei.FlowView
+import Sensei.Group
+import Sensei.Utils
+import Servant
+import System.Exit (ExitCode (..))
 
 -- * API
 
+type PostRecordTrace =
+  Summary "Record execution 'trace' of a single command execution." :> "trace"
+    :> ReqBody '[JSON] Trace
+    :> Post '[JSON] ()
+
+type PostRecordFlow =
+  Summary "Record start of some type of Flow."
+    :> Capture "user" Text
+    :> Capture "flowType" FlowType
+    :> ReqBody '[JSON] FlowState
+    :> Post '[JSON] ()
+
+type GetGroupSummary =
+  Summary "Retrieve grouped summary of flows by type."
+    :> Capture "user" Text
+    :> "summary"
+    :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
+
+type GetDailySummary =
+  Summary "Retrieve daily summary of time spend in flows by type."
+    :> Capture "user" Text
+    :> Capture "day" Day
+    :> "summary"
+    :> Get '[JSON] [(FlowType, NominalDiffTime)]
+
+type GetNotes =
+  Summary "Retrieve timestamped notes for some day, or all notes if no day is given."
+    :> Capture "user" Text
+    :> Capture "day" Day
+    :> "notes"
+    :> Get '[JSON] [(LocalTime, Text.Text)]
+
+type GetFlowsTimeline =
+  Summary "Retrieve timeline of flows for a given day."
+    :> Capture "user" Text
+    :> Capture "day" Day
+    :> Get '[JSON] [FlowView]
+
+type GetGroupedTimelines =
+  Summary "Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...)."
+    :> Capture "user" Text
+    :> QueryParams "group" Group
+    :> Get '[JSON] [GroupViews FlowView]
+
+type GetUserProfile =
+  Summary "Retrieve a user's profile." :> Capture "user" Text :> Get '[JSON] UserProfile
+
 type SenseiAPI =
-  "trace" :> ReqBody '[JSON] Trace :> Post '[JSON] ()
+  PostRecordTrace
     :<|> "flows"
-      :> ( Capture "user" Text :> Capture "flowType" FlowType :> ReqBody '[JSON] FlowState :> Post '[JSON] ()
-             :<|> Capture "user" Text :> "summary" :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
-             :<|> Capture "user" Text :> Capture "day" Day :> "summary" :> Get '[JSON] [(FlowType, NominalDiffTime)]
-             :<|> Capture "user" Text :> Capture "day" Day :> "notes" :>  Get '[JSON] [(LocalTime, Text.Text)]
-             :<|> Capture "user" Text :> Capture "day" Day :> Get '[JSON] [FlowView]
-             :<|> Capture "user" Text :> QueryParams "group" Group :> Get '[JSON] [GroupViews FlowView]
+      :> ( PostRecordFlow
+             :<|> GetGroupSummary
+             :<|> GetDailySummary
+             :<|> GetNotes
+             :<|> GetFlowsTimeline
+             :<|> GetGroupedTimelines
          )
-    :<|> "users" :> (Capture "user" Text :> Get '[JSON] UserProfile)
+    :<|> "users" :> GetUserProfile
     :<|> Raw
+
+senseiAPI :: Proxy SenseiAPI
+senseiAPI = Proxy
 
 -- | Execution "trace" of a program
 data Trace = Trace
@@ -78,53 +128,6 @@ data Trace = Trace
 deriving instance ToJSON ExitCode
 
 deriving instance FromJSON ExitCode
-
-sameDayThan :: Day -> (a -> Day) -> a -> Bool
-sameDayThan day selector a =
-  selector a == day
-
-senseiAPI :: Proxy SenseiAPI
-senseiAPI = Proxy
-
--- | Grouping of `FlowView`
-data Group = Day | Week | Month | Quarter | Year
-  deriving (Eq, Read, Show, Ord, Generic, ToJSON, FromJSON)
-
-instance ToHttpApiData Group where
-  toUrlPiece f = Text.pack (show f)
-
-instance FromHttpApiData Group where
-  parseUrlPiece txt =
-    case reads (Text.unpack txt) of
-      ((g, _) : _) -> pure g
-      _ -> Left $ "cannot parse group " <> txt
-
-data GroupViews a
-  = NoViews
-  | Leaf {leafViews :: [a]}
-  | GroupLevel {level :: Group, groupTime :: LocalTime, subGroup :: GroupViews a}
-  deriving (Eq, Show, Generic, ToJSON, FromJSON, Functor)
-
-groupViews :: TimeOfDay -> TimeOfDay -> [Group] -> [FlowView] -> [GroupViews FlowView]
-groupViews _ _ [] views = [Leaf views]
-groupViews startOfDay endOfDay (Day : _groups) views =
-  views
-    |> NE.groupBy ((==) `on` (localDay . flowStart))
-    |> mkGroupViewsBy startOfDay endOfDay Day
-groupViews _ _ _ _ = error "unsupported group"
-
-mkGroupViewsBy :: TimeOfDay -> TimeOfDay -> Group -> [NE.NonEmpty FlowView] -> [GroupViews FlowView]
-mkGroupViewsBy startOfDay endOfDay Day =
-  fmap mkGroup
-  where
-    normalized :: NE.NonEmpty FlowView -> [FlowView]
-    normalized (view :| rest) =
-      let viewDay = localDay (flowStart view)
-       in normalizeViewsForDay (LocalTime viewDay startOfDay) (LocalTime viewDay endOfDay) (view : rest)
-
-    mkGroup :: NE.NonEmpty FlowView -> GroupViews FlowView
-    mkGroup (view :| rest) = GroupLevel Day (flowStart view) (Leaf (normalized (view :| rest)))
-mkGroupViewsBy _ _ _ = error "unsupported group"
 
 data UserProfile = UserProfile
   { userName :: Text,
