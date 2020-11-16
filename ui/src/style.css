@@ -8,7 +8,7 @@ div#navbar {
     font-color: white;
 }
 
-div.content {
+div#main {
     padding: 1em;
     margin-top: 30px;
     width: 100%;

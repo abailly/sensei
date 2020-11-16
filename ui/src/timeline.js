@@ -1,6 +1,6 @@
 import { get } from './request.js';
 import { formatISODate } from './date.js';
-import dom from './dom.js';
+import { dom } from './dom.js';
 
 
 function colorOf(flowType) {
@@ -69,13 +69,6 @@ function createTimelineContainer(day, data) {
   drawChart(chart, day, data);
 }
 
-function clearTimelines() {
-  const timelines = document.getElementById('timelines');
-  while (timelines.firstChild) {
-    timelines.removeChild(timelines.firstChild);
-  }
-}
-
 /**
    Draw several timeline charts within the `timelines` container, each for a different
    data
@@ -103,9 +96,9 @@ function fetchAllFlowData() {
 
 export default function timeline() {
   const obj = {};
-  // assumes google object exists
+
   obj.fetchFlowData = fetchFlowData;
   obj.fetchAllFlowData = fetchAllFlowData;
-  obj.clearTimelines = clearTimelines;
+
   return obj;
 }

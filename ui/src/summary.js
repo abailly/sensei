@@ -1,12 +1,6 @@
 import { get } from './request.js';
-import dom from './dom.js';
+import { dom } from './dom.js';
 
-function clearSummaries() {
-  const summaries = document.getElementById('summaries');
-  while (summaries.firstChild) {
-    summaries.removeChild(summaries.firstChild);
-  }
-}
 
 /* Transform summary data grouped by day into data points
    grouped by type
@@ -62,7 +56,6 @@ function fetchAllSummaryData() {
 export default function summary() {
   const obj = {};
 
-  obj.clearSummaries = clearSummaries;
   obj.fetchAllSummaryData = fetchAllSummaryData;
 
   return obj;

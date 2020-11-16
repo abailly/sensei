@@ -16,7 +16,7 @@
  * @param {any} children a possibly empty sequence of children to add to this node.
  * @returns {Object} a newly initialized DOM element with given attributes and children
  */
-function dom(tagName, attrs = {}, ...children) {
+export function dom(tagName, attrs = {}, ...children) {
   const elem = Object.assign(document.createElement(tagName), attrs);
   for (const child of children) {
     if (Array.isArray(child)) elem.append(...child);
@@ -25,4 +25,9 @@ function dom(tagName, attrs = {}, ...children) {
   return elem;
 }
 
-export default dom;
+export function clear(parentId) {
+  const timelines = document.getElementById(parentId);
+  while (timelines.firstChild) {
+    timelines.removeChild(timelines.firstChild);
+  }
+}
