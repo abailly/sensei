@@ -2,10 +2,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Sensei.TestHelper where
 
-import Control.Exception.Safe(bracket, catch, finally, throwIO)
-import Sensei.App
-import Control.Concurrent(threadDelay)
-import System.Directory
+import Control.Exception.Safe(finally)
+import Sensei.App ( senseiApp )
+import System.Directory ( removePathForcibly )
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
@@ -13,10 +12,11 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Text(unpack)
 import Network.Wai (Application)
 import Network.Wai.Test (SResponse)
-import Test.Hspec
+import Test.Hspec ( around, ActionWith, Spec, SpecWith )
 import System.Posix.Temp (mkstemp)
-import Test.Hspec.Wai as W
-import System.IO
+import Test.Hspec.Wai as W ( request, WaiSession, MatchBody(..) )
+import Data.Functor(void)
+import System.IO ( hClose )
 
 withApp :: SpecWith ((), Application) -> Spec
 withApp = around mkApp
@@ -32,6 +32,9 @@ mkApp act = do
 
 postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
 postJSON path payload = request "POST" path [("Content-type", "application/json")] (A.encode payload)
+
+postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
+postJSON_ path payload = void $ postJSON path payload
 
 getJSON :: ByteString -> WaiSession () SResponse
 getJSON path = request "GET" path [("Accept", "application/json")] mempty

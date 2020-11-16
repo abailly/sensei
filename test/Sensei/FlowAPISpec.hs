@@ -7,7 +7,6 @@ import Data.Time
 import Sensei.API
 import Sensei.TestHelper
 import Test.Hspec
-import Data.Time
 import Test.Hspec.Wai
 import Test.Hspec.Wai.Matcher
 
@@ -22,8 +21,8 @@ spec = withApp $ describe "Flows API" $ do
   it "GET /flows/<user> retrieves all Flows ungrouped" $ do
     let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
         flow2 = FlowState "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
-    postJSON "/flows/arnaud/Other" flow1
-    postJSON "/flows/arnaud/Meeting" flow2
+    postJSON_ "/flows/arnaud/Other" flow1
+    postJSON_ "/flows/arnaud/Meeting" flow2
 
     let expectedGroups =
           [ Leaf
@@ -38,8 +37,8 @@ spec = withApp $ describe "Flows API" $ do
   it "GET /flows/<user>?group=Day retrieves all Flows grouped by Day" $ do
     let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
         flow2 = FlowState "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
-    postJSON "/flows/arnaud/Other" flow1
-    postJSON "/flows/arnaud/Meeting" flow2
+    postJSON_ "/flows/arnaud/Other" flow1
+    postJSON_ "/flows/arnaud/Meeting" flow2
 
     let expectedGroups =
           [ GroupLevel Day (LocalTime (toEnum 50000) (TimeOfDay 1 0 0))
@@ -51,11 +50,11 @@ spec = withApp $ describe "Flows API" $ do
     getJSON "/flows/arnaud?group=Day"
       `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expectedGroups)
 
-  -- it "GET /flows/<user>?withNotes also retrieves Notes with 1 minute timespan" $ do
-  --   let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-  --       flow2 = FlowNote "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
-  --   postJSON "/flows/arnaud/Other" flow1
-  --   postJSON "/flows/arnaud/Note" flow2
+  it "GET /flows/<user>?withNotes also retrieves Notes with 1 minute timespan" $ do
+    let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+        flow2 = FlowNote "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
+    postJSON_ "/flows/arnaud/Other" flow1
+    postJSON_ "/flows/arnaud/Note" flow2
 
   --   let expectedGroups =
   --         [ Leaf

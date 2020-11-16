@@ -4,7 +4,7 @@ import Data.Time ( diffUTCTime, getCurrentTime, UTCTime )
 import Sensei.API ( Trace(Trace) )
 import Data.Text(pack)
 import Sensei.Client ( traceC, send )
-import System.Exit ( exitWith )
+import System.Exit
 import System.Process
     ( createProcess,
       proc,
@@ -24,5 +24,9 @@ wrapProg realProg progArgs st currentDir = do
 
   ex <- waitForProcess procHandle
   en <- getCurrentTime
-  send (traceC $ Trace en currentDir (pack realProg) (fmap pack progArgs) ex (diffUTCTime en st))
+  send (traceC $ Trace en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st))
   exitWith ex
+
+toInt :: ExitCode -> Int
+toInt ExitSuccess = 0
+toInt (ExitFailure ex) = ex

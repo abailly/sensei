@@ -38,7 +38,6 @@ import Data.Time
     NominalDiffTime,
     TimeOfDay,
     TimeZone,
-    UTCTime,
   )
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
@@ -47,7 +46,6 @@ import Sensei.FlowView
 import Sensei.Group
 import Sensei.Utils
 import Servant
-import System.Exit (ExitCode (..))
 
 -- * API
 
@@ -113,21 +111,6 @@ type SenseiAPI =
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
-
--- | Execution "trace" of a program
-data Trace = Trace
-  { timestamp :: UTCTime,
-    directory :: FilePath,
-    process :: Text,
-    args :: [Text],
-    exit_code :: ExitCode,
-    elapsed :: NominalDiffTime
-  }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
-
-deriving instance ToJSON ExitCode
-
-deriving instance FromJSON ExitCode
 
 data UserProfile = UserProfile
   { userName :: Text,

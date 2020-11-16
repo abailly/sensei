@@ -12,15 +12,40 @@
 module Sensei.Flow where
 
 import Data.Aeson hiding (Options)
+import Data.Bifunctor (Bifunctor (first))
+import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Text(Text)
 import Data.Time
 import GHC.Generics
 import Servant
-import Data.Bifunctor (Bifunctor(first))
 
+-- | Execution "trace" of a program
+data Trace = Trace
+  { timestamp :: UTCTime,
+    directory :: FilePath,
+    process :: Text,
+    args :: [Text],
+    exit_code :: Int,
+    elapsed :: NominalDiffTime
+  }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-data FlowType = Learning | Experimenting | Troubleshooting | Flowing | Rework | Note | Other | Meeting | End
+data Flow = Flow
+  { _flowType :: FlowType,
+    _flowState :: FlowState
+  }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+data FlowType
+  = Learning
+  | Experimenting
+  | Troubleshooting
+  | Flowing
+  | Rework
+  | Note
+  | Other
+  | Meeting
+  | End
   deriving (Eq, Show, Ord, Generic, ToJSON, FromJSON)
 
 instance ToHttpApiData FlowType where
@@ -51,24 +76,18 @@ data FlowState
       }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-data Flow = Flow
-  { _flowType :: FlowType,
-    _flowState :: FlowState
-  }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
-
 -- | Supported rendering formats for notes
-data NoteFormat =
-  Plain
-  -- ^Timestamp of note is on its own line, followed by note as it is typed
-  | MarkdownTable
-  -- ^Notes are formatted as a <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#tables Markdown table>
-  -- with the first column containing the timestamp and second containing the text.
-  -- EOLs are replaced with @<br/>@ so that underlying formatter can cope with newlines embedded in table cells. this
-  -- might or might not work depending on flavor of markdown
-  | Section
-  -- ^Notes are formatted with the time as a level 4 section header and
-  -- the notes within the section
+data NoteFormat
+  = -- | Timestamp of note is on its own line, followed by note as it is typed
+    Plain
+  | -- | Notes are formatted as a <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#tables Markdown table>
+    --  with the first column containing the timestamp and second containing the text.
+    --  EOLs are replaced with @<br/>@ so that underlying formatter can cope with newlines embedded in table cells. this
+    --  might or might not work depending on flavor of markdown
+    MarkdownTable
+  | -- | Notes are formatted with the time as a level 4 section header and
+    --  the notes within the section
+    Section
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 parseNoteFormat :: String -> Either String NoteFormat
@@ -83,4 +102,4 @@ instance FromHttpApiData NoteFormat where
   parseUrlPiece "plain" = pure Plain
   parseUrlPiece "table" = pure MarkdownTable
   parseUrlPiece "section" = pure Section
-  parseUrlPiece txt = Left $ "Unknown format: " <>  txt
+  parseUrlPiece txt = Left $ "Unknown format: " <> txt
