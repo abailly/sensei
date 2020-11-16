@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
@@ -8,7 +9,13 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-
+-- | Flows represent the various recorded events that are relevant to capture
+-- from a user's daily activity.
+--
+-- Currently records the following types of flows:
+--
+-- * `Trace`: common command-line programs execution recording
+-- * `Flow`: either notes or start time of a specific (expected) type of activity
 module Sensei.Flow where
 
 import Data.Aeson hiding (Options)
@@ -18,6 +25,10 @@ import qualified Data.Text as Text
 import Data.Time
 import GHC.Generics
 import Servant
+import Numeric.Natural
+
+currentVersion :: Natural
+currentVersion = 1
 
 -- | Execution "trace" of a program
 data Trace = Trace
@@ -26,13 +37,15 @@ data Trace = Trace
     process :: Text,
     args :: [Text],
     exit_code :: Int,
-    elapsed :: NominalDiffTime
+    elapsed :: NominalDiffTime,
+    _version :: Natural
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 data Flow = Flow
   { _flowType :: FlowType,
-    _flowState :: FlowState
+    _flowState :: FlowState,
+    _version :: Natural
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
@@ -72,7 +85,7 @@ data FlowState
       { _flowUser :: Text,
         _flowStart :: UTCTime,
         _flowDir :: Text,
-        _flowNote :: Text.Text
+        _flowNote :: Text
       }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 

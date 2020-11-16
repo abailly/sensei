@@ -1,7 +1,6 @@
 module Sensei.Wrapper where
 
 import Data.Time ( diffUTCTime, getCurrentTime, UTCTime )
-import Sensei.API ( Trace(Trace) )
 import Data.Text(pack)
 import Sensei.Client ( traceC, send )
 import System.Exit
@@ -11,6 +10,7 @@ import System.Process
       waitForProcess,
       CreateProcess(std_in, std_out, std_err),
       StdStream(Inherit) )
+import Sensei.Flow
 
 wrapProg :: String -> [String] -> UTCTime -> FilePath -> IO ()
 wrapProg realProg progArgs st currentDir = do
@@ -24,7 +24,7 @@ wrapProg realProg progArgs st currentDir = do
 
   ex <- waitForProcess procHandle
   en <- getCurrentTime
-  send (traceC $ Trace en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st))
+  send (traceC $ Trace en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st) currentVersion)
   exitWith ex
 
 toInt :: ExitCode -> Int

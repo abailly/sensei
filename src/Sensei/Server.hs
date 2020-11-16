@@ -27,7 +27,7 @@ traceS file trace = liftIO $
 flowS :: FilePath -> Text -> FlowType -> FlowState -> Handler ()
 flowS file _ flowTyp flow = liftIO $
   withBinaryFile file AppendMode $ \out -> do
-    LBS.hPutStr out $ encode (Flow flowTyp flow) <> "\n"
+    LBS.hPutStr out $ encode (Flow flowTyp flow currentVersion) <> "\n"
     hFlush out
 
 -- | Read all the views for a given `UserProfile`
@@ -49,7 +49,7 @@ readNotes :: FilePath -> UserProfile -> IO [(LocalTime, Text)]
 readNotes file UserProfile{userName,userTimezone} = withBinaryFile file ReadMode $ loop f userName []
   where
     f :: Flow -> [(LocalTime, Text)] -> [(LocalTime, Text)]
-    f (Flow Note (FlowNote _ st _ note)) fragments =
+    f (Flow Note (FlowNote _ st _ note) _) fragments =
       (utcToLocalTime userTimezone st, note) : fragments
     f _ fragments = fragments
 

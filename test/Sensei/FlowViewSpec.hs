@@ -13,9 +13,9 @@ spec = describe "FlowViews Timings" $ do
   describe "appendFlow" $ do
     it "do not overwrite previous flowview end if different from start" $ do
       let flows = [
-                    Flow Other (FlowState "user" (UTCTime (toEnum 5000) (3600 * 12)) "foo"),
-                    Flow End (FlowState "user" (UTCTime (toEnum 5000) (3600 * 11)) "foo"),
-                    Flow Other (FlowState "user" (UTCTime (toEnum 5000) (3600 * 10)) "foo")
+                    Flow Other (FlowState "user" (UTCTime (toEnum 5000) (3600 * 12)) "foo") 1,
+                    Flow End (FlowState "user" (UTCTime (toEnum 5000) (3600 * 11)) "foo") 1,
+                    Flow Other (FlowState "user" (UTCTime (toEnum 5000) (3600 * 10)) "foo") 1
                   ]
 
       foldr (appendFlow tz endOfDay) [] flows
