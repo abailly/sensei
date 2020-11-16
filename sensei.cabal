@@ -26,7 +26,7 @@ library
                      , Sensei.CLI
                      , Sensei.Wrapper
                      , Sensei.Utils
-  other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi
+  other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi, Sensei.IO
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , ansi-terminal

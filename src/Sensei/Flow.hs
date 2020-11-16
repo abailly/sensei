@@ -27,6 +27,10 @@ import GHC.Generics
 import Servant
 import Numeric.Natural
 
+-- |Current version of recorded `Flow` format.
+-- This version /must/ be incremented on each change to the structure of `Flow` which
+-- impacts the stored representation. Of course, deserialisation
+-- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
 currentVersion = 1
 
