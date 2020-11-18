@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.API
-  ( SenseiAPI,
+  ( SenseiAPI, KillServer,
     senseiAPI,
     module Sensei.Flow,
     module Sensei.FlowView,
@@ -48,6 +48,10 @@ import Sensei.Utils
 import Servant
 
 -- * API
+
+type KillServer =
+  Summary "Ask the server to kill itself." :> "kill"
+    :> Delete '[JSON] ()
 
 type PostRecordTrace =
   Summary "Record execution 'trace' of a single command execution." :> "trace"
@@ -99,15 +103,15 @@ type GetUserProfile =
 type SenseiAPI =
   PostRecordTrace
     :<|> "flows"
-      :> ( PostRecordFlow
-             :<|> GetGroupSummary
-             :<|> GetDailySummary
-             :<|> GetNotes
-             :<|> GetFlowsTimeline
-             :<|> GetGroupedTimelines
-         )
-    :<|> "users" :> GetUserProfile
-    :<|> Raw
+    :> ( PostRecordFlow
+           :<|> GetGroupSummary
+           :<|> GetDailySummary
+           :<|> GetNotes
+           :<|> GetFlowsTimeline
+           :<|> GetGroupedTimelines
+       )
+      :<|> "users"
+    :> GetUserProfile
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy

@@ -1,6 +1,7 @@
 const path = require('path');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   mode: 'development',
@@ -12,6 +13,9 @@ module.exports = {
       template: "./src/index.html",
       filename: "./index.html"
     }),
+    new webpack.DefinePlugin({
+      VERSION: JSON.stringify(require('./package.json').version)
+    })
   ],
   module: {
     rules: [

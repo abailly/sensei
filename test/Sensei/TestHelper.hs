@@ -10,13 +10,15 @@ import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text(unpack)
-import Network.Wai (Application)
 import Network.Wai.Test (SResponse)
 import Test.Hspec ( around, ActionWith, Spec, SpecWith )
 import System.Posix.Temp (mkstemp)
+import Sensei.Version
+import Servant
 import Test.Hspec.Wai as W ( request, WaiSession, MatchBody(..) )
 import Data.Functor(void)
 import System.IO ( hClose )
+import Control.Concurrent.MVar
 
 withApp :: SpecWith ((), Application) -> Spec
 withApp = around mkApp
@@ -24,20 +26,21 @@ withApp = around mkApp
 mkApp :: ActionWith ((), Application) -> IO ()
 mkApp act = do
   file <- mkTempFile
-  let app = senseiApp file
+  signal <- newEmptyMVar
+  let app = senseiApp signal file
   act ((), app)
     `finally` removePathForcibly file
   where
     mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
 postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
-postJSON path payload = request "POST" path [("Content-type", "application/json")] (A.encode payload)
+postJSON path payload = request "POST" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
 
 postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
 postJSON_ path payload = void $ postJSON path payload
 
 getJSON :: ByteString -> WaiSession () SResponse
-getJSON path = request "GET" path [("Accept", "application/json")] mempty
+getJSON path = request "GET" path [("Accept", "application/json"), ("X-API-Version", toHeader senseiVersion)] mempty
 
 bodyContains :: ByteString -> MatchBody
 bodyContains fragment =
