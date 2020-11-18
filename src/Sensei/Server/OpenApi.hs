@@ -21,6 +21,7 @@ instance ToSchema TimeZone where
 instance ToSchema FlowState
 instance ToSchema FlowType
 instance ToSchema FlowView
+instance ToSchema NoteView
 instance ToSchema UserProfile
 
 instance ToParamSchema FlowType

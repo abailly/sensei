@@ -27,7 +27,11 @@ export function dom(tagName, attrs = {}, ...children) {
 
 export function clear(parentId) {
   const timelines = document.getElementById(parentId);
-  while (timelines.firstChild) {
-    timelines.removeChild(timelines.firstChild);
+  clearElement(timelines);
+}
+
+export function clearElement(elem) {
+  while (elem.firstChild) {
+    elem.removeChild(elem.firstChild);
   }
 }

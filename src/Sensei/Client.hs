@@ -30,7 +30,7 @@ queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad [(FlowType, NominalDiffTime)]
-notesDayC :: Text -> Day -> ClientMonad [(LocalTime, Text)]
+notesDayC :: Text -> Day -> ClientMonad [NoteView]
 traceC
   :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> queryFlowDayC :<|> queryFlowC)
   :<|> _ = clientIn senseiAPI Proxy

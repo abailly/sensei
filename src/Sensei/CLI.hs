@@ -132,20 +132,20 @@ println :: BS.ByteString -> IO ()
 println bs =
   BS.putStr bs >> BS.putStr "\n"
 
-formatNotes :: NoteFormat -> [(LocalTime, Text)] -> [Text]
+formatNotes :: NoteFormat -> [NoteView] -> [Text]
 formatNotes Plain = concatMap timestamped
 formatNotes MarkdownTable = (tblHeaders <>) . fmap tblRow
 formatNotes Section = concatMap sectionized
 
-sectionized :: (LocalTime, Text) -> [Text]
-sectionized (ts, note) =
+sectionized :: NoteView -> [Text]
+sectionized (NoteView ts note) =
   [ "#### " <> formatTimestamp ts , "" , note ]
 
 tblHeaders :: [Text]
 tblHeaders = [ "Time | Note", "--- | ---" ]
 
-tblRow :: (LocalTime, Text) -> Text
-tblRow (ts, note) = formatTimestamp ts <> " | " <> replaceEOLs note
+tblRow :: NoteView -> Text
+tblRow (NoteView ts note) = formatTimestamp ts <> " | " <> replaceEOLs note
 
 replaceEOLs :: Text -> Text
 replaceEOLs = Text.replace "\n" "<br/>"
@@ -153,8 +153,8 @@ replaceEOLs = Text.replace "\n" "<br/>"
 formatTimestamp :: LocalTime -> Text
 formatTimestamp = Text.pack . formatTime defaultTimeLocale "%H:%M"
 
-timestamped :: (LocalTime, Text) -> [Text]
-timestamped (st, note) = formatTimestamp st : Text.lines note
+timestamped :: NoteView -> [Text]
+timestamped (NoteView st note) = formatTimestamp st : Text.lines note
 
 captureNote :: IO Text.Text
 captureNote = do

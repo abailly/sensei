@@ -36,11 +36,11 @@ flowS file _ flowTyp flow = liftIO $
 
 
 notesDayS ::
-  FilePath -> Text -> Day -> Handler [(LocalTime, Text)]
+  FilePath -> Text -> Day -> Handler [NoteView]
 notesDayS file usr day = do
   usrProfile <- userProfileS usr
   notes <- liftIO $ readNotes file usrProfile
-  pure $ filter (sameDayThan day (localDay . fst)) notes
+  pure $ map (uncurry NoteView) $ filter (sameDayThan day (localDay . fst)) notes
 
 queryFlowDayS ::
   FilePath -> Text -> Day -> Handler [FlowView]

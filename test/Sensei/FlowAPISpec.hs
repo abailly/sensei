@@ -50,18 +50,14 @@ spec = withApp $ describe "Flows API" $ do
     getJSON "/flows/arnaud?group=Day"
       `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expectedGroups)
 
-  -- it "GET /flows/<user>?withNotes also retrieves Notes with 1 minute timespan" $ do
-  --   let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-  --       flow2 = FlowNote "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
-  --   postJSON_ "/flows/arnaud/Other" flow1
-  --   postJSON_ "/flows/arnaud/Note" flow2
+  it "GET /flows/<user>/<day>/notes retrieves Notes for given day" $ do
+    let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+        flow2 = FlowNote "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
+        expectedNotes = [ NoteView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) "some note" ]
 
-  --   let expectedGroups =
-  --         [ Leaf
-  --             [ FlowView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50000) (TimeOfDay 18 30 0)) Other,
-  --               FlowView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50001) (TimeOfDay 1 1 0)) Note
-  --             ]
-  --         ]
+    postJSON_ "/flows/arnaud/Other" flow1
+    postJSON_ "/flows/arnaud/Note" flow2
 
-  --   getJSON "/flows/arnaud"
-  --     `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expectedGroups)
+
+    getJSON "/flows/arnaud/1995-10-11/notes"
+      `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expectedNotes)

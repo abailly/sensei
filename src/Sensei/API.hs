@@ -34,7 +34,6 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
   ( Day,
-    LocalTime (..),
     NominalDiffTime,
     TimeOfDay,
     TimeZone,
@@ -83,7 +82,7 @@ type GetNotes =
     :> Capture "user" Text
     :> Capture "day" Day
     :> "notes"
-    :> Get '[JSON] [(LocalTime, Text.Text)]
+    :> Get '[JSON] [NoteView]
 
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."

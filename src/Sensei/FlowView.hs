@@ -15,6 +15,7 @@ module Sensei.FlowView where
 import Data.Aeson hiding (Options)
 import Data.Function (on)
 import qualified Data.List as List
+import Data.Text(Text)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
 import Data.Time
@@ -22,6 +23,9 @@ import GHC.Generics
 import Sensei.Flow
 import Sensei.Utils
 
+
+data NoteView = NoteView { noteStart :: LocalTime, noteContent :: Text }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 -- | A single "flow" timeslice of a given type
 -- `FlowView`s times are expressed in the `LocalTime` of the users to which they
