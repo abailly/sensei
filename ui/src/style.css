@@ -23,3 +23,8 @@ div#timelines {
 .timeline {
     height: 100px;
 }
+
+.note {
+    max-width: 20em;
+    padding: .5em;
+}
