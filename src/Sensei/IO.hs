@@ -2,15 +2,24 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Sensei.IO (readNotes, readViews, readCommands) where
+module Sensei.IO
+  ( readNotes,
+    readViews,
+    readCommands,
+    readProfile, writeProfile
+  )
+where
 
 import qualified Control.Exception.Safe as Exc
 import Data.Aeson hiding (Options)
-import Data.Text (Text)
-import qualified Data.ByteString.Lazy as LBS
+import Data.Bifunctor
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
+import Data.Text (Text, pack)
 import Data.Time
 import Sensei.API
+import System.Directory
+import System.FilePath ((</>))
 import System.IO
 
 -- | Read all the views for a given `UserProfile`
@@ -53,3 +62,23 @@ readCommands file (UserProfile usr _ _ _) =
   withBinaryFile file ReadMode $ loop readTrace usr []
   where
     readTrace t acc = t : acc
+
+-- | Read user profile from XDG Configuration directory.
+-- The `UserProfile` is stored as a JSON-encoded file in the XDG configuration direcotry
+-- for @sensei@, see <https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Specification> for more details.
+-- Note the /current user/ is the owner of the process executing this function which
+-- should be the same as the one running @ep@ command line.
+readProfile ::
+  FilePath -> IO (Either Text UserProfile)
+readProfile home = do
+  let configFile = home </> "config.json"
+  existF <- doesFileExist configFile
+  if (not existF)
+    then pure $ Left (pack $ "config file " <> configFile <> " does not exist")
+    else first pack . eitherDecode <$> LBS.readFile configFile
+
+writeProfile ::
+  FilePath -> UserProfile -> IO ()
+writeProfile home profile = do
+  let configFile = home </> "config.json"
+  LBS.writeFile configFile (encode profile)

@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DataKinds #-}
@@ -21,6 +22,8 @@ import Servant
 import System.Directory
 import System.FilePath
 import System.Posix.Daemonize
+import Control.Monad.Reader
+import Control.Monad.Except
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -33,10 +36,19 @@ fullAPI = Proxy
 sensei :: FilePath -> IO ()
 sensei output = do
   signal <- newEmptyMVar
-  server <- startAppServer "" [] 23456 (pure $ senseiApp signal output)
+  configDir <- getConfigDirectory
+  server <- startAppServer "" [] 23456 (pure $ senseiApp signal output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
+  where
+    getConfigDirectory = do
+      home <- getXdgDirectory XdgConfig "sensei"
+      exists <- doesDirectoryExist home
+      when (not exists) $ createDirectory home
+      pure home
 
-baseServer :: MVar () -> FilePath -> Server (KillServer :<|> SenseiAPI)
+baseServer ::
+  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) =>
+  MVar () -> FilePath ->  ServerT (KillServer :<|> SenseiAPI) m
 baseServer signal output =
   killS signal
     :<|> traceS output
@@ -48,11 +60,12 @@ baseServer signal output =
              :<|> queryFlowDayS output
              :<|> queryFlowS output
          )
-    :<|> userProfileS
+    :<|> getUserProfileS
+    :<|> putUserProfileS
 
-senseiApp :: MVar () -> FilePath -> Application
-senseiApp signal output =
-  serve fullAPI $
+senseiApp :: MVar () -> FilePath -> FilePath -> Application
+senseiApp signal output configDir =
+  serve fullAPI $ hoistServer fullAPI (`runReaderT` configDir) $
     pure senseiSwagger
       :<|> baseServer signal output
       :<|> Tagged staticResources

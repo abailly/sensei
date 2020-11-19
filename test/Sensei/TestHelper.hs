@@ -19,6 +19,7 @@ import Test.Hspec.Wai as W ( request, WaiSession, MatchBody(..) )
 import Data.Functor(void)
 import System.IO ( hClose )
 import Control.Concurrent.MVar
+import System.Directory
 
 withApp :: SpecWith ((), Application) -> Spec
 withApp = around mkApp
@@ -26,18 +27,26 @@ withApp = around mkApp
 mkApp :: ActionWith ((), Application) -> IO ()
 mkApp act = do
   file <- mkTempFile
+  config <- mkTempDir
   signal <- newEmptyMVar
-  let app = senseiApp signal file
+  let app = senseiApp signal file config
   act ((), app)
-    `finally` removePathForcibly file
+    `finally` removePathForcibly file >> removePathForcibly config
   where
     mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
+    mkTempDir = mkstemp "config-sensei" >>= \(fp, h) -> hClose h >> removePathForcibly fp >> createDirectory fp >> pure fp
 
 postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
 postJSON path payload = request "POST" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
 
+putJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
+putJSON path payload = request "PUT" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
+
 postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
 postJSON_ path payload = void $ postJSON path payload
+
+putJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
+putJSON_ path payload = void $ putJSON path payload
 
 getJSON :: ByteString -> WaiSession () SResponse
 getJSON path = request "GET" path [("Accept", "application/json"), ("X-API-Version", toHeader senseiVersion)] mempty

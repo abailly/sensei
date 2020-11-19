@@ -11,7 +11,8 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.API
-  ( SenseiAPI, KillServer,
+  ( SenseiAPI,
+    KillServer,
     senseiAPI,
     module Sensei.Flow,
     module Sensei.FlowView,
@@ -20,7 +21,7 @@ module Sensei.API
     GroupViews (..),
     Trace (..),
     Group (..),
-    UserProfile (..),
+    UserProfile (..), defaultProfile
   )
 where
 
@@ -33,7 +34,7 @@ import Data.Aeson
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
-  ( Day,
+  (TimeOfDay(..), hoursToTimeZone,  Day,
     NominalDiffTime,
     TimeOfDay,
     TimeZone,
@@ -106,19 +107,22 @@ type GetGroupedTimelines =
 type GetUserProfile =
   Summary "Retrieve a user's profile." :> Capture "user" Text :> Get '[JSON] UserProfile
 
+type PutUserProfile =
+  Summary "Define current user's profile." :> Capture "user" Text :> ReqBody '[JSON] UserProfile :> Put '[JSON] NoContent
+
 type SenseiAPI =
   PostRecordTrace
     :<|> "flows"
-    :> ( PostRecordFlow
-           :<|> GetGroupSummary
-           :<|> GetDailySummary
-           :<|> GetNotes
-           :<|> GetCommands
-           :<|> GetFlowsTimeline
-           :<|> GetGroupedTimelines
-       )
-      :<|> "users"
-    :> GetUserProfile
+      :> ( PostRecordFlow
+             :<|> GetGroupSummary
+             :<|> GetDailySummary
+             :<|> GetNotes
+             :<|> GetCommands
+             :<|> GetFlowsTimeline
+             :<|> GetGroupedTimelines
+         )
+    :<|> "users"
+      :> (GetUserProfile :<|> PutUserProfile)
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
@@ -130,6 +134,10 @@ data UserProfile = UserProfile
     userEndOfDay :: TimeOfDay
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+defaultProfile :: UserProfile
+defaultProfile =
+  UserProfile { userName = "arnaud", userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00  }
 
 instance ToJSON TimeZone where
   toJSON = String . Text.pack . iso8601Show
