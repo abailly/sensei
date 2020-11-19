@@ -1,7 +1,7 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.Client where
 
@@ -31,6 +31,7 @@ queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad [(FlowType, NominalDiffTime)]
 notesDayC :: Text -> Day -> ClientMonad [NoteView]
+
 traceC
   :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> queryFlowDayC :<|> queryFlowC)
   :<|> _ = clientIn senseiAPI Proxy
@@ -43,7 +44,7 @@ instance RunClient ClientMonad where
     let request =
           req
             { requestHeaders =
-                (mk "Host", encodeUtf8 $ pack $ "localhost:23456")
+                (mk "Host", "localhost:23456")
                   <| (mk "Origin", "http://localhost:23456")
                   <| (mk "X-API-Version", toHeader senseiVersion)
                   <| requestHeaders req
@@ -67,7 +68,6 @@ send act = do
       env = ClientEnv mgr base Nothing
   res <- runClientM (unClient act) env
   case res of
-
     -- server is not running, fork it
     Left (ConnectionError _) -> do
       daemonizeServer
@@ -84,6 +84,5 @@ send act = do
 
     -- something is wrong, bail out
     Left otherError -> error $ "failed to connect to server: " <> show otherError
-
     -- everything's right
     Right v -> pure v
