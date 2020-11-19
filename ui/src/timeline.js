@@ -1,8 +1,8 @@
 import { get } from './request.js';
 import { formatISODate } from './date.js';
 import { drawNotes } from './notes.js';
+import { drawCommands } from './commands.js';
 import { dom, clearElement } from './dom.js';
-import showdown from 'showdown';
 
 function colorOf(flowType) {
   switch (flowType) {
@@ -48,11 +48,14 @@ function drawChart(container, selectedDate, flowData, rowLabelling = (_ => selec
 */
 function createTimelineContainer(day, data, notesData) {
   const detailsName = 'checkbox-' + name;
-  const notesName = 'checkbox-' + name;
+  const notesName = 'notes-checkbox-' + name;
+  const commandsName = 'cmd-checkbox-' + name;
   const chart = <div class="timeline-chart" />;
   const notesDiv = <div class="timeline-chart" />;
+  const commandsDiv = <div class="timeline-chart" />;
   const details = <input type="checkbox" id={detailsName} />;
   const notes = <input type="checkbox" id={notesName} />;
+  const commands = <input type="checkbox" id={commandsName} />;
 
   const container =
     <div id={name} class='timeline'>
@@ -61,9 +64,12 @@ function createTimelineContainer(day, data, notesData) {
         {details}
         <label for={notesName}>Notes</label>
         {notes}
+        <label for={commandsName}>Commands</label>
+        {commands}
       </div>
       {chart}
       {notesDiv}
+      {commandsDiv}
     </div>;
 
   details.addEventListener('change', (e) => {
@@ -80,6 +86,15 @@ function createTimelineContainer(day, data, notesData) {
         drawNotes(notesDiv, notesData));
     } else {
       clearElement(notesDiv);
+    }
+  });
+
+  commands.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      get('/flows/arnaud/' + day + '/commands', (commandsData) =>
+        drawCommands(commandsDiv, commandsData));
+    } else {
+      clearElement(commandsDiv);
     }
   });
 

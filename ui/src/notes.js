@@ -1,3 +1,5 @@
+import showdown from 'showdown';
+
 function formatNote(note) {
   return "<div class='note'>" +
     new showdown.Converter({ simplifiedAutoLink: true }).makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent) +

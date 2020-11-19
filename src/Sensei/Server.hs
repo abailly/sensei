@@ -42,6 +42,14 @@ notesDayS file usr day = do
   notes <- liftIO $ readNotes file usrProfile
   pure $ map (uncurry NoteView) $ filter (sameDayThan day (localDay . fst)) notes
 
+commandsDayS ::
+  FilePath -> Text -> Day -> Handler [CommandView]
+commandsDayS file usr day = do
+  usrProfile <- userProfileS usr
+  commands <- liftIO $ readCommands file usrProfile
+  let tz = userTimezone usrProfile
+  pure $ map (mkCommandView tz) $ filter (sameDayThan day (localDay . utcToLocalTime tz . timestamp)) commands
+
 queryFlowDayS ::
   FilePath -> Text -> Day -> Handler [FlowView]
 queryFlowDayS file usr day = do

@@ -22,6 +22,7 @@ instance ToSchema FlowState
 instance ToSchema FlowType
 instance ToSchema FlowView
 instance ToSchema NoteView
+instance ToSchema CommandView
 instance ToSchema UserProfile
 
 instance ToParamSchema FlowType

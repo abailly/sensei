@@ -9,8 +9,7 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.Trans
 import Data.CaseInsensitive
 import Data.Sequence
-import Data.Text (Text, pack)
-import Data.Text.Encoding (encodeUtf8)
+import Data.Text (Text)
 import Data.Time
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.HTTP.Types.Status
@@ -31,9 +30,10 @@ queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad [(FlowType, NominalDiffTime)]
 notesDayC :: Text -> Day -> ClientMonad [NoteView]
+commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 
 traceC
-  :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> queryFlowDayC :<|> queryFlowC)
+  :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> commandsDayC :<|> queryFlowDayC :<|> queryFlowC)
   :<|> _ = clientIn senseiAPI Proxy
 
 newtype ClientMonad a = ClientMonad {unClient :: ClientM a}

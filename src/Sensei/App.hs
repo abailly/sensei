@@ -44,6 +44,7 @@ baseServer signal output =
              :<|> queryFlowSummaryS output
              :<|> queryFlowDaySummaryS output
              :<|> notesDayS output
+             :<|> commandsDayS output
              :<|> queryFlowDayS output
              :<|> queryFlowS output
          )

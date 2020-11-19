@@ -84,6 +84,13 @@ type GetNotes =
     :> "notes"
     :> Get '[JSON] [NoteView]
 
+type GetCommands =
+  Summary "Retrieve sequence of executed commands for some day."
+    :> Capture "user" Text
+    :> Capture "day" Day
+    :> "commands"
+    :> Get '[JSON] [CommandView]
+
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."
     :> Capture "user" Text
@@ -106,6 +113,7 @@ type SenseiAPI =
            :<|> GetGroupSummary
            :<|> GetDailySummary
            :<|> GetNotes
+           :<|> GetCommands
            :<|> GetFlowsTimeline
            :<|> GetGroupedTimelines
        )

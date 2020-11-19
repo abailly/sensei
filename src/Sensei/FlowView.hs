@@ -15,17 +15,37 @@ module Sensei.FlowView where
 import Data.Aeson hiding (Options)
 import Data.Function (on)
 import qualified Data.List as List
-import Data.Text(Text)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
+import Data.Text (Text)
 import Data.Time
 import GHC.Generics
 import Sensei.Flow
 import Sensei.Utils
 
-
-data NoteView = NoteView { noteStart :: LocalTime, noteContent :: Text }
+-- | A single note
+data NoteView = NoteView
+  { noteStart :: LocalTime,
+    noteContent :: Text
+  }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+-- | A view of an executed command
+data CommandView = CommandView
+  { commandStart :: LocalTime,
+    commandProcess :: Text,
+    commandElapsed :: NominalDiffTime
+  }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+mkCommandView ::
+  TimeZone -> Trace -> CommandView
+mkCommandView tz Trace {..} =
+  CommandView
+    { commandStart = utcToLocalTime tz timestamp,
+      commandProcess = process,
+      commandElapsed = elapsed
+    }
 
 -- | A single "flow" timeslice of a given type
 -- `FlowView`s times are expressed in the `LocalTime` of the users to which they
@@ -43,25 +63,25 @@ appendFlow _ _ Flow {_flowType = End} [] = []
 appendFlow tz _ Flow {_flowType = End, _flowState} (v : vs) =
   v {flowEnd = utcToLocalTime tz $ _flowStart _flowState} : vs
 appendFlow tz dayEnd Flow {..} views =
-      let view = FlowView st st _flowType
-          st = utcToLocalTime tz $ _flowStart _flowState
-       in case views of
-            (v : vs) -> view : fillFlowEnd dayEnd v st : vs
-            [] -> [view]
+  let view = FlowView st st _flowType
+      st = utcToLocalTime tz $ _flowStart _flowState
+   in case views of
+        (v : vs) -> view : fillFlowEnd dayEnd v st : vs
+        [] -> [view]
 
 -- OUCH
 fillFlowEnd :: TimeOfDay -> FlowView -> LocalTime -> FlowView
 fillFlowEnd endOfDay v st
-  |  flowStart v == flowEnd v =
-     if localDay st == localDay (flowStart v)
-     then v {flowEnd = st}
-     else
-       let end = LocalTime (localDay (flowStart v)) endOfDay
-           oneHour = secondsToNominalDiffTime 3600
-           plus1hour = addLocalTime oneHour (flowStart v)
-       in if end < (flowStart v)
-            then v {flowEnd = plus1hour}
-            else v {flowEnd = end}
+  | flowStart v == flowEnd v =
+    if localDay st == localDay (flowStart v)
+      then v {flowEnd = st}
+      else
+        let end = LocalTime (localDay (flowStart v)) endOfDay
+            oneHour = secondsToNominalDiffTime 3600
+            plus1hour = addLocalTime oneHour (flowStart v)
+         in if end < (flowStart v)
+              then v {flowEnd = plus1hour}
+              else v {flowEnd = end}
   | otherwise = v
 
 -- | Normalize the given list of views to ensure it starts and ends at "standard" time.
@@ -85,11 +105,12 @@ normalizeLastView :: LocalTime -> [FlowView] -> [FlowView]
 normalizeLastView _ [] = []
 normalizeLastView endOfDay [end] =
   if flowEnd end < endOfDay
-  then if flowEnd end == flowStart end
-       then [end { flowEnd = endOfDay}]
-       else [end, FlowView (flowEnd end) endOfDay Other]
-  else [end]
-normalizeLastView endOfDay (v : rest@(_:_)) = v : normalizeLastView endOfDay rest
+    then
+      if flowEnd end == flowStart end
+        then [end {flowEnd = endOfDay}]
+        else [end, FlowView (flowEnd end) endOfDay Other]
+    else [end]
+normalizeLastView endOfDay (v : rest@(_ : _)) = v : normalizeLastView endOfDay rest
 
 summarize :: [FlowView] -> [(FlowType, NominalDiffTime)]
 summarize views =
@@ -99,4 +120,4 @@ summarize views =
     |> fmap (\flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
 
 duration :: FlowView -> NominalDiffTime
-duration FlowView{flowStart, flowEnd} = diffLocalTime flowEnd flowStart
+duration FlowView {flowStart, flowEnd} = diffLocalTime flowEnd flowStart
