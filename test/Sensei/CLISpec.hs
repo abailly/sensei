@@ -17,3 +17,6 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses -r as 'Refactoring' flow type given flows list contains 'Refactoring'" $ do
       runOptionsParser (Just [FlowType "Refactoring"]) ["-r"] `shouldBe` Right (RecordOptions (FlowType "Refactoring"))
+
+    it "parses -n as 'Note' flow type given flows list contains 'Refactoring'" $ do
+      runOptionsParser (Just [FlowType "Refactoring"]) ["-n"] `shouldBe` Right (RecordOptions Note)

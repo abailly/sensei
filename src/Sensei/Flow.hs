@@ -76,7 +76,7 @@ instance FromJSON FlowType where
     other -> pure $ FlowType other
 
 instance ToHttpApiData FlowType where
-  toUrlPiece (FlowType f) = Text.pack (show f)
+  toUrlPiece (FlowType f) = f
   toUrlPiece Note = "Note"
   toUrlPiece End = "End"
   toUrlPiece Other = "Other"
@@ -97,7 +97,8 @@ defaultFlowTypes =
           "Troubleshooting",
           "Flowing",
           "Rework",
-          "Meeting"
+          "Meeting",
+          "Learning"
         ]
 
 data FlowState

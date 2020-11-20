@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Sensei.CLI where
 
@@ -8,6 +8,7 @@ import qualified Control.Exception.Safe as Exc
 import Data.Aeson hiding (Options, Success)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
@@ -19,7 +20,6 @@ import Sensei.Client
 import System.Console.ANSI
 import System.IO
 import System.IO.Unsafe
-import Data.Maybe (fromMaybe)
 
 data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
@@ -27,8 +27,8 @@ data Options
   | NotesOptions {notesDay :: Day, format :: NoteFormat}
   deriving (Show, Eq)
 
-runOptionsParser
-  :: Maybe [FlowType] -> [String] -> Either Text Options
+runOptionsParser ::
+  Maybe [FlowType] -> [String] -> Either Text Options
 runOptionsParser flows arguments =
   case execParserPure defaultPrefs (optionsParserInfo flows) arguments of
     Success opts -> Right opts
@@ -114,9 +114,12 @@ flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
     keyLetter End = 'E'
 
     mkFlag ftype parser =
-      flag' ftype (short (keyLetter ftype)  <> help (show ftype <> " period")) <|> parser
+      flag' ftype (short (keyLetter ftype) <> help (show ftype <> " period")) <|> parser
 
-    baseFlag = flag' End (short 'E' <> help "End previous period")
+    baseFlag =
+      flag' End (short 'E' <> help "End previous period")
+        <|> flag' Note (short 'n' <> help "Taking some note")
+        <|> flag' Other (short 'o' <> help "Other period")
 
 parseSenseiOptions :: IO Options
 parseSenseiOptions = execParser (optionsParserInfo Nothing)
@@ -154,10 +157,10 @@ formatNotes Section = concatMap sectionized
 
 sectionized :: NoteView -> [Text]
 sectionized (NoteView ts note) =
-  [ "#### " <> formatTimestamp ts , "" , note ]
+  ["#### " <> formatTimestamp ts, "", note]
 
 tblHeaders :: [Text]
-tblHeaders = [ "Time | Note", "--- | ---" ]
+tblHeaders = ["Time | Note", "--- | ---"]
 
 tblRow :: NoteView -> Text
 tblRow (NoteView ts note) = formatTimestamp ts <> " | " <> replaceEOLs note

@@ -14,7 +14,7 @@ export function drawCommands(container, commandsData) {
   dataTable.addColumn({ type: 'date', id: 'End' });
   commandsData.forEach(command => {
     let start = new Date(command.commandStart);
-    dataTable.addRow(['Commands', command.commandProcess, start, new Date(start.getTime() + command.commandElapsed)]);
+    dataTable.addRow(['Commands', command.commandProcess, start, new Date(start.getTime() + command.commandElapsed * 1000)]);
   });
   var options = {
     tooltip: { isHtml: true },
