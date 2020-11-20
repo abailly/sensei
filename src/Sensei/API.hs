@@ -131,13 +131,14 @@ data UserProfile = UserProfile
   { userName :: Text,
     userTimezone :: TimeZone,
     userStartOfDay :: TimeOfDay,
-    userEndOfDay :: TimeOfDay
+    userEndOfDay :: TimeOfDay,
+    userFlowTypes :: Maybe [FlowType]
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 defaultProfile :: UserProfile
 defaultProfile =
-  UserProfile { userName = "arnaud", userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00  }
+  UserProfile { userName = "arnaud", userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00, userFlowTypes = Nothing  }
 
 instance ToJSON TimeZone where
   toJSON = String . Text.pack . iso8601Show

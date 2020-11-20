@@ -32,9 +32,11 @@ queryFlowDaySummaryC :: Text -> Day -> ClientMonad [(FlowType, NominalDiffTime)]
 notesDayC :: Text -> Day -> ClientMonad [NoteView]
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 
+getUserProfileC :: Text -> ClientMonad UserProfile
+
 traceC
   :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> commandsDayC :<|> queryFlowDayC :<|> queryFlowC)
-  :<|> _ = clientIn senseiAPI Proxy
+  :<|> (getUserProfileC :<|> _) = clientIn senseiAPI Proxy
 
 newtype ClientMonad a = ClientMonad {unClient :: ClientM a}
   deriving newtype (Functor, Applicative, Monad, MonadIO)

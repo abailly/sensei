@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -121,8 +122,9 @@ flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
         <|> flag' Note (short 'n' <> help "Taking some note")
         <|> flag' Other (short 'o' <> help "Other period")
 
-parseSenseiOptions :: IO Options
-parseSenseiOptions = execParser (optionsParserInfo Nothing)
+parseSenseiOptions ::
+  UserProfile -> IO Options
+parseSenseiOptions UserProfile{userFlowTypes} = execParser (optionsParserInfo userFlowTypes)
 
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encode

@@ -24,10 +24,10 @@ import System.IO
 
 -- | Read all the views for a given `UserProfile`
 readViews :: FilePath -> UserProfile -> IO [FlowView]
-readViews file (UserProfile usr tz _ dayEnd) =
-  withBinaryFile file ReadMode $ loop accumulator usr []
+readViews file UserProfile{ userName, userTimezone,userEndOfDay} =
+  withBinaryFile file ReadMode $ loop accumulator userName []
   where
-    accumulator flow = flowView flow usr (appendFlow tz dayEnd)
+    accumulator flow = flowView flow userName (appendFlow userTimezone userEndOfDay)
 
 loop :: FromJSON b => (b -> [a] -> [a]) -> Text -> [a] -> Handle -> IO [a]
 loop g usr acc hdl = do
@@ -58,8 +58,8 @@ flowView f@Flow {..} usr mkView views =
 
 -- | Read all the views for a given `UserProfile`
 readCommands :: FilePath -> UserProfile -> IO [Trace]
-readCommands file (UserProfile usr _ _ _) =
-  withBinaryFile file ReadMode $ loop readTrace usr []
+readCommands file UserProfile{userName} =
+  withBinaryFile file ReadMode $ loop readTrace userName []
   where
     readTrace t acc = t : acc
 
