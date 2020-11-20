@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.CLI where
@@ -18,6 +19,7 @@ import Sensei.Client
 import System.Console.ANSI
 import System.IO
 import System.IO.Unsafe
+import Data.Maybe (fromMaybe)
 
 data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
@@ -102,15 +104,19 @@ notesParser =
 
 flowTypeParser ::
   Maybe [FlowType] -> Parser FlowType
-flowTypeParser _flows =
-  flag' (FlowType "Experimenting") (short 'e' <> help "Experimenting period")
-    <|> flag' (FlowType "Learning") (short 'l' <> help "Learning period")
-    <|> flag' (FlowType "Troubleshooting") (short 't' <> help "Troubleshooting period")
-    <|> flag' (FlowType "Flowing") (short 'f' <> help "Flowing period")
-    <|> flag' (FlowType "Rework") (short 'r' <> help "Rework period")
-    <|> flag' Other (short 'o' <> help "Other period")
-    <|> flag' End (short 'E' <> help "End previous period")
-    <|> flag' Note (short 'n' <> help "Taking some note")
+flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
+  foldr mkFlag baseFlag flows
+  where
+    keyLetter (FlowType "") = '.'
+    keyLetter (FlowType (Text.head . Text.toLower -> l)) = l
+    keyLetter Other = 'o'
+    keyLetter Note = 'n'
+    keyLetter End = 'E'
+
+    mkFlag ftype parser =
+      flag' ftype (short (keyLetter ftype)  <> help (show ftype <> " period")) <|> parser
+
+    baseFlag = flag' End (short 'E' <> help "End previous period")
 
 parseSenseiOptions :: IO Options
 parseSenseiOptions = execParser (optionsParserInfo Nothing)

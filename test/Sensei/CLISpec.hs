@@ -16,5 +16,4 @@ spec = describe "Command-Line Interface" $ do
       runOptionsParser Nothing ["-g"] `shouldSatisfy` isLeft
 
     it "parses -r as 'Refactoring' flow type given flows list contains 'Refactoring'" $ do
-      pending
       runOptionsParser (Just [FlowType "Refactoring"]) ["-r"] `shouldBe` Right (RecordOptions (FlowType "Refactoring"))
