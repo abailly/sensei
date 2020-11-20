@@ -1,14 +1,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+
 -- | Flows represent the various recorded events that are relevant to capture
 -- from a user's daily activity.
 --
@@ -24,13 +26,13 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
 import GHC.Generics
-import Servant
 import Numeric.Natural
+import Servant
 
--- |Current version of recorded `Flow` format.
--- This version /must/ be incremented on each change to the structure of `Flow` which
--- impacts the stored representation. Of course, deserialisation
--- functions should be provided in order to migrate data from previous versions.
+-- | Current version of recorded `Flow` format.
+--  This version /must/ be incremented on each change to the structure of `Flow` which
+--  impacts the stored representation. Of course, deserialisation
+--  functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
 currentVersion = 1
 
@@ -54,30 +56,49 @@ data Flow = Flow
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 data FlowType
-  = Learning
-  | Experimenting
-  | Troubleshooting
-  | Flowing
-  | Rework
+  = FlowType Text
   | Note
-  | Other
-  | Meeting
   | End
-  deriving (Eq, Show, Ord, Generic, ToJSON, FromJSON)
+  | Other
+  deriving (Eq, Show, Ord)
+
+instance ToJSON FlowType where
+  toJSON (FlowType f) = String f
+  toJSON Note = "Note"
+  toJSON End = "End"
+  toJSON Other = "Other"
+
+instance FromJSON FlowType where
+  parseJSON = withText "FlowType" $ \t -> case t of
+    "Note" -> pure Note
+    "End" -> pure End
+    "Other" -> pure Other
+    other -> pure $ FlowType other
 
 instance ToHttpApiData FlowType where
-  toUrlPiece f = Text.pack (show f)
+  toUrlPiece (FlowType f) = Text.pack (show f)
+  toUrlPiece Note = "Note"
+  toUrlPiece End = "End"
+  toUrlPiece Other = "Other"
 
 instance FromHttpApiData FlowType where
-  parseUrlPiece "Learning" = pure Learning
-  parseUrlPiece "Experimenting" = pure Experimenting
-  parseUrlPiece "Troubleshooting" = pure Troubleshooting
-  parseUrlPiece "Flowing" = pure Flowing
-  parseUrlPiece "Rework" = pure Rework
-  parseUrlPiece "Note" = pure Note
   parseUrlPiece "End" = pure End
-  parseUrlPiece "Meeting" = pure Meeting
-  parseUrlPiece _txt = pure Other
+  parseUrlPiece "Note" = pure Note
+  parseUrlPiece "Other" = pure Other
+  parseUrlPiece other = pure $ FlowType other
+
+-- | Default flow types when user does not define her own list
+-- These are the flow types available for recording, on top of the
+-- standard ones which are `Note`, `End` and `Other`
+defaultFlowTypes :: [FlowType]
+defaultFlowTypes =
+  FlowType
+    <$> [ "Experimenting",
+          "Troubleshooting",
+          "Flowing",
+          "Rework",
+          "Meeting"
+        ]
 
 data FlowState
   = FlowState

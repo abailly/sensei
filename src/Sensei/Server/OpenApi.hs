@@ -18,14 +18,21 @@ instance ToSchema ExitCode where
 instance ToSchema TimeZone where
   declareNamedSchema _ = return $ NamedSchema (Just "TimeZone") $ mempty & type_ .~ Just SwaggerString
 
+instance ToSchema FlowType where
+  declareNamedSchema _ = return $ NamedSchema (Just "FlowType") $ mempty & type_ .~ Just SwaggerString
+
+instance ToParamSchema FlowType where
+  toParamSchema _ = mempty
+     & type_ ?~ SwaggerString
+     & enum_ ?~ [ "End", "Note", "Other", "<any string>" ]
+
+
 instance ToSchema FlowState
-instance ToSchema FlowType
 instance ToSchema FlowView
 instance ToSchema NoteView
 instance ToSchema CommandView
 instance ToSchema UserProfile
 
-instance ToParamSchema FlowType
 instance ToParamSchema Group
 instance ToSchema Trace
 instance ToSchema Group

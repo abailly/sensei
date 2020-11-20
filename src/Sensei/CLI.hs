@@ -4,7 +4,7 @@
 module Sensei.CLI where
 
 import qualified Control.Exception.Safe as Exc
-import Data.Aeson hiding (Options)
+import Data.Aeson hiding (Options, Success)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
@@ -23,17 +23,26 @@ data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
   | RecordOptions {recordType :: FlowType}
   | NotesOptions {notesDay :: Day, format :: NoteFormat}
+  deriving (Show, Eq)
 
-optionsParserInfo :: ParserInfo Options
-optionsParserInfo =
+runOptionsParser
+  :: Maybe [FlowType] -> [String] -> Either Text Options
+runOptionsParser flows arguments =
+  case execParserPure defaultPrefs (optionsParserInfo flows) arguments of
+    Success opts -> Right opts
+    Failure f -> Left (Text.pack . show $ execFailure f "")
+    _ -> Left "Unexpected completion invoked"
+
+optionsParserInfo :: Maybe [FlowType] -> ParserInfo Options
+optionsParserInfo flows =
   info
-    (optionsParser <**> helper)
+    (optionsParser flows <**> helper)
     (progDesc "Epoché - Record start time of some flow type for current user")
 
-optionsParser :: Parser Options
-optionsParser =
+optionsParser :: Maybe [FlowType] -> Parser Options
+optionsParser flows =
   QueryOptions <$> optional dayParser <*> summarizeParser <*> many groupParser
-    <|> RecordOptions <$> flowTypeParser
+    <|> RecordOptions <$> flowTypeParser flows
     <|> NotesOptions <$> dayParser <* notesParser <*> formatParser
 
 {-# INLINE today #-}
@@ -76,7 +85,7 @@ groupParser =
   option
     auto
     ( long "group"
-        <> short 'g'
+        <> short 'G'
         <> metavar "GROUP"
         <> help "groups for retrieving daily views, one of Week, Month, Quarter or Year"
     )
@@ -91,20 +100,20 @@ notesParser =
         <> help "Display only notes for a given day"
     )
 
-flowTypeParser :: Parser FlowType
-flowTypeParser =
-  flag' Experimenting (short 'e' <> help "Experimenting period")
-    <|> flag' Learning (short 'l' <> help "Learning period")
-    <|> flag' Troubleshooting (short 't' <> help "Troubleshooting period")
-    <|> flag' Flowing (short 'f' <> help "Flowing period")
-    <|> flag' Rework (short 'r' <> help "Rework period")
+flowTypeParser ::
+  Maybe [FlowType] -> Parser FlowType
+flowTypeParser _flows =
+  flag' (FlowType "Experimenting") (short 'e' <> help "Experimenting period")
+    <|> flag' (FlowType "Learning") (short 'l' <> help "Learning period")
+    <|> flag' (FlowType "Troubleshooting") (short 't' <> help "Troubleshooting period")
+    <|> flag' (FlowType "Flowing") (short 'f' <> help "Flowing period")
+    <|> flag' (FlowType "Rework") (short 'r' <> help "Rework period")
     <|> flag' Other (short 'o' <> help "Other period")
     <|> flag' End (short 'E' <> help "End previous period")
-    <|> flag' Meeting (short 'm' <> help "Meeting")
     <|> flag' Note (short 'n' <> help "Taking some note")
 
 parseSenseiOptions :: IO Options
-parseSenseiOptions = execParser optionsParserInfo
+parseSenseiOptions = execParser (optionsParserInfo Nothing)
 
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encode

@@ -80,7 +80,8 @@ test-suite sensei-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Sensei.FlowAPISpec
+  other-modules:       Sensei.CLISpec
+                     , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
                      , Sensei.TestHelper
                      , Sensei.UserSpec

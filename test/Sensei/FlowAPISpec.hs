@@ -27,7 +27,7 @@ spec = withApp $
       let expectedGroups =
             [ Leaf
                 [ FlowView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50000) (TimeOfDay 18 30 0)) Other,
-                  FlowView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) Meeting
+                  FlowView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (FlowType "Meeting")
                 ]
             ]
 
@@ -48,7 +48,7 @@ spec = withApp $
               GroupLevel
                 Day
                 (LocalTime (toEnum 50001) (TimeOfDay 1 0 0))
-                (Leaf [FlowView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50001) (TimeOfDay 18 30 0)) Meeting])
+                (Leaf [FlowView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50001) (TimeOfDay 18 30 0)) (FlowType "Meeting")])
             ]
 
       getJSON "/flows/arnaud?group=Day"

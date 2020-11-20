@@ -4,7 +4,6 @@ module Sensei.TestHelper where
 
 import Control.Exception.Safe(finally)
 import Sensei.App ( senseiApp )
-import System.Directory ( removePathForcibly )
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
