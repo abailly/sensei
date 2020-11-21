@@ -1,4 +1,5 @@
-import { get } from './request.js';
+import {get} from './request.js';
+import {config} from "./config";
 import { dom } from './dom.js';
 
 
@@ -50,7 +51,7 @@ function drawCharts(summaryData) {
 }
 
 function fetchAllSummaryData() {
-  get('/flows/arnaud/summary', drawCharts);
+  get(`/flows/${config.user}/summary`, drawCharts);
 }
 
 export default function summary() {

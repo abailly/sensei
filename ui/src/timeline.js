@@ -1,8 +1,9 @@
-import { get } from './request.js';
-import { formatISODate } from './date.js';
-import { drawNotes } from './notes.js';
-import { drawCommands } from './commands.js';
-import { dom, clearElement } from './dom.js';
+import {get} from './request.js';
+import {formatISODate} from './date.js';
+import {drawNotes} from './notes.js';
+import {drawCommands} from './commands.js';
+import {dom, clearElement} from './dom.js';
+import {config} from "./config";
 
 function colorOf(flowType) {
   switch (flowType) {
@@ -82,7 +83,7 @@ function createTimelineContainer(day, data, notesData) {
 
   notes.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get('/flows/arnaud/' + day + '/notes', (notesData) =>
+      get(`/flows/${config.user}/${day}/notes`, (notesData) =>
         drawNotes(notesDiv, notesData));
     } else {
       clearElement(notesDiv);
@@ -91,7 +92,7 @@ function createTimelineContainer(day, data, notesData) {
 
   commands.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get('/flows/arnaud/' + day + '/commands', (commandsData) =>
+      get(`/flows/${config.user}/${day}/commands`, (commandsData) =>
         drawCommands(commandsDiv, commandsData));
     } else {
       clearElement(commandsDiv);
@@ -116,13 +117,13 @@ function drawCharts(flowData) {
 }
 
 function fetchFlowData(selectedDate) {
-  get('/flows/arnaud/' + selectedDate, (flowData) => {
+  get(`/flows/${config.user}/` + selectedDate, (flowData) => {
     createTimelineContainer(selectedDate, flowData);
   });
 };
 
 function fetchAllFlowData() {
-  get('/flows/arnaud?group=Day', drawCharts);
+  get(`/flows/${config.user}?group=Day`, drawCharts);
 };
 
 export default function timeline() {
