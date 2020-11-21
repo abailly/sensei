@@ -1,5 +1,26 @@
 # sensei
 
+# Configuration
+
+## Project directory
+Change the value of the current directory in `App.hs`
+i.e:
+```haskell
+daemonizeServer =
+  daemonize $
+    -- TODO fix this silly hardcoded path
+    -- this is so because I want to ensure the server is started in a location
+    -- where it can find the FE resources...
+    withCurrentDirectory "PATH_TO_PROJECT_DIR" $ startServer
+```
+
+## Sensei logs
+Add the file `sensei.log` in your home directory:
+```bash
+touch ~/.sensei.log
+```
+
+
 # User Profile
 
 User profile can be set using the (local) server's API.
