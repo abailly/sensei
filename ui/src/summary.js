@@ -1,5 +1,5 @@
-import { get } from './request.js';
-import { dom } from './dom.js';
+import {get} from './request.js';
+import {config} from "./config";
 
 
 /* Transform summary data grouped by day into data points
@@ -50,7 +50,7 @@ function drawCharts(summaryData) {
 }
 
 function fetchAllSummaryData() {
-  get('/flows/arnaud/summary', drawCharts);
+  get(`/flows/${config.user}/summary`, drawCharts);
 }
 
 export default function summary() {

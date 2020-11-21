@@ -14,7 +14,8 @@ module.exports = {
       filename: "./index.html"
     }),
     new webpack.DefinePlugin({
-      VERSION: JSON.stringify(require('./package.json').version)
+      VERSION: JSON.stringify(require('./package.json').version),
+      USER: "'arnaud'"
     })
   ],
   module: {
