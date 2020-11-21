@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -21,6 +22,7 @@ import Data.Text (Text)
 import Data.Time
 import GHC.Generics
 import Sensei.Flow
+import Sensei.Summary
 import Sensei.Utils
 
 -- | A single note
@@ -38,6 +40,13 @@ data CommandView = CommandView
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
+instance HasSummary CommandView Text where
+  summarize commands =
+    commands
+      |> List.sortBy (compare `on` commandProcess)
+      |> NE.groupBy ((==) `on` commandProcess)
+      |> fmap (\cmds@(f :| _) -> (commandProcess f, sum $ fmap commandElapsed cmds))
+
 mkCommandView ::
   TimeZone -> Trace -> CommandView
 mkCommandView tz Trace {..} =
@@ -46,6 +55,10 @@ mkCommandView tz Trace {..} =
       commandProcess = process,
       commandElapsed = elapsed
     }
+
+commandOnDay ::
+  Day -> CommandView -> Bool
+commandOnDay day = sameDayThan day (localDay . commandStart)
 
 -- | A single "flow" timeslice of a given type
 -- `FlowView`s times are expressed in the `LocalTime` of the users to which they
@@ -56,6 +69,10 @@ data FlowView = FlowView
     flowType :: FlowType
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+flowOnDay ::
+  Day -> FlowView -> Bool
+flowOnDay day = sameDayThan day (localDay . flowStart)
 
 appendFlow :: TimeZone -> TimeOfDay -> Flow -> [FlowView] -> [FlowView]
 appendFlow _ _ Flow {_flowType = Note} views = views
@@ -112,12 +129,12 @@ normalizeLastView endOfDay [end] =
     else [end]
 normalizeLastView endOfDay (v : rest@(_ : _)) = v : normalizeLastView endOfDay rest
 
-summarize :: [FlowView] -> [(FlowType, NominalDiffTime)]
-summarize views =
-  views
-    |> List.sortBy (compare `on` flowType)
-    |> NE.groupBy ((==) `on` flowType)
-    |> fmap (\flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
+instance HasSummary FlowView FlowType where
+  summarize views =
+    views
+      |> List.sortBy (compare `on` flowType)
+      |> NE.groupBy ((==) `on` flowType)
+      |> fmap (\flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
 
 duration :: FlowView -> NominalDiffTime
 duration FlowView {flowStart, flowEnd} = diffLocalTime flowEnd flowStart

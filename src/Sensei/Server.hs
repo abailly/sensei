@@ -51,26 +51,30 @@ commandsDayS ::
 commandsDayS file usr day = do
   usrProfile <- getUserProfileS usr
   commands <- liftIO $ readCommands file usrProfile
-  let tz = userTimezone usrProfile
-  pure $ map (mkCommandView tz) $ filter (sameDayThan day (localDay . utcToLocalTime tz . timestamp)) commands
+  pure $ filter (commandOnDay day) commands
 
 queryFlowDayS ::
   (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m [FlowView]
 queryFlowDayS file usr day = do
   usrProfile <- getUserProfileS usr
   views <- liftIO $ readViews file usrProfile
-  pure $ filter (sameDayThan day (localDay . flowStart)) views
+  pure $ filter (flowOnDay day) views
 
 queryFlowDaySummaryS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m [(FlowType, NominalDiffTime)]
+  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m FlowSummary
 queryFlowDaySummaryS file usr day = do
   usrProfile <- getUserProfileS usr
   views <- liftIO $ readViews file usrProfile
-  pure $
-    views
-      |> filter (sameDayThan day (localDay . flowStart))
-      |> summarize
-  where
+  commands <- liftIO $ readCommands file usrProfile
+  let summaryFlows = views
+        |> filter (flowOnDay day)
+        |> summarize
+      summaryCommands = commands
+        |> filter (commandOnDay day)
+        |> summarize
+      summaryPeriod = (day, day)
+  pure $ FlowSummary{..}
+
 
 queryFlowSummaryS ::
   (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> m [GroupViews (FlowType, NominalDiffTime)]

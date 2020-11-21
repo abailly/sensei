@@ -15,6 +15,7 @@ module Sensei.API
     KillServer,
     senseiAPI,
     module Sensei.Flow,
+    module Sensei.Summary,
     module Sensei.FlowView,
     module Sensei.Group,
     module Sensei.Utils,
@@ -42,6 +43,7 @@ import Data.Time
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
 import Sensei.Flow
+import Sensei.Summary
 import Sensei.FlowView
 import Sensei.Group
 import Sensei.Utils
@@ -76,7 +78,7 @@ type GetDailySummary =
     :> Capture "user" Text
     :> Capture "day" Day
     :> "summary"
-    :> Get '[JSON] [(FlowType, NominalDiffTime)]
+    :> Get '[JSON] FlowSummary
 
 type GetNotes =
   Summary "Retrieve timestamped notes for some day, or all notes if no day is given."

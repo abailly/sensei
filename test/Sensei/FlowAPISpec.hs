@@ -76,3 +76,24 @@ spec = withApp $
 
       getJSON "/flows/arnaud/1995-10-10/commands"
         `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expected)
+
+    it "GET /flows/<user>/day/summary returns a summary of flows and traces for given day" $ do
+      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+          cmd1 = Trace (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10 1
+          cmd2 = Trace (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100 1
+
+      postJSON_ "/flows/arnaud/Other" flow1
+      postJSON_ "/flows/arnaud/Learning" flow2
+      postJSON_ "/trace" cmd1
+      postJSON_ "/trace" cmd2
+
+      let expected =
+            FlowSummary
+              { summaryPeriod = (toEnum 50000, toEnum 50000),
+                summaryFlows = [(FlowType "Learning", 0), (Other, 1000)],
+                summaryCommands = [("foo", 10), ("git", 100)]
+              }
+
+      getJSON "/flows/arnaud/1995-10-10/summary"
+        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expected)

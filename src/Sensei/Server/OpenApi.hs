@@ -32,7 +32,7 @@ instance ToSchema FlowView
 instance ToSchema NoteView
 instance ToSchema CommandView
 instance ToSchema UserProfile
-
+instance ToSchema FlowSummary
 instance ToParamSchema Group
 instance ToSchema Trace
 instance ToSchema Group

@@ -57,11 +57,11 @@ flowView f@Flow {..} usr mkView views =
     else views
 
 -- | Read all the views for a given `UserProfile`
-readCommands :: FilePath -> UserProfile -> IO [Trace]
-readCommands file UserProfile{userName} =
+readCommands :: FilePath -> UserProfile -> IO [CommandView]
+readCommands file UserProfile{userName,userTimezone} =
   withBinaryFile file ReadMode $ loop readTrace userName []
   where
-    readTrace t acc = t : acc
+    readTrace t acc = mkCommandView userTimezone t : acc
 
 -- | Read user profile from XDG Configuration directory.
 -- The `UserProfile` is stored as a JSON-encoded file in the XDG configuration direcotry

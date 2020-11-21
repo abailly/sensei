@@ -28,7 +28,7 @@ flowC :: Text -> FlowType -> FlowState -> ClientMonad ()
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
-queryFlowDaySummaryC :: Text -> Day -> ClientMonad [(FlowType, NominalDiffTime)]
+queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
 notesDayC :: Text -> Day -> ClientMonad [NoteView]
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 
