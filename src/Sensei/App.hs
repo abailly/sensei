@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DataKinds #-}
@@ -27,7 +28,7 @@ import Control.Monad.Except
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
-    :<|> (KillServer :<|> (CheckVersion :> SenseiAPI))
+    :<|> (KillServer :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI))
     :<|> Raw
 
 fullAPI :: Proxy FullAPI

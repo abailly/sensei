@@ -54,6 +54,7 @@ library
                      , servant-client-core
                      , servant-swagger
                      , swagger2
+                     , template-haskell
                      , text
                      , time
                      , unix
