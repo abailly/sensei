@@ -2,7 +2,7 @@ import {get} from './request.js';
 import {formatISODate} from './date.js';
 import {drawNotes} from './notes.js';
 import {drawCommands} from './commands.js';
-import {clearElement} from './dom.js';
+import {dom, clearElement} from './dom.js';
 import {config} from "./config";
 
 function colorOf(flowType) {

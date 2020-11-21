@@ -1,5 +1,6 @@
 import {get} from './request.js';
 import {config} from "./config";
+import { dom } from './dom.js';
 
 
 /* Transform summary data grouped by day into data points
