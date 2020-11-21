@@ -10,7 +10,7 @@
 
 -- | Types and functions to expose and manipulate the server's version
 module Sensei.Version
-  ( CheckVersion,
+  ( CheckVersion, checkVersion,
     senseiVersion,
     Version,
   )
@@ -32,6 +32,15 @@ import Servant.Server.Internal.DelayedIO
 -- file.
 senseiVersion :: Version
 senseiVersion = version
+
+checkVersion :: Version -> Version -> Either T.Text ()
+checkVersion expected actual =
+  if haveSameMajorMinor expected actual
+  then pure ()
+  else Left ("Incorrect X-API-Version, found " <> T.pack (showVersion actual) <> ", expected " <> T.pack (showVersion expected))
+
+haveSameMajorMinor :: Version -> Version -> Bool
+haveSameMajorMinor expected actual = take 2 (versionBranch expected) == take 2 (versionBranch actual)
 
 -- | A type-level "combinator" to mark part of an API as requiring a version check
 --
@@ -75,10 +84,7 @@ instance
           mev =
             maybe (Left "Cannot find header X-API-Version") Right (lookup "x-api-version" (requestHeaders req))
               >>= parseHeader
-              >>= \v ->
-                if v == senseiVersion
-                  then pure ()
-                  else Left ("Incorrect X-API-Version, found " <> T.pack (show v) <> ", expected " <> T.pack (show senseiVersion))
+              >>= checkVersion senseiVersion
 
           errReq :: T.Text -> DelayedIO ()
           errReq txt = delayedFailFatal $ err406 {errBody = encodeUtf8 (fromStrict txt)}

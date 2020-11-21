@@ -86,6 +86,7 @@ test-suite sensei-test
                      , Sensei.FlowViewSpec
                      , Sensei.TestHelper
                      , Sensei.UserSpec
+                     , Sensei.VersionSpec
   build-depends:       aeson
                      , base
                      , bytestring
