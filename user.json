@@ -1,0 +1,14 @@
+{
+  "userStartOfDay": "08:00:00",
+  "userEndOfDay": "18:30:00",
+  "userName": "arnaud",
+  "userTimezone": "+01:00",
+  "userFlowTypes": [
+    "Experimenting",
+    "Troubleshooting",
+    "Flowing",
+    "Rework",
+    "Meeting",
+    "Learning"
+  ]
+}
