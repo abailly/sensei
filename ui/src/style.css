@@ -24,6 +24,14 @@ div#timelines {
     height: 100px;
 }
 
+.summary {
+    width:100%;
+}
+
+.summaryChart {
+    width:100%;
+}
+
 .note {
     max-width: 20em;
     padding: .5em;

@@ -10,10 +10,7 @@ export default function charts() {
       <input type="date" id="flowDate" name="flowDate" />
       <label for="selectAll">All</label>
       <input type="checkbox" id="selectAll" />
-      <label for="summary">Summary</label>
-      <input type="checkbox" id="summary" />
     </div>
-    <div id="summaries"></div>
     <div id="timelines"></div>
   </div>;
 
@@ -21,7 +18,6 @@ export default function charts() {
   document.getElementById('main').appendChild(content);
 
   const tl = timeline();
-  const sum = summary();
 
   document.getElementById('flowDate').addEventListener('change', (e) => {
     clear('timelines');
@@ -39,11 +35,5 @@ export default function charts() {
     }
   });
 
-  document.getElementById('summary').addEventListener('change', (e) => {
-    clear('summaries');
-    if (e.target.checked) {
-      sum.fetchAllSummaryData();
-    }
-  });
   return content;
 }

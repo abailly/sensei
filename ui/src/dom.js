@@ -17,7 +17,14 @@
  * @returns {Object} a newly initialized DOM element with given attributes and children
  */
 export function dom(tagName, attrs = {}, ...children) {
-  const elem = Object.assign(document.createElement(tagName), attrs);
+  const elem = document.createElement(tagName);
+  for (const attr in attrs) {
+    if (attr === 'class') {
+      elem.classList.add(attrs[attr].split(' +'));
+    } else {
+      elem[attr] = attrs[attr];
+    }
+  };
   for (const child of children) {
     if (Array.isArray(child)) elem.append(...child);
     else elem.append(child);

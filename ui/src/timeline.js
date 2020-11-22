@@ -1,9 +1,10 @@
-import {get} from './request.js';
-import {formatISODate} from './date.js';
-import {drawNotes} from './notes.js';
-import {drawCommands} from './commands.js';
-import {dom, clearElement} from './dom.js';
-import {config} from "./config";
+import { get } from './request.js';
+import { formatISODate } from './date.js';
+import { drawNotes } from './notes.js';
+import { drawCommands } from './commands.js';
+import { drawSummary } from './summary.js';
+import { dom, clearElement } from './dom.js';
+import { config } from "./config";
 
 function colorOf(flowType) {
   switch (flowType) {
@@ -51,12 +52,15 @@ function createTimelineContainer(day, data, notesData) {
   const detailsName = 'checkbox-' + name;
   const notesName = 'notes-checkbox-' + name;
   const commandsName = 'cmd-checkbox-' + name;
+  const summaryName = 'summary-checkbox-' + name;
   const chart = <div class="timeline-chart" />;
   const notesDiv = <div class="timeline-chart" />;
   const commandsDiv = <div class="timeline-chart" />;
+  const summaryDiv = <div class="summary" />;
   const details = <input type="checkbox" id={detailsName} />;
   const notes = <input type="checkbox" id={notesName} />;
   const commands = <input type="checkbox" id={commandsName} />;
+  const summary = <input type="checkbox" id={summaryName} />;
 
   const container =
     <div id={name} class='timeline'>
@@ -67,10 +71,13 @@ function createTimelineContainer(day, data, notesData) {
         {notes}
         <label for={commandsName}>Commands</label>
         {commands}
+        <label for={summaryName}>Summary</label>
+        {summary}
       </div>
       {chart}
       {notesDiv}
       {commandsDiv}
+      {summaryDiv}
     </div>;
 
   details.addEventListener('change', (e) => {
@@ -96,6 +103,16 @@ function createTimelineContainer(day, data, notesData) {
         drawCommands(commandsDiv, commandsData));
     } else {
       clearElement(commandsDiv);
+    }
+  });
+
+
+  summary.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      get(`/flows/${config.user}/${day}/summary`, (summaryData) =>
+        drawSummary(summaryDiv, summaryData));
+    } else {
+      clearElement(summaryDiv);
     }
   });
 

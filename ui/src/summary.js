@@ -1,5 +1,5 @@
-import {get} from './request.js';
-import {config} from "./config";
+import { get } from './request.js';
+import { config } from "./config";
 import { dom } from './dom.js';
 
 
@@ -42,22 +42,50 @@ function drawChart(name, container, data) {
   chart.draw(dataTable, options);
 }
 
-function drawCharts(summaryData) {
-  const types = groupByTypes(summaryData);
-  for (var k in types) {
-    const container = createSummaryContainer('summary_' + k);
-    drawChart(k, container, types[k]);
+function makeSummaryFlowsTable(summaryData) {
+  var titles = ["Flow Types"];
+  var data = ["Flows"];
+  summaryData.summaryFlows.forEach(flow => {
+    titles.push(flow[0]);
+    data.push(flow[1]);
+  });
+
+  return [titles, data];
+}
+
+function makeSummaryCommandsTable(summaryData) {
+  var titles = ["Commands"];
+  var data = ["Commands"];
+  summaryData.summaryCommands.forEach(flow => {
+    titles.push(flow[0]);
+    data.push(flow[1]);
+  });
+  titles.push({ role: 'annotation' });
+  data.push('');
+  return [titles, data];
+}
+
+function drawSummaryChart(container, summaryTable) {
+  var flowsData = google.visualization.arrayToDataTable(summaryTable);
+  var options = {
+    height: 150,
+    width: 1000,
+    legend: { position: 'top', maxLines: 3 },
+    bar: { groupWidth: '75%' },
+    isStacked: true
   };
+  var chart = new google.visualization.BarChart(container);
+
+  chart.draw(flowsData, options);
 }
 
-function fetchAllSummaryData() {
-  get(`/flows/${config.user}/summary`, drawCharts);
-}
+export function drawSummary(container, summaryData) {
+  const fdiv = <div class='summaryChart'></div>;
+  const cdiv = <div class='summaryChart'></div>;
 
-export default function summary() {
-  const obj = {};
+  drawSummaryChart(fdiv, makeSummaryFlowsTable(summaryData));
+  drawSummaryChart(cdiv, makeSummaryCommandsTable(summaryData));
 
-  obj.fetchAllSummaryData = fetchAllSummaryData;
-
-  return obj;
+  container.appendChild(fdiv);
+  container.appendChild(cdiv);
 }
