@@ -5,10 +5,8 @@
 
 module Sensei.VersionSpec where
 
-import Data.Version
 import Sensei.Version
 import Servant
-import Servant.Server
 import Test.Hspec
 import Test.Hspec.Wai
 

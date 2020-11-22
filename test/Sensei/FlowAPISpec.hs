@@ -11,7 +11,7 @@ import Test.Hspec.Wai
 import Test.Hspec.Wai.Matcher
 
 spec :: Spec
-spec = withApp $
+spec = withApp app $
   describe "Flows API" $ do
     it "POST /flows/<user>/Other with Flow body register start of a flow event" $ do
       let flow = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"

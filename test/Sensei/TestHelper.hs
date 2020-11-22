@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Sensei.TestHelper where
 
@@ -19,17 +20,27 @@ import Data.Functor(void)
 import System.IO ( hClose )
 import Control.Concurrent.MVar
 import System.Directory
+import Control.Monad (unless)
 
-withApp :: SpecWith ((), Application) -> Spec
-withApp = around mkApp
+data AppBuilder = AppBuilder { withStorage :: Bool }
 
-mkApp :: ActionWith ((), Application) -> IO ()
-mkApp act = do
+app :: AppBuilder
+app = AppBuilder True
+
+withoutStorage :: AppBuilder -> AppBuilder
+withoutStorage builder = builder{withStorage = False}
+
+withApp :: AppBuilder -> SpecWith ((), Application) -> Spec
+withApp builder = around (buildApp builder)
+
+buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
+buildApp AppBuilder{..} act = do
   file <- mkTempFile
+  unless withStorage $ removePathForcibly file
   config <- mkTempDir
   signal <- newEmptyMVar
-  let app = senseiApp signal file config
-  act ((), app)
+  let application = senseiApp signal file config
+  act ((), application)
     `finally` removePathForcibly file >> removePathForcibly config
   where
     mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
