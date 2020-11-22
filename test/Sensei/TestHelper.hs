@@ -39,7 +39,7 @@ buildApp AppBuilder{..} act = do
   unless withStorage $ removePathForcibly file
   config <- mkTempDir
   signal <- newEmptyMVar
-  let application = senseiApp signal file config
+  application <- senseiApp signal file config
   act ((), application)
     `finally` removePathForcibly file >> removePathForcibly config
   where

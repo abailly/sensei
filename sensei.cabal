@@ -1,5 +1,5 @@
 name:                sensei
-version:             0.4.0
+version:             0.4.1
 synopsis:            Short description of your package
 homepage:            https://github.com/githubuser/sensei#readme
 license:             BSD3
@@ -85,6 +85,7 @@ test-suite sensei-test
   other-modules:       Sensei.CLISpec
                      , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
+                     , Sensei.ServerSpec
                      , Sensei.TestHelper
                      , Sensei.UserSpec
                      , Sensei.VersionSpec

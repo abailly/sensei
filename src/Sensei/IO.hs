@@ -3,14 +3,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.IO
-  ( readNotes,
+  ( initLogStorage,
+    readNotes,
     readViews,
     readCommands,
-    readProfile, writeProfile
+    readProfile,
+    writeProfile,
   )
 where
 
 import qualified Control.Exception.Safe as Exc
+import Control.Monad (unless)
 import Data.Aeson hiding (Options)
 import Data.Bifunctor
 import qualified Data.ByteString as BS
@@ -22,9 +25,16 @@ import System.Directory
 import System.FilePath ((</>))
 import System.IO
 
+-- | Initialise a log store at given path
+initLogStorage ::
+  FilePath -> IO ()
+initLogStorage output = do
+  hasFile <- doesFileExist output
+  unless hasFile $ openFile output WriteMode >>= hClose
+
 -- | Read all the views for a given `UserProfile`
 readViews :: FilePath -> UserProfile -> IO [FlowView]
-readViews file UserProfile{ userName, userTimezone,userEndOfDay} =
+readViews file UserProfile {userName, userTimezone, userEndOfDay} =
   withBinaryFile file ReadMode $ loop accumulator userName []
   where
     accumulator flow = flowView flow userName (appendFlow userTimezone userEndOfDay)
@@ -58,7 +68,7 @@ flowView f@Flow {..} usr mkView views =
 
 -- | Read all the views for a given `UserProfile`
 readCommands :: FilePath -> UserProfile -> IO [CommandView]
-readCommands file UserProfile{userName,userTimezone} =
+readCommands file UserProfile {userName, userTimezone} =
   withBinaryFile file ReadMode $ loop readTrace userName []
   where
     readTrace t acc = mkCommandView userTimezone t : acc

@@ -1,10 +1,10 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -12,10 +12,13 @@ module Sensei.App where
 
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
+import Control.Monad.Except
+import Control.Monad.Reader
 import Data.Swagger (Swagger)
 import Network.Wai.Application.Static
 import Preface.Server
 import Sensei.API
+import Sensei.IO
 import Sensei.Server
 import Sensei.Server.OpenApi
 import Sensei.Version
@@ -23,8 +26,6 @@ import Servant
 import System.Directory
 import System.FilePath
 import System.Posix.Daemonize
-import Control.Monad.Reader
-import Control.Monad.Except
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -38,7 +39,7 @@ sensei :: FilePath -> IO ()
 sensei output = do
   signal <- newEmptyMVar
   configDir <- getConfigDirectory
-  server <- startAppServer "" [] 23456 (pure $ senseiApp signal output configDir)
+  server <- startAppServer "" [] 23456 (senseiApp signal output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
   where
     getConfigDirectory = do
@@ -49,7 +50,9 @@ sensei output = do
 
 baseServer ::
   (MonadReader FilePath m, MonadIO m, MonadError ServerError m) =>
-  MVar () -> FilePath ->  ServerT (KillServer :<|> SenseiAPI) m
+  MVar () ->
+  FilePath ->
+  ServerT (KillServer :<|> SenseiAPI) m
 baseServer signal output =
   killS signal
     :<|> traceS output
@@ -64,15 +67,17 @@ baseServer signal output =
     :<|> getUserProfileS
     :<|> putUserProfileS
 
-senseiApp :: MVar () -> FilePath -> FilePath -> Application
-senseiApp signal output configDir =
-  serve fullAPI $ hoistServer fullAPI (`runReaderT` configDir) $
-    pure senseiSwagger
-      :<|> baseServer signal output
-      :<|> Tagged staticResources
+senseiApp :: MVar () -> FilePath -> FilePath -> IO Application
+senseiApp signal output configDir = do
+  initLogStorage output
+  pure $
+    serve fullAPI $
+      hoistServer fullAPI (`runReaderT` configDir) $
+        pure senseiSwagger
+          :<|> baseServer signal output
+          :<|> Tagged staticResources
 
 -- | Serve static resources under `public/` directory
-
 staticResources :: Application
 staticResources = staticApp (defaultFileServerSettings "ui")
 
