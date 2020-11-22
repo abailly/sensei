@@ -14,13 +14,6 @@ daemonizeServer =
     withCurrentDirectory "PATH_TO_PROJECT_DIR" $ startServer
 ```
 
-## Sensei logs
-Add the file `sensei.log` in your home directory:
-```bash
-touch ~/.sensei.log
-```
-
-
 # User Profile
 
 User profile can be set using the (local) server's API.
