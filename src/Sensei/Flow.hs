@@ -35,7 +35,7 @@ import Servant
 -- impacts their serialized representation. Of course, deserialisation
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 1
+currentVersion = 2
 
 -- | Execution "trace" of a program
 data Trace = Trace
@@ -62,6 +62,9 @@ data FlowType
   | End
   | Other
   deriving (Eq, Show, Ord)
+
+instance ToJSONKey FlowType
+instance FromJSONKey FlowType
 
 instance ToJSON FlowType where
   toJSON (FlowType f) = String f

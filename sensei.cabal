@@ -47,6 +47,7 @@ library
                      , mtl
                      , optparse-applicative
                      , process
+                     , random
                      , safe-exceptions
                      , servant
                      , servant-server
@@ -95,6 +96,7 @@ test-suite sensei-test
                      , base
                      , bytestring
                      , colour
+                     , containers
                      , directory
                      , safe-exceptions
                      , hspec

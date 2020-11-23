@@ -21,6 +21,11 @@ instance ToSchema TimeZone where
 instance ToSchema FlowType where
   declareNamedSchema _ = return $ NamedSchema (Just "FlowType") $ mempty & type_ .~ Just SwaggerString
 
+instance ToSchema Color where
+  declareNamedSchema _ = return $ NamedSchema (Just "Color") $ mempty
+    & description .~ Just "An RGB color represented as an hexadecimal string"
+    & type_ .~ Just SwaggerString
+
 instance ToParamSchema FlowType where
   toParamSchema _ = mempty
      & type_ ?~ SwaggerString

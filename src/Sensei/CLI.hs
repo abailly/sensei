@@ -124,7 +124,7 @@ flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
 
 parseSenseiOptions ::
   UserProfile -> IO Options
-parseSenseiOptions UserProfile{userFlowTypes} = execParser (optionsParserInfo userFlowTypes)
+parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlows userProfile)
 
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encode

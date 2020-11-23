@@ -9,6 +9,7 @@ import Sensei.TestHelper
 import Test.Hspec
 import Test.Hspec.Wai
 import Test.Hspec.Wai.Matcher
+import qualified Data.Map as Map
 
 spec :: Spec
 spec = describe "Users Management" $ do
@@ -18,7 +19,7 @@ spec = describe "Users Management" $ do
     it "can deserialize JSON without version" $ do
       let jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":[\"Experimenting\"]}"
       eitherDecode jsonProfile `shouldBe`
-        Right defaultProfile { userFlowTypes =  Just [FlowType "Experimenting"] }
+        Right defaultProfile { userFlowTypes =  Just (Map.fromList [(FlowType "Experimenting", "#010aab")]) }
 
   withApp app $
     describe "Users API" $ do
