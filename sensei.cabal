@@ -28,7 +28,7 @@ library
                      , Sensei.Wrapper
                      , Sensei.Utils
   other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi, Sensei.IO, Paths_sensei,
-                 Sensei.Summary, Sensei.User
+                 Sensei.Summary, Sensei.User, Sensei.Color
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , ansi-terminal
@@ -36,6 +36,7 @@ library
                      , base
                      , bytestring
                      , case-insensitive
+                     , colour
                      , containers
                      , directory
                      , filepath
@@ -83,6 +84,7 @@ test-suite sensei-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       Sensei.CLISpec
+                     , Sensei.ColorSpec
                      , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
                      , Sensei.ServerSpec
@@ -92,11 +94,14 @@ test-suite sensei-test
   build-depends:       aeson
                      , base
                      , bytestring
+                     , colour
                      , directory
                      , safe-exceptions
                      , hspec
                      , hspec-discover
                      , hspec-wai
+                     , QuickCheck
+                     , quickcheck-classes
                      , sensei
                      , servant-server
                      , text

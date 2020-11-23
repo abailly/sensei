@@ -14,6 +14,7 @@ module Sensei.API
   ( SenseiAPI,
     KillServer,
     senseiAPI,
+    module Sensei.Color,
     module Sensei.Flow,
     module Sensei.Summary,
     module Sensei.FlowView,
@@ -29,6 +30,7 @@ where
 
 import Data.Text (Text)
 import Data.Time
+import Sensei.Color
 import Sensei.Flow
 import Sensei.FlowView
 import Sensei.Group
