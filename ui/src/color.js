@@ -1,10 +1,11 @@
 import { config } from "./config";
 
+const white = "#ffffff";
+
 export function colorOf(flowType) {
 
   if (config.userProfile) {
-    const color = config.userProfile.userFlowTypes.find(flow => flow[0] === flowType);
-    return color ? color[1] : "#ffffff";
+    return config.userProfile.userFlowTypes[flowType] ?? white;
   }
 
   switch (flowType) {

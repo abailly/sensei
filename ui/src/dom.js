@@ -6,7 +6,6 @@
  */
 
 
-
 /**
  * Basic implementation of JSX element transformation function.
  * Stolen from <a href='https://blog.r0b.io/post/using-jsx-without-react/'>this blog post</a>.

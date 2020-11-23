@@ -28,6 +28,7 @@ import Data.Time
 import GHC.Generics
 import Numeric.Natural
 import Servant
+import Data.Aeson.Types
 
 -- | Current version of data storage format.
 -- This version /must/ be incremented on each change to the structure of `Flow` and
@@ -35,7 +36,7 @@ import Servant
 -- impacts their serialized representation. Of course, deserialisation
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 2
+currentVersion = 3
 
 -- | Execution "trace" of a program
 data Trace = Trace
@@ -63,8 +64,11 @@ data FlowType
   | Other
   deriving (Eq, Show, Ord)
 
-instance ToJSONKey FlowType
-instance FromJSONKey FlowType
+instance ToJSONKey FlowType where
+  toJSONKey = toJSONKeyText toUrlPiece
+
+instance FromJSONKey FlowType where
+  fromJSONKey = FromJSONKeyTextParser parseFlowType
 
 instance ToJSON FlowType where
   toJSON (FlowType f) = String f
@@ -72,12 +76,16 @@ instance ToJSON FlowType where
   toJSON End = "End"
   toJSON Other = "Other"
 
-instance FromJSON FlowType where
-  parseJSON = withText "FlowType" $ \t -> case t of
+parseFlowType :: Text -> Parser FlowType
+parseFlowType t =
+  case t of
     "Note" -> pure Note
     "End" -> pure End
     "Other" -> pure Other
     other -> pure $ FlowType other
+
+instance FromJSON FlowType where
+  parseJSON = withText "FlowType" $ parseFlowType
 
 instance ToHttpApiData FlowType where
   toUrlPiece (FlowType f) = f
