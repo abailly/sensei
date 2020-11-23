@@ -18,34 +18,22 @@ module Sensei.API
     module Sensei.Summary,
     module Sensei.FlowView,
     module Sensei.Group,
+    module Sensei.User,
     module Sensei.Utils,
     GroupViews (..),
     Trace (..),
     Group (..),
-    UserProfile (..), defaultProfile
+    UserProfile (..)
   )
 where
 
-import Data.Aeson
-  ( FromJSON (parseJSON),
-    ToJSON (toJSON),
-    Value (String),
-    withText,
-  )
 import Data.Text (Text)
-import qualified Data.Text as Text
 import Data.Time
-  (TimeOfDay(..), hoursToTimeZone,  Day,
-    NominalDiffTime,
-    TimeOfDay,
-    TimeZone,
-  )
-import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
-import GHC.Generics (Generic)
 import Sensei.Flow
-import Sensei.Summary
 import Sensei.FlowView
 import Sensei.Group
+import Sensei.Summary
+import Sensei.User
 import Sensei.Utils
 import Servant
 
@@ -128,22 +116,3 @@ type SenseiAPI =
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
-
-data UserProfile = UserProfile
-  { userName :: Text,
-    userTimezone :: TimeZone,
-    userStartOfDay :: TimeOfDay,
-    userEndOfDay :: TimeOfDay,
-    userFlowTypes :: Maybe [FlowType]
-  }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
-
-defaultProfile :: UserProfile
-defaultProfile =
-  UserProfile { userName = "arnaud", userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00 , userEndOfDay = TimeOfDay 18 30 00, userFlowTypes = Nothing  }
-
-instance ToJSON TimeZone where
-  toJSON = String . Text.pack . iso8601Show
-
-instance FromJSON TimeZone where
-  parseJSON = withText "TimeZone" $ iso8601ParseM . Text.unpack

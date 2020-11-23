@@ -29,10 +29,11 @@ import GHC.Generics
 import Numeric.Natural
 import Servant
 
--- | Current version of recorded `Flow` format.
---  This version /must/ be incremented on each change to the structure of `Flow` which
---  impacts the stored representation. Of course, deserialisation
---  functions should be provided in order to migrate data from previous versions.
+-- | Current version of data storage format.
+-- This version /must/ be incremented on each change to the structure of `Flow` and
+-- other stored data structures which
+-- impacts their serialized representation. Of course, deserialisation
+-- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
 currentVersion = 1
 
