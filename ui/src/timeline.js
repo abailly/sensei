@@ -5,27 +5,7 @@ import { drawCommands } from './commands.js';
 import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
-
-function colorOf(flowType) {
-  switch (flowType) {
-    case 'Learning':
-      return "#ff8822";
-    case 'Experimenting':
-      return "#0022dd";
-    case 'Troubleshooting':
-      return "#ee1111";
-    case 'Flowing':
-      return "#00dd22";
-    case 'Rework':
-      return "#4500dd";
-    case 'Note':
-      return "#000000";
-    case 'Meeting':
-      return "#fff203";
-    default:
-      return "#ffffff";
-  }
-}
+import { colorOf } from './color.js';
 
 /**
    Draw a timeline chart in given element with given data

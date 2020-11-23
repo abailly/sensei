@@ -1,14 +1,1 @@
-{
-  "userStartOfDay": "08:00:00",
-  "userEndOfDay": "18:30:00",
-  "userName": "arnaud",
-  "userTimezone": "+01:00",
-  "userFlowTypes": [
-    "Experimenting",
-    "Troubleshooting",
-    "Flowing",
-    "Rework",
-    "Meeting",
-    "Learning"
-  ]
-}
+{"userStartOfDay":"08:00:00","userProfileVersion":2,"userEndOfDay":"18:30:00","userName":"arnaud","userTimezone":"+01:00","userFlowTypes":[["Experimenting","#010aab"],["Flowing","#a04d22"],["Learning","#7d72af"],["Meeting","#904085"],["Rework","#96f03a"],["Troubleshooting","#d4b493"]]}
