@@ -24,16 +24,35 @@ First create a JSON file containing the user's profile:
 $ cat > profile.json
 {
   "userStartOfDay": "08:00:00",
+  "userProfileVersion": 2,
   "userEndOfDay": "18:30:00",
-  "userName": "alice",
+  "userName": "arnaud",
   "userTimezone": "+01:00",
   "userFlowTypes": [
-    "Experimenting",
-    "Troubleshooting",
-    "Flowing",
-    "Rework",
-    "Meeting",
-    "Learning"
+    [
+      "Experimenting",
+      "#010aab"
+    ],
+    [
+      "Flowing",
+      "#a04d22"
+    ],
+    [
+      "Learning",
+      "#7d72af"
+    ],
+    [
+      "Meeting",
+      "#904085"
+    ],
+    [
+      "Rework",
+      "#96f03a"
+    ],
+    [
+      "Troubleshooting",
+      "#d4b493"
+    ]
   ]
 }
 ^D
@@ -53,16 +72,35 @@ The configuration is currently stored in a JSON file inside XDG configuration di
 $ cat ~/.config/sensei/config.json | jq .
 {
   "userStartOfDay": "08:00:00",
+  "userProfileVersion": 2,
   "userEndOfDay": "18:30:00",
   "userName": "arnaud",
   "userTimezone": "+01:00",
   "userFlowTypes": [
-    "Experimenting",
-    "Troubleshooting",
-    "Flowing",
-    "Rework",
-    "Meeting",
-    "Learning"
+    [
+      "Experimenting",
+      "#010aab"
+    ],
+    [
+      "Flowing",
+      "#a04d22"
+    ],
+    [
+      "Learning",
+      "#7d72af"
+    ],
+    [
+      "Meeting",
+      "#904085"
+    ],
+    [
+      "Rework",
+      "#96f03a"
+    ],
+    [
+      "Troubleshooting",
+      "#d4b493"
+    ]
   ]
 }
 ```
