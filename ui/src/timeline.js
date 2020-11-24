@@ -29,21 +29,21 @@ function drawChart(container, selectedDate, flowData, rowLabelling = (_ => selec
    Create a new div container for a timeline
 */
 function createTimelineContainer(day, data, notesData) {
-  const detailsName = 'checkbox-' + name;
-  const notesName = 'notes-checkbox-' + name;
-  const commandsName = 'cmd-checkbox-' + name;
-  const summaryName = 'summary-checkbox-' + name;
-  const chart = <div class="timeline-chart" />;
-  const notesDiv = <div class="timeline-chart" />;
-  const commandsDiv = <div class="timeline-chart" />;
-  const summaryDiv = <div class="summary" />;
+  const detailsName = 'checkbox-' + day;
+  const notesName = 'notes-checkbox-' + day;
+  const commandsName = 'cmd-checkbox-' + day;
+  const summaryName = 'summary-checkbox-' + day;
+  const chart = <div id={'chart-' + day} class="timeline-chart" />;
+  const notesDiv = <div id={'notes-' + day} class="timeline-chart" />;
+  const commandsDiv = <div id={'commands-' + day} class="timeline-chart" />;
+  const summaryDiv = <div id={'summary-' + day} class="summary" />;
   const details = <input type="checkbox" id={detailsName} />;
   const notes = <input type="checkbox" id={notesName} />;
   const commands = <input type="checkbox" id={commandsName} />;
   const summary = <input type="checkbox" id={summaryName} />;
 
   const container =
-    <div id={name} class='timeline'>
+    <div id={day} class='timeline'>
       <div class='timeline-controls'>
         <label for={detailsName}>Expand</label>
         {details}
