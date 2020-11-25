@@ -31,6 +31,11 @@ spec = describe "Users Management" $ do
       eitherDecode jsonProfile `shouldBe`
         Right defaultProfile { userFlowTypes =  Just (Map.fromList [(FlowType "Experimenting", "#0022dd")]) }
 
+    it "can deserialize version 3 JSON" $ do
+      let jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userProfileVersion\":3,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":{\"Experimenting\":\"#0022dd\"}}"
+      eitherDecode jsonProfile `shouldBe`
+        Right defaultProfile { userFlowTypes =  Just (Map.fromList [(FlowType "Experimenting", "#0022dd")]) }
+
   withApp app $
     describe "Users API" $ do
       it "GET /users/<user> returns defualt profile" $ do
@@ -38,7 +43,7 @@ spec = describe "Users Management" $ do
           `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode defaultProfile)
 
       it "PUT /users/<user> sets user profile" $ do
-        let profile = UserProfile {userName = "robert", userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00, userEndOfDay = TimeOfDay 18 30 00, userFlowTypes = Nothing }
+        let profile = UserProfile {userName = "robert", userTimezone = hoursToTimeZone 1, userStartOfDay = TimeOfDay 08 00 00, userEndOfDay = TimeOfDay 18 30 00, userFlowTypes = Nothing, userCommands = Just (Map.fromList [("g", "/usr/bin/git")]) }
         putJSON_ "/users/arnaud" profile
 
         getJSON "/users/arnaud"

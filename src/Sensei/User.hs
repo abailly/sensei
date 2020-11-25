@@ -40,10 +40,14 @@ data UserProfile = UserProfile
     -- some dummy flow or to compute the end of flows which have not been properly "closed".
     -- If one forgets to `End` the day then this parameter will be used to limit the duration of "unfinished"
     -- flows.
-    userFlowTypes :: Maybe (Map.Map FlowType Color)
+    userFlowTypes :: Maybe (Map.Map FlowType Color),
     -- ^Custom definition of `FlowType`s for this user.
     -- A user can define her or his own `FlowType` identifiers. Those will be used throughout the system
     -- and can be further customised by associating a `Color` with them
+    userCommands :: Maybe (Map.Map Text Text)
+    -- ^Custom definition of command aliases
+    -- This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
+    -- it actually will wrap referenced program's execution in the current environment.
   }
   deriving (Eq, Show, Generic)
 
@@ -58,7 +62,8 @@ defaultProfile =
       userTimezone = hoursToTimeZone 1,
       userStartOfDay = TimeOfDay 08 00 00,
       userEndOfDay = TimeOfDay 18 30 00,
-      userFlowTypes = Nothing
+      userFlowTypes = Nothing,
+      userCommands = Nothing
     }
 
 parseJSONFromVersion :: Natural -> Object -> Parser UserProfile
@@ -69,6 +74,7 @@ parseJSONFromVersion v o =
     <*> o .: "userStartOfDay"
     <*> o .: "userEndOfDay"
     <*> parseFlowTypes
+    <*> parseCommands
    where
     parseFlowTypes =
       case v of
@@ -78,6 +84,11 @@ parseJSONFromVersion v o =
               \ flowTypes -> pure $ Just $ Map.fromList (zip flowTypes (randomColors 12))
         _ -> pure Nothing
 
+    parseCommands =
+      case v of
+        4 -> o .: "userCommands"
+        _ -> pure Nothing
+
 instance ToJSON UserProfile where
   toJSON UserProfile{..} =
     object [ "userName" .= userName,
@@ -85,6 +96,7 @@ instance ToJSON UserProfile where
              "userStartOfDay" .= userStartOfDay,
              "userEndOfDay" .= userStartOfDay,
              "userFlowTypes" .= userFlowTypes,
+             "userCommands" .= userCommands,
              "userProfileVersion" .= currentVersion
            ]
 

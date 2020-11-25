@@ -36,7 +36,7 @@ import Data.Aeson.Types
 -- impacts their serialized representation. Of course, deserialisation
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 3
+currentVersion = 4
 
 -- | Execution "trace" of a program
 data Trace = Trace
