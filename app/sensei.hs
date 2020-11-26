@@ -60,7 +60,7 @@ main = do
     "ep" -> do
       profile <- Client.send (Client.getUserProfileC $ pack curUser)
       opts <- parseSenseiOptions profile
-      flowAction opts (pack curUser) st (pack currentDir)
+      ep opts (pack curUser) st (pack currentDir)
     "sensei-exe" -> startServer
     _ -> do
       res <- tryWrapProg io curUser prog progArgs currentDir

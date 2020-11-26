@@ -20,3 +20,6 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses -n as 'Note' flow type given flows list contains 'Refactoring'" $ do
       runOptionsParser (Just [FlowType "Refactoring"]) ["-n"] `shouldBe` Right (RecordOptions Note)
+
+    it "parses '-U' as user profile query" $ do
+      runOptionsParser Nothing ["-U"] `shouldBe` Right (UserOptions GetProfile)

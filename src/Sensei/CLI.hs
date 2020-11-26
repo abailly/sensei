@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -26,6 +26,11 @@ data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
   | RecordOptions {recordType :: FlowType}
   | NotesOptions {notesDay :: Day, format :: NoteFormat}
+  | UserOptions {userAction :: UserAction}
+  deriving (Show, Eq)
+
+data UserAction
+  = GetProfile
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -47,6 +52,7 @@ optionsParser flows =
   QueryOptions <$> optional dayParser <*> summarizeParser <*> many groupParser
     <|> RecordOptions <$> flowTypeParser flows
     <|> NotesOptions <$> dayParser <* notesParser <*> formatParser
+    <|> UserOptions <$> (profileParser *> pure GetProfile)
 
 {-# INLINE today #-}
 today :: Day
@@ -122,6 +128,16 @@ flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
         <|> flag' Note (short 'n' <> help "Taking some note")
         <|> flag' Other (short 'o' <> help "Other period")
 
+profileParser :: Parser ()
+profileParser =
+  flag
+    ()
+    ()
+    ( long "user-profile"
+      <> short 'U'
+      <> help "get or set the user profile for current user"
+    )
+
 parseSenseiOptions ::
   UserProfile -> IO Options
 parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlows userProfile)
@@ -129,24 +145,26 @@ parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlow
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encode
 
-flowAction :: Options -> Text -> UTCTime -> Text -> IO ()
-flowAction (QueryOptions Nothing False grps) usrName _ _ =
+ep :: Options -> Text -> UTCTime -> Text -> IO ()
+ep (QueryOptions Nothing False grps) usrName _ _ =
   send (queryFlowC usrName grps) >>= display
-flowAction (QueryOptions Nothing True _) usrName _ _ =
+ep (QueryOptions Nothing True _) usrName _ _ =
   send (queryFlowSummaryC usrName) >>= display
-flowAction (QueryOptions (Just day) False _) usrName _ _ =
+ep (QueryOptions (Just day) False _) usrName _ _ =
   send (queryFlowDayC usrName day) >>= display
-flowAction (QueryOptions (Just day) True _) usrName _ _ =
+ep (QueryOptions (Just day) True _) usrName _ _ =
   send (queryFlowDaySummaryC usrName day) >>= display
-flowAction (NotesOptions day noteFormat) usrName _ _ =
+ep (NotesOptions day noteFormat) usrName _ _ =
   send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
-flowAction (RecordOptions ftype) curUser startDate curDir =
+ep (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
       send $ flowC curUser Note (FlowNote curUser startDate curDir txt)
     other ->
       send $ flowC curUser other (FlowState curUser startDate curDir)
+ep (UserOptions GetProfile) usrName _ _ =
+  send (getUserProfileC usrName) >>= display
 
 println :: BS.ByteString -> IO ()
 println bs =
