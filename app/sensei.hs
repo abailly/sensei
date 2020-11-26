@@ -43,7 +43,8 @@ io =
                 }
           waitForProcess h,
       getCurrentTime = Time.getCurrentTime,
-      send = Client.send
+      send = Client.send,
+      fileExists = doesFileExist
     }
 
 main :: IO ()
@@ -64,5 +65,16 @@ main = do
     _ -> do
       res <- tryWrapProg io curUser prog progArgs currentDir
       case res of
-        Left err -> hPutStrLn stderr err >> Exit.exitWith (Exit.ExitFailure 1)
+        Left UnMappedAlias{} -> do
+          hPutStrLn
+            stderr
+            ( "Don't know how to handle program '" <> prog
+                <> "'. You can add a symlink from '"
+                <> prog
+                <> "' to 'sensei-exe' and configure user profile."
+            )
+          Exit.exitWith (Exit.ExitFailure 1)
+        Left (NonExistentAlias al real) -> do
+          hPutStrLn stderr ("Program '" <> real <> "' pointed at by '" <> al <> "' does not exist, check user profile configuration.")
+          Exit.exitWith (Exit.ExitFailure 1)
         Right ex -> Exit.exitWith ex
