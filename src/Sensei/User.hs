@@ -44,7 +44,7 @@ data UserProfile = UserProfile
     -- ^Custom definition of `FlowType`s for this user.
     -- A user can define her or his own `FlowType` identifiers. Those will be used throughout the system
     -- and can be further customised by associating a `Color` with them
-    userCommands :: Maybe (Map.Map Text Text)
+    userCommands :: Maybe (Map.Map String String)
     -- ^Custom definition of command aliases
     -- This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
     -- it actually will wrap referenced program's execution in the current environment.

@@ -75,6 +75,7 @@ executable sensei-exe
                      , directory
                      , filepath
                      , process
+                     , safe-exceptions
                      , sensei
                      , text
                      , time
