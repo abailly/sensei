@@ -6,85 +6,18 @@
 
 module Sensei.WrapperSpec where
 
-import Control.Exception.Safe (try, throwIO, Exception)
-import Control.Monad.Reader
-import Data.Binary.Builder
-import Data.Typeable(typeOf)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS
-import Data.CaseInsensitive
-import Data.Foldable
-import Data.IORef
 import qualified Data.Map as Map
-import Data.Sequence
-import Data.Text (splitOn)
+import Data.Time(UTCTime(..))
+import Data.IORef
 import Data.Text.Encoding (decodeUtf8)
-import Data.Time
-import Debug.Trace
-import Network.HTTP.Media.MediaType
-import Network.HTTP.Media.RenderHeader
-import qualified Network.HTTP.Types as H
-import Network.HTTP.Types.Version
-import Network.Wai (rawPathInfo)
-import qualified Network.Wai as Wai
-import Network.Wai.Test as Wai
 import Sensei.API
 import Sensei.Client hiding (send)
 import Sensei.TestHelper
 import Sensei.Wrapper
-import Servant.Client.Core
-import Servant.Client.Core.Response
+import Sensei.WaiTestHelper
 import System.Exit
-import System.IO.Unsafe (unsafePerformIO)
 import Test.Hspec
 import Test.Hspec.Wai hiding (request)
-import Test.Hspec.Wai.Internal (WaiSession (..))
-
-fromClientRequest ::
-  (MonadIO m) => Request -> m Wai.Request
-fromClientRequest inReq =
-  let acceptHeaders = fmap (\mt -> ("Accept", renderHeader mt)) $ toList (requestAccept inReq)
-      headers = toList (requestHeaders inReq) <> acceptHeaders
-      rawPath = LBS.toStrict (toLazyByteString $ requestPath inReq)
-      bdy = case requestBody inReq of
-        Nothing -> ""
-        Just (b, _) ->
-          case b of
-            RequestBodyLBS lbs -> LBS.toStrict lbs
-            RequestBodyBS bs -> bs
-            _ -> error "don't know how to handle body source"
-      body chunks =
-        atomicModifyIORef chunks $
-          \chunk -> case chunk of
-            [] -> ([], BS.empty)
-            (c : cs) -> (cs, c)
-      (segments, query) = H.decodePath rawPath
-      req b =
-        Wai.defaultRequest
-          { Wai.rawPathInfo = rawPath,
-            Wai.requestMethod = requestMethod inReq,
-            Wai.requestHeaders = ("Content-type", "application/json") : headers,
-            Wai.requestBody = b,
-            Wai.httpVersion = requestHttpVersion inReq,
-            Wai.pathInfo = segments,
-            Wai.queryString = query,
-            Wai.rawQueryString = H.renderQuery True query,
-            Wai.requestBodyLength = Wai.ChunkedBody
-          }
-   in do
-        chunks <- body <$> liftIO (newIORef [bdy])
-        pure $ req chunks
-
-toClientResponse ::
-  SResponse -> Response
-toClientResponse SResponse {..} =
-  Response simpleStatus (fromList simpleHeaders) http11 simpleBody
-
-instance RunClient (WaiSession st) where
-  runRequest req = do
-    WaiSession $ ReaderT $ \_ -> fromClientRequest req >>= \r -> toClientResponse <$> request r
-
-  throwClientError err = error (show err)
 
 io :: WrapperIO (WaiSession ())
 io = WrapperIO {..}
@@ -110,10 +43,3 @@ spec =
         send io $ setUserProfileC "alice" defaultProfile {userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
         res <- tryWrapProg io "alice" "bar" [] "somedir"
         res `isExpectedToBe` Left "Don't know how to handle program 'bar'"
-
-isExpectedToBe ::
-  (Eq a, Show a) => a -> a -> WaiSession st ()
-isExpectedToBe actual expected =
-  if actual /= expected
-  then liftIO $ expectationFailure $ show actual <> " is not " <> show expected
-  else pure ()
