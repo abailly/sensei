@@ -8,14 +8,13 @@ module Sensei.WrapperSpec where
 
 import qualified Data.Map as Map
 import Data.Time(UTCTime(..))
-import Data.IORef
-import Data.Text.Encoding (decodeUtf8)
 import Sensei.API
 import Sensei.Client hiding (send)
 import Sensei.TestHelper
 import Sensei.Wrapper
 import Sensei.WaiTestHelper
 import System.Exit
+import Data.Functor
 import Test.Hspec
 import Test.Hspec.Wai hiding (request)
 
@@ -35,11 +34,11 @@ spec =
         res `isExpectedToBe` ExitSuccess
 
       it "selects program to run from User Profile" $ do
-        send io $ setUserProfileC "alice" defaultProfile {userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
+        void $ send io $ setUserProfileC "alice" defaultProfile {userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
         res <- tryWrapProg io "alice" "foo" [] "somedir"
         res `isExpectedToBe` Right ExitSuccess
 
       it "return error when called with a non-mapped alias" $ do
-        send io $ setUserProfileC "alice" defaultProfile {userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
+        void $ send io $ setUserProfileC "alice" defaultProfile {userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
         res <- tryWrapProg io "alice" "bar" [] "somedir"
         res `isExpectedToBe` Left "Don't know how to handle program 'bar'"

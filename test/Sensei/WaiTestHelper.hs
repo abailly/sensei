@@ -3,39 +3,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# OPTIONS_GHC -Wno-deprecations #-}
+-- |`RunClient` instance suitable for use with WAI hspec wrapper
+-- Provides
 module Sensei.WaiTestHelper where
 
-import Control.Exception.Safe (Exception, throwIO, try)
 import Control.Monad.Reader
 import Data.Binary.Builder
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import Data.CaseInsensitive
 import Data.Foldable
 import Data.IORef
-import qualified Data.Map as Map
 import Data.Sequence
-import Data.Text (splitOn)
-import Data.Text.Encoding (decodeUtf8)
-import Data.Time
-import Data.Typeable (typeOf)
-import Debug.Trace
-import Network.HTTP.Media.MediaType
 import Network.HTTP.Media.RenderHeader
 import qualified Network.HTTP.Types as H
 import Network.HTTP.Types.Version
-import Network.Wai (rawPathInfo)
 import qualified Network.Wai as Wai
 import Network.Wai.Test as Wai
-import Sensei.API
-import Sensei.Client hiding (send)
-import Sensei.TestHelper
 import Servant.Client.Core
-import Sensei.Wrapper
-import Servant.Client.Core.Response
-import System.Exit
-import System.IO.Unsafe (unsafePerformIO)
 import Test.Hspec
 import Test.Hspec.Wai hiding (request)
 import Test.Hspec.Wai.Internal (WaiSession (..))
