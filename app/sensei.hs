@@ -11,17 +11,38 @@
 module Main where
 
 import Data.Text(pack)
-import Data.Time
+import qualified Data.Time as Time
 import Sensei.App
 import Sensei.CLI
-import Sensei.Client
+import qualified Sensei.Client as Client
 import Sensei.Wrapper
 import System.Directory
 import System.Environment
-import System.Exit
+import qualified System.Exit as Exit
 import System.FilePath
 import System.IO
 import System.Posix.User
+import System.Process
+    (waitForProcess,  proc,
+      createProcess,
+      CreateProcess(std_in, std_out, std_err),
+      StdStream(Inherit) )
+
+io :: WrapperIO IO
+io =
+  WrapperIO { runProcess =
+                \ realProg progArgs -> do
+                  (_,_,_,h) <- createProcess
+                    (proc realProg progArgs)
+                    { std_in = Inherit,
+                      std_out = Inherit,
+                      std_err = Inherit
+                    }
+                  waitForProcess h ,
+              getCurrentTime = Time.getCurrentTime,
+              send = Client.send,
+              exitWith = Exit.exitWith
+            }
 
 main :: IO ()
 main = do
@@ -30,19 +51,19 @@ main = do
   currentDir <- getCurrentDirectory
   prog <- getProgName
   progArgs <- getArgs
-  st <- getCurrentTime
+  st <- Time.getCurrentTime
   curUser <- getLoginName
 
   case prog of
-    "git" -> wrapProg "/usr/bin/git" progArgs st currentDir
-    "stak" -> wrapProg (homeDir </> ".local/bin/stack") progArgs st currentDir
-    "docker" -> wrapProg "/usr/local/bin/docker" progArgs st currentDir
-    "dotnet" -> wrapProg "/usr/local/share/dotnet/dotnet" progArgs st currentDir
-    "npm" -> wrapProg "/usr/local/bin/npm" progArgs st currentDir
-    "az" -> wrapProg "/usr/local/bin/az" progArgs st currentDir
+    "git" -> wrapProg io "/usr/bin/git" progArgs currentDir
+    "stak" -> wrapProg io (homeDir </> ".local/bin/stack") progArgs currentDir
+    "docker" -> wrapProg io "/usr/local/bin/docker" progArgs currentDir
+    "dotnet" -> wrapProg io  "/usr/local/share/dotnet/dotnet" progArgs currentDir
+    "npm" -> wrapProg io "/usr/local/bin/npm" progArgs currentDir
+    "az" -> wrapProg io "/usr/local/bin/az" progArgs currentDir
     "ep" -> do
-      profile <- send (getUserProfileC $ pack curUser)
+      profile <- Client.send (Client.getUserProfileC $ pack curUser)
       opts <- parseSenseiOptions profile
       flowAction opts (pack curUser) st (pack currentDir)
     "sensei-exe" -> startServer
-    _ -> hPutStrLn stderr ("Don't know how to handle program " <> prog) >> exitWith (ExitFailure 1)
+    _ -> hPutStrLn stderr ("Don't know how to handle program " <> prog) >> exitWith io (Exit.ExitFailure 1)

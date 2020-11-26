@@ -74,6 +74,7 @@ executable sensei-exe
   build-depends:       base
                      , directory
                      , filepath
+                     , process
                      , sensei
                      , text
                      , time
@@ -92,9 +93,12 @@ test-suite sensei-test
                      , Sensei.TestHelper
                      , Sensei.UserSpec
                      , Sensei.VersionSpec
+                     , Sensei.WrapperSpec
   build-depends:       aeson
                      , base
+                     , binary
                      , bytestring
+                     , case-insensitive
                      , colour
                      , containers
                      , directory
@@ -102,9 +106,13 @@ test-suite sensei-test
                      , hspec
                      , hspec-discover
                      , hspec-wai
+                     , http-media
+                     , http-types
+                     , mtl
                      , QuickCheck
                      , quickcheck-classes
                      , sensei
+                     , servant-client-core
                      , servant-server
                      , text
                      , time

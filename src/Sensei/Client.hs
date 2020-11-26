@@ -1,12 +1,12 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Sensei.Client where
 
 import Control.Concurrent (threadDelay)
-import Control.Monad.Trans
 import Data.CaseInsensitive
 import Data.Sequence
 import Data.Text (Text)
@@ -31,15 +31,23 @@ queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
 notesDayC :: Text -> Day -> ClientMonad [NoteView]
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
-
 getUserProfileC :: Text -> ClientMonad UserProfile
-
 traceC
   :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> commandsDayC :<|> queryFlowDayC :<|> queryFlowC)
   :<|> (getUserProfileC :<|> _) = clientIn senseiAPI Proxy
 
-newtype ClientMonad a = ClientMonad {unClient :: ClientM a}
-  deriving newtype (Functor, Applicative, Monad, MonadIO)
+newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => m a}
+
+instance Functor ClientMonad where
+  fmap f (ClientMonad a) = ClientMonad $ fmap f a
+
+instance Applicative ClientMonad where
+  pure a = ClientMonad (pure a)
+  ClientMonad f <*> ClientMonad a = ClientMonad $ f <*> a
+
+instance Monad ClientMonad where
+  ClientMonad a >>= f =
+    ClientMonad $ a >>= unClient . f
 
 instance RunClient ClientMonad where
   runRequest req = ClientMonad $ do
@@ -53,7 +61,7 @@ instance RunClient ClientMonad where
             }
     runRequest request
 
-  throwClientError = ClientMonad . throwClientError
+  throwClientError err = ClientMonad $ throwClientError err
 
 tryKillingServer :: ClientEnv -> IO ()
 tryKillingServer env = do
