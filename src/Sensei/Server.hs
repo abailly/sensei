@@ -9,15 +9,12 @@ module Sensei.Server where
 import Control.Concurrent.MVar
 import Control.Monad.Trans
 import Control.Monad.Reader
-import Data.Aeson hiding (Options)
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List as List
 import Data.Text (Text)
 import Data.Time
 import Sensei.API
 import Sensei.IO
 import Servant
-import System.IO
 import Control.Monad.Except
 import Sensei.Version (senseiVersion, Versions(..))
 
@@ -28,17 +25,13 @@ killS signal = liftIO (putMVar signal ())
 
 traceS ::
   (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Trace -> m ()
-traceS file trace = liftIO $
-  withBinaryFile file AppendMode $ \out -> do
-    LBS.hPutStr out $ encode trace <> "\n"
-    hFlush out
+traceS file trace =
+  liftIO $ writeTrace file trace
 
 flowS ::
   (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> FlowType -> FlowState -> m ()
-flowS file _ flowTyp flow = liftIO $
-  withBinaryFile file AppendMode $ \out -> do
-    LBS.hPutStr out $ encode (Flow flowTyp flow currentVersion) <> "\n"
-    hFlush out
+flowS file _ flowTyp flow =
+  liftIO $ writeFlow file (Flow flowTyp flow currentVersion)
 
 notesDayS ::
   (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m [NoteView]

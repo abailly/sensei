@@ -1,9 +1,11 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.IO
   ( initLogStorage,
+    writeTrace, writeFlow,
     readNotes,
     readViews,
     readCommands,
@@ -31,6 +33,20 @@ initLogStorage ::
 initLogStorage output = do
   hasFile <- doesFileExist output
   unless hasFile $ openFile output WriteMode >>= hClose
+
+writeTrace :: FilePath -> Trace -> IO ()
+writeTrace file trace =
+  writeJSON file (encode trace)
+
+writeFlow :: FilePath -> Flow -> IO ()
+writeFlow file flow =
+  writeJSON file (encode flow)
+
+writeJSON :: FilePath -> LBS.ByteString -> IO ()
+writeJSON file jsonData =
+  withBinaryFile file AppendMode $ \out -> do
+    LBS.hPutStr out $ jsonData <> "\n"
+    hFlush out
 
 -- | Read all the views for a given `UserProfile`
 readViews :: FilePath -> UserProfile -> IO [FlowView]

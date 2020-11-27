@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Sensei.User where
 
@@ -19,35 +19,36 @@ import Numeric.Natural
 import Sensei.Color
 import Sensei.Flow
 
--- |Customizable parameters for registering and displaying flows.
--- This configuration defines user-specific configurations that are used
--- by various parts of /sensei/ to handle data.
+-- | Customizable parameters for registering and displaying flows.
+--  This configuration defines user-specific configurations that are used
+--  by various parts of /sensei/ to handle data.
 data UserProfile = UserProfile
-  { userName :: Text,
-    -- ^The user name, or alias, used to display profile and identify the user
-    -- in teams context
+  { -- | The user name, or alias, used to display profile and identify the user
+    --  in teams context
+    userName :: Text,
+    -- | The local timezone this user wants her data to be displayed in.
+    --  All events are recorded and stored by the server in `UTCTime` (Universal Time Coordinates)
+    --  but for display and analysis purpose we need to be able to relate absolute timestamps
+    --  with meaningful time.
     userTimezone :: TimeZone,
-    -- ^The local timezone this user wants her data to be displayed in.
-    -- All events are recorded and stored by the server in `UTCTime` (Universal Time Coordinates)
-    -- but for display and analysis purpose we need to be able to relate absolute timestamps
-    -- with meaningful time.
     userStartOfDay :: TimeOfDay,
     -- ˆThis user's standard start of day time. This parameter is used when displaying timelines
     -- for flows and other events, to bound the scale the timeline is displayed with. It's also
     -- used when normalising and grouping flows in a timeline.
+
+    -- | This user's standard end of (work) day time. This is used to normalise daily timelines, either to add
+    --  some dummy flow or to compute the end of flows which have not been properly "closed".
+    --  If one forgets to `End` the day then this parameter will be used to limit the duration of "unfinished"
+    --  flows.
     userEndOfDay :: TimeOfDay,
-    -- ^This user's standard end of (work) day time. This is used to normalise daily timelines, either to add
-    -- some dummy flow or to compute the end of flows which have not been properly "closed".
-    -- If one forgets to `End` the day then this parameter will be used to limit the duration of "unfinished"
-    -- flows.
+    -- | Custom definition of `FlowType`s for this user.
+    --  A user can define her or his own `FlowType` identifiers. Those will be used throughout the system
+    --  and can be further customised by associating a `Color` with them
     userFlowTypes :: Maybe (Map.Map FlowType Color),
-    -- ^Custom definition of `FlowType`s for this user.
-    -- A user can define her or his own `FlowType` identifiers. Those will be used throughout the system
-    -- and can be further customised by associating a `Color` with them
+    -- | Custom definition of command aliases
+    --  This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
+    --  it actually will wrap referenced program's execution in the current environment.
     userCommands :: Maybe (Map.Map String String)
-    -- ^Custom definition of command aliases
-    -- This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
-    -- it actually will wrap referenced program's execution in the current environment.
   }
   deriving (Eq, Show, Generic)
 
@@ -75,12 +76,15 @@ parseJSONFromVersion v o =
     <*> o .: "userEndOfDay"
     <*> parseFlowTypes
     <*> parseCommands
-   where
+  where
     parseFlowTypes =
       case v of
-        2 -> o .: "userFlowTypes" >>= pure . Just . Map.fromList
-        1 -> o .: "userFlowTypes" >>=
-              \ flowTypes -> pure $ Just $ Map.fromList (zip flowTypes (randomColors 12))
+        2 ->
+          (o .: "userFlowTypes" >>= pure . Just . Map.fromList)
+            <|> fail ("Cannot decode version 2 'userFlowTypes' at version " <> show currentVersion <> ", expected an array of tuples")
+        1 ->
+          o .: "userFlowTypes"
+            >>= \flowTypes -> pure $ Just $ Map.fromList (zip flowTypes (randomColors 12))
         0 -> pure Nothing
         _ -> o .: "userFlowTypes"
 
@@ -90,15 +94,16 @@ parseJSONFromVersion v o =
         _ -> pure Nothing
 
 instance ToJSON UserProfile where
-  toJSON UserProfile{..} =
-    object [ "userName" .= userName,
-             "userTimezone" .= userTimezone,
-             "userStartOfDay" .= userStartOfDay,
-             "userEndOfDay" .= userStartOfDay,
-             "userFlowTypes" .= userFlowTypes,
-             "userCommands" .= userCommands,
-             "userProfileVersion" .= currentVersion
-           ]
+  toJSON UserProfile {..} =
+    object
+      [ "userName" .= userName,
+        "userTimezone" .= userTimezone,
+        "userStartOfDay" .= userStartOfDay,
+        "userEndOfDay" .= userStartOfDay,
+        "userFlowTypes" .= userFlowTypes,
+        "userCommands" .= userCommands,
+        "userProfileVersion" .= currentVersion
+      ]
 
 instance FromJSON UserProfile where
   parseJSON =
