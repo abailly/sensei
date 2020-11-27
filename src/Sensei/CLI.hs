@@ -21,6 +21,8 @@ import Sensei.Client
 import System.Console.ANSI
 import System.IO
 import System.IO.Unsafe
+import Data.Functor (void)
+import System.Exit
 
 data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
@@ -31,6 +33,7 @@ data Options
 
 data UserAction
   = GetProfile
+  | SetProfile {profileFile :: FilePath}
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -52,7 +55,7 @@ optionsParser flows =
   QueryOptions <$> optional dayParser <*> summarizeParser <*> many groupParser
     <|> RecordOptions <$> flowTypeParser flows
     <|> NotesOptions <$> dayParser <* notesParser <*> formatParser
-    <|> UserOptions <$> (profileParser *> pure GetProfile)
+    <|> UserOptions <$> (profileParser *> userActionParser)
 
 {-# INLINE today #-}
 today :: Day
@@ -134,9 +137,20 @@ profileParser =
     ()
     ()
     ( long "user-profile"
-      <> short 'U'
-      <> help "get or set the user profile for current user"
+        <> short 'U'
+        <> help "get or set the user profile for current user"
     )
+
+userActionParser :: Parser UserAction
+userActionParser =
+  SetProfile
+    <$> strOption
+      ( long "config"
+          <> short 'c'
+          <> metavar "FILE"
+          <> help "JSON-formatted user profile to use"
+      )
+    <|> pure GetProfile
 
 parseSenseiOptions ::
   UserProfile -> IO Options
@@ -165,6 +179,11 @@ ep (RecordOptions ftype) curUser startDate curDir =
       send $ flowC curUser other (FlowState curUser startDate curDir)
 ep (UserOptions GetProfile) usrName _ _ =
   send (getUserProfileC usrName) >>= display
+ep (UserOptions (SetProfile file)) usrName _ _ = do
+  profile <- eitherDecode <$> LBS.readFile file
+  case profile of
+    Left err -> hPutStrLn stderr ("failed to decode user profile from " <> file <> ": " <> err) >> exitWith (ExitFailure 1)
+    Right prof -> void $ send (setUserProfileC usrName prof)
 
 println :: BS.ByteString -> IO ()
 println bs =

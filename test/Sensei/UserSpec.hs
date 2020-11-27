@@ -36,6 +36,12 @@ spec = describe "Users Management" $ do
       eitherDecode jsonProfile `shouldBe`
         Right defaultProfile { userFlowTypes =  Just (Map.fromList [(FlowType "Experimenting", "#0022dd")]) }
 
+    it "can deserialize version 4 JSON" $ do
+      let jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userProfileVersion\":4,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":{\"Experimenting\":\"#0022dd\"},\"userCommands\":{\"foo\":\"/usr/bin/foo\"}}"
+      eitherDecode jsonProfile `shouldBe`
+        Right defaultProfile { userCommands = Just (Map.fromList [("foo", "/usr/bin/foo")]),
+                               userFlowTypes =  Just (Map.fromList [(FlowType "Experimenting", "#0022dd")]) }
+
   withApp app $
     describe "Users API" $ do
       it "GET /users/<user> returns defualt profile" $ do

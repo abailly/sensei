@@ -16,7 +16,7 @@ daemonizeServer =
 
 # User Profile
 
-User profile can be set using the (local) server's API.
+User profile can be set using the command-line tool `ep`.
 
 First create a JSON file containing the user's profile:
 
@@ -28,32 +28,22 @@ $ cat > profile.json
   "userEndOfDay": "18:30:00",
   "userName": "arnaud",
   "userTimezone": "+01:00",
-  "userFlowTypes": [
-    [
-      "Experimenting",
-      "#010aab"
-    ],
-    [
-      "Flowing",
-      "#a04d22"
-    ],
-    [
-      "Learning",
-      "#7d72af"
-    ],
-    [
-      "Meeting",
-      "#904085"
-    ],
-    [
-      "Rework",
-      "#96f03a"
-    ],
-    [
-      "Troubleshooting",
-      "#d4b493"
-    ]
-  ]
+  "userCommands": {
+    "docker": "/usr/local/bin/docker",
+    "dotnet": "/usr/local/share/dotnet/dotnet",
+    "npm": "/usr/local/bin/npm",
+    "az": "/usr/local/bin/az",
+    "g": "/usr/bin/git",
+    "stak": "/Users/arnaud/.local/bin/stack"
+  },
+  "userFlowTypes": {
+    "Learning": "#ff8822",
+    "Flowing": "#00dd22",
+    "Troubleshooting": "#ee1111",
+    "Rework": "#4500dd",
+    "Meeting": "#fff203",
+    "Experimenting": "#0022dd"
+  }
 }
 ^D
 ```
@@ -61,9 +51,7 @@ $ cat > profile.json
 Then feed that data to the local server:
 
 ```
-$  curl -v -X PUT -d @profile.json -H 'Content-type: application/json' -H 'X-API-Version: 0.3.3' http://localhost:23456/users/alice
-...
-< HTTP/1.1 200 OK
+$  ep -U -c profile.json
 ```
 
 The configuration is currently stored in a JSON file inside XDG configuration directory for `sensei` application.
@@ -73,34 +61,18 @@ $ cat ~/.config/sensei/config.json | jq .
 {
   "userStartOfDay": "08:00:00",
   "userProfileVersion": 2,
+  ...
+}
+```
+
+This can also be retrieved from the command-line:
+
+```
+$  ep -U
+{
+  "userStartOfDay": "08:00:00",
+  "userProfileVersion": 2,
   "userEndOfDay": "18:30:00",
-  "userName": "arnaud",
-  "userTimezone": "+01:00",
-  "userFlowTypes": [
-    [
-      "Experimenting",
-      "#010aab"
-    ],
-    [
-      "Flowing",
-      "#a04d22"
-    ],
-    [
-      "Learning",
-      "#7d72af"
-    ],
-    [
-      "Meeting",
-      "#904085"
-    ],
-    [
-      "Rework",
-      "#96f03a"
-    ],
-    [
-      "Troubleshooting",
-      "#d4b493"
-    ]
-  ]
+  ...
 }
 ```

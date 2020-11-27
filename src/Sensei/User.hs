@@ -78,11 +78,11 @@ parseJSONFromVersion v o =
    where
     parseFlowTypes =
       case v of
-        3 -> o .: "userFlowTypes"
         2 -> o .: "userFlowTypes" >>= pure . Just . Map.fromList
         1 -> o .: "userFlowTypes" >>=
               \ flowTypes -> pure $ Just $ Map.fromList (zip flowTypes (randomColors 12))
-        _ -> pure Nothing
+        0 -> pure Nothing
+        _ -> o .: "userFlowTypes"
 
     parseCommands =
       case v of

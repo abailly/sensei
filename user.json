@@ -1,1 +1,23 @@
-{"userStartOfDay":"08:00:00","userProfileVersion":2,"userEndOfDay":"18:30:00","userName":"arnaud","userTimezone":"+01:00","userFlowTypes":[["Experimenting","#010aab"],["Flowing","#a04d22"],["Learning","#7d72af"],["Meeting","#904085"],["Rework","#96f03a"],["Troubleshooting","#d4b493"]]}
+{
+  "userStartOfDay": "08:00:00",
+  "userCommands": {
+    "docker": "/usr/local/bin/docker",
+    "dotnet": "/usr/local/share/dotnet/dotnet",
+    "npm": "/usr/local/bin/npm",
+    "az": "/usr/local/bin/az",
+    "g": "/usr/bin/git",
+    "stak": "/Users/arnaud/.local/bin/stack"
+  },
+  "userProfileVersion": 4,
+  "userEndOfDay": "08:00:00",
+  "userName": "arnaud",
+  "userTimezone": "+01:00",
+  "userFlowTypes": {
+    "Learning": "#ff8822",
+    "Flowing": "#00dd22",
+    "Troubleshooting": "#ee1111",
+    "Rework": "#4500dd",
+    "Meeting": "#fff203",
+    "Experimenting": "#0022dd"
+  }
+}

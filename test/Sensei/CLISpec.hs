@@ -23,3 +23,6 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses '-U' as user profile query" $ do
       runOptionsParser Nothing ["-U"] `shouldBe` Right (UserOptions GetProfile)
+
+    it "parses '-U -c config' as user profile upload" $ do
+      runOptionsParser Nothing ["-U", "-c", "config" ] `shouldBe` Right (UserOptions (SetProfile "config"))
