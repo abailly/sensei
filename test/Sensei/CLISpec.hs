@@ -26,3 +26,6 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses '-U -c config' as user profile upload" $ do
       runOptionsParser Nothing ["-U", "-c", "config" ] `shouldBe` Right (UserOptions (SetProfile "config"))
+
+    it "parses '-v' as versions display" $ do
+      runOptionsParser Nothing ["-v" ] `shouldBe` Right (UserOptions GetVersions)

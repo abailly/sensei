@@ -24,7 +24,7 @@ module Sensei.API
     GroupViews (..),
     Trace (..),
     Group (..),
-    UserProfile (..)
+    UserProfile (..),
   )
 where
 
@@ -37,6 +37,7 @@ import Sensei.Group
 import Sensei.Summary
 import Sensei.User
 import Sensei.Utils
+import Sensei.Version
 import Servant
 
 -- * API
@@ -44,6 +45,10 @@ import Servant
 type KillServer =
   Summary "Ask the server to kill itself." :> "kill"
     :> Delete '[JSON] ()
+
+type DisplayVersions =
+  Summary "Get the server executable and storage versions " :> "versions"
+    :> Get '[JSON] Versions
 
 type PostRecordTrace =
   Summary "Record execution 'trace' of a single command execution." :> "trace"
@@ -115,6 +120,7 @@ type SenseiAPI =
          )
     :<|> "users"
       :> (GetUserProfile :<|> PutUserProfile)
+    :<|> DisplayVersions
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy

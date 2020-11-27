@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -7,18 +8,21 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 -- | Types and functions to expose and manipulate the server's version
 module Sensei.Version
-  ( CheckVersion, checkVersion,
+  ( CheckVersion, checkVersion, Versions(..),
     senseiVersion, senseiVersionTH,
-    Version,
+    module Data.Version
   )
 where
 
+import Data.Aeson
+import GHC.Generics
 import qualified Data.List as List
 import qualified Data.Text as T
 import Data.Text.Lazy (fromStrict)
@@ -33,6 +37,17 @@ import GHC.TypeLits (symbolVal, KnownSymbol)
 import GHC.Base (Symbol)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Language.Haskell.TH
+import GHC.Natural
+
+-- | Definition for versions used in some context
+-- We distinguish the versions of various parts of the system: The executable
+-- released version, and the (JSON) representation version
+data Versions = Versions { serverVersion :: Version,
+                           clientVersion :: Version,
+                           serverStorageVersion :: Natural,
+                           clientStorageVersion :: Natural
+                         }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 -- | The current Sensei's version
 --

@@ -33,9 +33,11 @@ notesDayC :: Text -> Day -> ClientMonad [NoteView]
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
+getVersionsC :: ClientMonad Versions
 traceC
   :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> commandsDayC :<|> queryFlowDayC :<|> queryFlowC)
-  :<|> (getUserProfileC :<|> setUserProfileC) = clientIn senseiAPI Proxy
+  :<|> (getUserProfileC :<|> setUserProfileC)
+  :<|> getVersionsC = clientIn senseiAPI Proxy
 
 newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => m a}
 

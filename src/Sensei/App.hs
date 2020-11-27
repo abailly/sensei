@@ -64,8 +64,9 @@ baseServer signal output =
              :<|> queryFlowDayS output
              :<|> queryFlowS output
          )
-    :<|> getUserProfileS
-    :<|> putUserProfileS
+    :<|> (getUserProfileS
+          :<|> putUserProfileS)
+    :<|> getVersionsS
 
 senseiApp :: MVar () -> FilePath -> FilePath -> IO Application
 senseiApp signal output configDir = do

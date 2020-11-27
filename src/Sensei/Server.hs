@@ -19,6 +19,7 @@ import Sensei.IO
 import Servant
 import System.IO
 import Control.Monad.Except
+import Sensei.Version (senseiVersion, Versions(..))
 
 
 killS ::
@@ -115,3 +116,7 @@ putUserProfileS  _ profile = do
   configDir <- ask
   liftIO $ writeProfile configDir profile
   pure NoContent
+
+getVersionsS ::
+  (Monad m) => m Versions
+getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion

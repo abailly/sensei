@@ -9,6 +9,7 @@ import qualified Control.Exception.Safe as Exc
 import Data.Aeson hiding (Options, Success)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import Data.Functor (void)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -18,11 +19,11 @@ import Data.Time.Format.ISO8601
 import Options.Applicative
 import Sensei.API
 import Sensei.Client
+import Sensei.Version
 import System.Console.ANSI
+import System.Exit
 import System.IO
 import System.IO.Unsafe
-import Data.Functor (void)
-import System.Exit
 
 data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
@@ -34,6 +35,7 @@ data Options
 data UserAction
   = GetProfile
   | SetProfile {profileFile :: FilePath}
+  | GetVersions
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -48,7 +50,12 @@ optionsParserInfo :: Maybe [FlowType] -> ParserInfo Options
 optionsParserInfo flows =
   info
     (optionsParser flows <**> helper)
-    (progDesc "Epoché - Record start time of some flow type for current user")
+    ( progDesc $
+        unlines
+          [ "ep(oché) - Record start time of some flow type for current user",
+            "version: " <> showVersion senseiVersion <> ", storage: " <> show currentVersion
+          ]
+    )
 
 optionsParser :: Maybe [FlowType] -> Parser Options
 optionsParser flows =
@@ -143,14 +150,21 @@ profileParser =
 
 userActionParser :: Parser UserAction
 userActionParser =
-  SetProfile
-    <$> strOption
-      ( long "config"
-          <> short 'c'
-          <> metavar "FILE"
-          <> help "JSON-formatted user profile to use"
-      )
-    <|> pure GetProfile
+  ( SetProfile
+      <$> strOption
+        ( long "config"
+            <> short 'c'
+            <> metavar "FILE"
+            <> help "JSON-formatted user profile to use"
+        )
+      <|> pure GetProfile
+  )
+    <|> flag'
+        GetVersions
+       ( long "versions"
+           <> short 'v'
+           <> help "retrieve the current versions of client and server"
+       )
 
 parseSenseiOptions ::
   UserProfile -> IO Options
@@ -184,6 +198,9 @@ ep (UserOptions (SetProfile file)) usrName _ _ = do
   case profile of
     Left err -> hPutStrLn stderr ("failed to decode user profile from " <> file <> ": " <> err) >> exitWith (ExitFailure 1)
     Right prof -> void $ send (setUserProfileC usrName prof)
+ep (UserOptions GetVersions) _ _ _ = do
+  vs <- send getVersionsC
+  display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
 
 println :: BS.ByteString -> IO ()
 println bs =
