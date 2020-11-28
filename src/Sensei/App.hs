@@ -19,13 +19,15 @@ import Preface.Server
 import Sensei.API
 import Sensei.IO
 import Sensei.Server
+import Sensei.Server.Config
 import Sensei.Server.OpenApi
-import Sensei.UI
+import Sensei.Server.UI
 import Sensei.Version
 import Servant
 import System.Directory
 import System.FilePath
 import System.Posix.Daemonize
+import System.Environment (lookupEnv, setEnv)
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -39,7 +41,8 @@ sensei :: FilePath -> IO ()
 sensei output = do
   signal <- newEmptyMVar
   configDir <- getConfigDirectory
-  server <- startAppServer "" [] 23456 (senseiApp signal output configDir)
+  env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
+  server <- startAppServer "" [] 23456 (senseiApp env signal output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
   where
     getConfigDirectory = do
@@ -67,26 +70,23 @@ baseServer signal output =
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
-senseiApp :: MVar () -> FilePath -> FilePath -> IO Application
-senseiApp signal output configDir = do
+senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> IO Application
+senseiApp env signal output configDir = do
   initLogStorage output
   pure $
     serve fullAPI $
       hoistServer fullAPI (`runReaderT` configDir) $
         pure senseiSwagger
           :<|> baseServer signal output
-          :<|> Tagged staticResources
+          :<|> Tagged (userInterface env)
 
 senseiLog :: IO FilePath
 senseiLog = (</> ".sensei.log") <$> getHomeDirectory
 
 daemonizeServer :: IO ()
-daemonizeServer =
-  daemonize $
-    -- TODO fix this silly hardcoded path
-    -- this is so because I want to ensure the server is started in a location
-    -- where it can find the FE resources...
-    withCurrentDirectory "/Users/arnaud/projects/pankzsoft/sensei/" $ startServer
+daemonizeServer = do
+  setEnv "ENVIRONMENT" "Prod"
+  daemonize startServer
 
 startServer :: IO ()
 startServer =

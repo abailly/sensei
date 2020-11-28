@@ -1,45 +1,47 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module Sensei.TestHelper where
 
-import Control.Exception.Safe(finally)
-import Sensei.App ( senseiApp )
+import Control.Concurrent.MVar
+import Control.Exception.Safe (finally)
+import Control.Monad (unless)
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
+import Data.Functor (void)
+import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8)
-import Data.Text(unpack)
 import Network.Wai.Test (SResponse)
-import Test.Hspec ( around, ActionWith, Spec, SpecWith )
-import System.Posix.Temp (mkstemp)
+import Sensei.App (senseiApp)
+import Sensei.Server.Config
 import Sensei.Version
 import Servant
-import Test.Hspec.Wai as W ( request, WaiSession, MatchBody(..) )
-import Data.Functor(void)
-import System.IO ( hClose )
-import Control.Concurrent.MVar
 import System.Directory
-import Control.Monad (unless)
+import System.IO (hClose)
+import System.Posix.Temp (mkstemp)
+import Test.Hspec (ActionWith, Spec, SpecWith, around)
+import Test.Hspec.Wai as W (MatchBody (..), WaiSession, request)
 
-data AppBuilder = AppBuilder { withStorage :: Bool }
+data AppBuilder = AppBuilder {withStorage :: Bool, withEnv :: Env}
 
 app :: AppBuilder
-app = AppBuilder True
+app = AppBuilder True Dev
 
 withoutStorage :: AppBuilder -> AppBuilder
-withoutStorage builder = builder{withStorage = False}
+withoutStorage builder = builder {withStorage = False}
 
 withApp :: AppBuilder -> SpecWith ((), Application) -> Spec
 withApp builder = around (buildApp builder)
 
 buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
-buildApp AppBuilder{..} act = do
+buildApp AppBuilder {..} act = do
   file <- mkTempFile
   unless withStorage $ removePathForcibly file
   config <- mkTempDir
   signal <- newEmptyMVar
-  application <- senseiApp signal file config
+  application <- senseiApp Nothing signal file config
   act ((), application)
     `finally` removePathForcibly file >> removePathForcibly config
   where

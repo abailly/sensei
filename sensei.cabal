@@ -1,5 +1,5 @@
 name:                sensei
-version:             0.9.0
+version:             0.10.0
 synopsis:            Short description of your package
 homepage:            https://github.com/githubuser/sensei#readme
 license:             BSD3
@@ -23,12 +23,15 @@ library
                      , Sensei.Client
                      , Sensei.App
                      , Sensei.Server
+                     , Sensei.Server.UI
+                     , Sensei.Server.Config
                      , Sensei.CLI
                      , Sensei.Version
                      , Sensei.Wrapper
                      , Sensei.Utils
-  other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi, Sensei.IO, Paths_sensei,
-                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.UI
+  other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
+                 Sensei.IO, Paths_sensei,
+                 Sensei.Summary, Sensei.User, Sensei.Color
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , ansi-terminal
@@ -39,6 +42,7 @@ library
                      , colour
                      , containers
                      , directory
+                     , file-embed
                      , filepath
                      , hdaemonize
                      , http-client
@@ -92,6 +96,7 @@ test-suite sensei-test
                      , Sensei.FlowViewSpec
                      , Sensei.ServerSpec
                      , Sensei.TestHelper
+                     , Sensei.UISpec
                      , Sensei.UserSpec
                      , Sensei.VersionSpec
                      , Sensei.WaiTestHelper
