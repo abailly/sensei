@@ -15,12 +15,12 @@ import Control.Concurrent.MVar
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Swagger (Swagger)
-import Network.Wai.Application.Static
 import Preface.Server
 import Sensei.API
 import Sensei.IO
 import Sensei.Server
 import Sensei.Server.OpenApi
+import Sensei.UI
 import Sensei.Version
 import Servant
 import System.Directory
@@ -64,8 +64,7 @@ baseServer signal output =
              :<|> queryFlowDayS output
              :<|> queryFlowS output
          )
-    :<|> (getUserProfileS
-          :<|> putUserProfileS)
+    :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
 senseiApp :: MVar () -> FilePath -> FilePath -> IO Application
@@ -77,10 +76,6 @@ senseiApp signal output configDir = do
         pure senseiSwagger
           :<|> baseServer signal output
           :<|> Tagged staticResources
-
--- | Serve static resources under `public/` directory
-staticResources :: Application
-staticResources = staticApp (defaultFileServerSettings "ui")
 
 senseiLog :: IO FilePath
 senseiLog = (</> ".sensei.log") <$> getHomeDirectory

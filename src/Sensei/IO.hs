@@ -89,8 +89,9 @@ readCommands file UserProfile {userName, userTimezone} =
   where
     readTrace t acc = mkCommandView userTimezone t : acc
 
--- | Read user profile from XDG Configuration directory.
--- The `UserProfile` is stored as a JSON-encoded file in the XDG configuration direcotry
+-- | Read user profile file from given directory
+-- The `UserProfile` is expected to be stored as a JSON-encoded file named `config.json`
+-- in the given directory, which usually is the XDG configuration direcotry
 -- for @sensei@, see <https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Specification> for more details.
 -- Note the /current user/ is the owner of the process executing this function which
 -- should be the same as the one running @ep@ command line.
