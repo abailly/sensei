@@ -13,11 +13,12 @@ module Sensei.App where
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
 import Control.Monad.Except
-import Control.Monad.Reader
+import Control.Exception.Safe(try)
 import Data.Swagger (Swagger)
 import Preface.Server
 import Sensei.API
-import Sensei.IO
+import Sensei.DB
+import Sensei.DB.File
 import Sensei.Server
 import Sensei.Server.Config
 import Sensei.Server.OpenApi
@@ -52,32 +53,31 @@ sensei output = do
       pure home
 
 baseServer ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) =>
+  (MonadIO m, DB m) =>
   MVar () ->
-  FilePath ->
   ServerT (KillServer :<|> SenseiAPI) m
-baseServer signal output =
+baseServer signal =
   killS signal
-    :<|> traceS output
-    :<|> ( flowS output
-             :<|> queryFlowSummaryS output
-             :<|> queryFlowDaySummaryS output
-             :<|> notesDayS output
-             :<|> commandsDayS output
-             :<|> queryFlowDayS output
-             :<|> queryFlowS output
+    :<|> traceS
+    :<|> ( flowS
+             :<|> queryFlowSummaryS
+             :<|> queryFlowDaySummaryS
+             :<|> notesDayS
+             :<|> commandsDayS
+             :<|> queryFlowDayS
+             :<|> queryFlowS
          )
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
 senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> IO Application
 senseiApp env signal output configDir = do
-  initLogStorage output
+  runFileDB output configDir $ initLogStorage
   pure $
     serve fullAPI $
-      hoistServer fullAPI (`runReaderT` configDir) $
+      hoistServer fullAPI (Handler . ExceptT . try . runFileDB output configDir) $
         pure senseiSwagger
-          :<|> baseServer signal output
+          :<|> baseServer signal
           :<|> Tagged (userInterface env)
 
 senseiLog :: IO FilePath

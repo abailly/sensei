@@ -8,58 +8,56 @@ module Sensei.Server where
 
 import Control.Concurrent.MVar
 import Control.Monad.Trans
-import Control.Monad.Reader
 import qualified Data.List as List
 import Data.Text (Text)
 import Data.Time
 import Sensei.API
-import Sensei.IO
+import Sensei.DB
 import Servant
-import Control.Monad.Except
 import Sensei.Version (senseiVersion, Versions(..))
 
 
 killS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => MVar () -> m ()
+  MonadIO m => MVar () -> m ()
 killS signal = liftIO (putMVar signal ())
 
 traceS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Trace -> m ()
-traceS file trace =
-  liftIO $ writeTrace file trace
+  (DB m) => Trace -> m ()
+traceS trace =
+  writeTrace trace
 
 flowS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> FlowType -> FlowState -> m ()
-flowS file _ flowTyp flow =
-  liftIO $ writeFlow file (Flow flowTyp flow currentVersion)
+  (DB m) => Text -> FlowType -> FlowState -> m ()
+flowS _ flowTyp flow =
+  writeFlow (Flow flowTyp flow currentVersion)
 
 notesDayS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m [NoteView]
-notesDayS file usr day = do
+  (DB m) => Text -> Day -> m [NoteView]
+notesDayS  usr day = do
   usrProfile <- getUserProfileS usr
-  notes <- liftIO $ readNotes file usrProfile
+  notes <- readNotes usrProfile
   pure $ map (uncurry NoteView) $ filter (sameDayThan day (localDay . fst)) notes
 
 commandsDayS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m [CommandView]
-commandsDayS file usr day = do
+  (DB m) => Text -> Day -> m [CommandView]
+commandsDayS usr day = do
   usrProfile <- getUserProfileS usr
-  commands <- liftIO $ readCommands file usrProfile
+  commands <- readCommands usrProfile
   pure $ filter (commandOnDay day) commands
 
 queryFlowDayS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m [FlowView]
-queryFlowDayS file usr day = do
+  (DB m) => Text -> Day -> m [FlowView]
+queryFlowDayS usr day = do
   usrProfile <- getUserProfileS usr
-  views <- liftIO $ readViews file usrProfile
+  views <- readViews usrProfile
   pure $ filter (flowOnDay day) views
 
 queryFlowDaySummaryS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> Day -> m FlowSummary
-queryFlowDaySummaryS file usr day = do
+  (DB m) => Text -> Day -> m FlowSummary
+queryFlowDaySummaryS usr day = do
   usrProfile <- getUserProfileS usr
-  views <- liftIO $ readViews file usrProfile
-  commands <- liftIO $ readCommands file usrProfile
+  views <- readViews usrProfile
+  commands <- readCommands usrProfile
   let summaryFlows = views
         |> filter (flowOnDay day)
         |> summarize
@@ -71,10 +69,10 @@ queryFlowDaySummaryS file usr day = do
 
 
 queryFlowSummaryS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> m [GroupViews (FlowType, NominalDiffTime)]
-queryFlowSummaryS file usr = do
+  (DB m) => Text -> m [GroupViews (FlowType, NominalDiffTime)]
+queryFlowSummaryS usr = do
   usrProfile@UserProfile {userStartOfDay, userEndOfDay} <- getUserProfileS usr
-  views <- liftIO $ groupViews userStartOfDay userEndOfDay [Day] <$> readViews file usrProfile
+  views <- groupViews userStartOfDay userEndOfDay [Day] <$> readViews usrProfile
   pure $ views |> fmap summary
   where
     summary :: GroupViews FlowView -> GroupViews (FlowType, NominalDiffTime)
@@ -89,25 +87,23 @@ queryFlowSummaryS file usr = do
 -- summarize flows@(f NE.:| _) = (flowType f, sum $ fmap duration flows)
 
 queryFlowS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => FilePath -> Text -> [Group] -> m [GroupViews FlowView]
-queryFlowS file usr groups = do
+  (DB m) => Text -> [Group] -> m [GroupViews FlowView]
+queryFlowS usr groups = do
   usrProfile@UserProfile {userStartOfDay, userEndOfDay} <- getUserProfileS usr
-  liftIO $ groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews file usrProfile
+  groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews usrProfile
 
 getUserProfileS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => Text -> m UserProfile
+  (DB m) => Text -> m UserProfile
 getUserProfileS _ = do
-  configDir <- ask
-  prof <- liftIO $ readProfile configDir
+  prof <- readProfile
   case prof of
     Left _ -> pure defaultProfile
     Right prf -> pure prf
 
 putUserProfileS ::
-  (MonadReader FilePath m, MonadIO m, MonadError ServerError m) => Text -> UserProfile -> m NoContent
+  (DB m) => Text -> UserProfile -> m NoContent
 putUserProfileS  _ profile = do
-  configDir <- ask
-  liftIO $ writeProfile configDir profile
+  writeProfile profile
   pure NoContent
 
 getVersionsS ::

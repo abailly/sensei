@@ -2,44 +2,61 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
-module Sensei.IO
-  ( initLogStorage,
-    writeTrace, writeFlow,
-    readNotes,
-    readViews,
-    readCommands,
-    readProfile,
-    writeProfile,
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+-- | A "database" stored as a simple flat-file containing one line of JSON-formatted data per record.
+module Sensei.DB.File
+  ( FileDB(..), runFileDB
   )
 where
 
+import Control.Monad.Reader
 import qualified Control.Exception.Safe as Exc
-import Control.Monad (unless)
 import Data.Aeson hiding (Options)
 import Data.Bifunctor
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text, pack)
 import Data.Time
+import Sensei.DB
 import Sensei.API
 import System.Directory
 import System.FilePath ((</>))
 import System.IO
 
+data FileDBPaths = FileDBPaths { storageFile :: FilePath,
+                                 configDir :: FilePath
+                               }
+
+newtype FileDB a = FileDB { unFileDB :: ReaderT FileDBPaths IO a }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+runFileDB :: FilePath -> FilePath -> FileDB a -> IO a
+runFileDB storage config =
+  (`runReaderT` (FileDBPaths storage config)) . unFileDB
+
+instance DB FileDB where
+  initLogStorage = FileDB $ (asks storageFile >>= liftIO . initLogStorageFile)
+  writeTrace t = FileDB $ (asks storageFile >>= liftIO . writeTraceFile t)
+  writeFlow t = FileDB $ (asks storageFile >>= liftIO . writeFlowFile t)
+  writeProfile u = FileDB $ (asks configDir >>= liftIO . writeProfileFile u)
+  readViews u = FileDB $ (asks storageFile >>= liftIO . readViewsFile u)
+  readNotes u = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
+  readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
+  readProfile = FileDB $ (asks configDir >>= liftIO . readProfileFile)
+
 -- | Initialise a log store at given path
-initLogStorage ::
+initLogStorageFile ::
   FilePath -> IO ()
-initLogStorage output = do
+initLogStorageFile output = do
   hasFile <- doesFileExist output
   unless hasFile $ openFile output WriteMode >>= hClose
 
-writeTrace :: FilePath -> Trace -> IO ()
-writeTrace file trace =
+writeTraceFile :: Trace -> FilePath -> IO ()
+writeTraceFile trace file =
   writeJSON file (encode trace)
 
-writeFlow :: FilePath -> Flow -> IO ()
-writeFlow file flow =
+writeFlowFile :: Flow -> FilePath -> IO ()
+writeFlowFile flow file =
   writeJSON file (encode flow)
 
 writeJSON :: FilePath -> LBS.ByteString -> IO ()
@@ -49,8 +66,8 @@ writeJSON file jsonData =
     hFlush out
 
 -- | Read all the views for a given `UserProfile`
-readViews :: FilePath -> UserProfile -> IO [FlowView]
-readViews file UserProfile {userName, userTimezone, userEndOfDay} =
+readViewsFile :: UserProfile -> FilePath -> IO [FlowView]
+readViewsFile UserProfile {userName, userTimezone, userEndOfDay} file =
   withBinaryFile file ReadMode $ loop accumulator userName []
   where
     accumulator flow = flowView flow userName (appendFlow userTimezone userEndOfDay)
@@ -65,8 +82,8 @@ loop g usr acc hdl = do
         Left _err -> loop g usr acc hdl
         Right b -> loop g usr (g b acc) hdl
 
-readNotes :: FilePath -> UserProfile -> IO [(LocalTime, Text)]
-readNotes file UserProfile {userName, userTimezone} =
+readNotesFile :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
+readNotesFile UserProfile {userName, userTimezone} file =
   withBinaryFile file ReadMode $ loop accumulator userName []
   where
     f :: Flow -> [(LocalTime, Text)] -> [(LocalTime, Text)]
@@ -83,8 +100,8 @@ flowView f@Flow {..} usr mkView views =
     else views
 
 -- | Read all the views for a given `UserProfile`
-readCommands :: FilePath -> UserProfile -> IO [CommandView]
-readCommands file UserProfile {userName, userTimezone} =
+readCommandsFile :: UserProfile -> FilePath -> IO [CommandView]
+readCommandsFile UserProfile {userName, userTimezone} file =
   withBinaryFile file ReadMode $ loop readTrace userName []
   where
     readTrace t acc = mkCommandView userTimezone t : acc
@@ -95,17 +112,17 @@ readCommands file UserProfile {userName, userTimezone} =
 -- for @sensei@, see <https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Specification> for more details.
 -- Note the /current user/ is the owner of the process executing this function which
 -- should be the same as the one running @ep@ command line.
-readProfile ::
+readProfileFile ::
   FilePath -> IO (Either Text UserProfile)
-readProfile home = do
+readProfileFile home = do
   let configFile = home </> "config.json"
   existF <- doesFileExist configFile
   if (not existF)
     then pure $ Left (pack $ "config file " <> configFile <> " does not exist")
     else first pack . eitherDecode <$> LBS.readFile configFile
 
-writeProfile ::
-  FilePath -> UserProfile -> IO ()
-writeProfile home profile = do
+writeProfileFile ::
+  UserProfile -> FilePath -> IO ()
+writeProfileFile profile home = do
   let configFile = home </> "config.json"
   LBS.writeFile configFile (encode profile)
