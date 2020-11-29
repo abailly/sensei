@@ -26,7 +26,6 @@ import Sensei.Server.UI
 import Sensei.Version
 import Servant
 import System.Directory
-import System.FilePath
 import System.Posix.Daemonize
 import System.Environment (lookupEnv, setEnv)
 
@@ -37,6 +36,15 @@ type FullAPI =
 
 fullAPI :: Proxy FullAPI
 fullAPI = Proxy
+
+daemonizeServer :: IO ()
+daemonizeServer = do
+  setEnv "ENVIRONMENT" "Prod"
+  daemonize startServer
+
+startServer :: IO ()
+startServer =
+  getDataFile >>= sensei
 
 sensei :: FilePath -> IO ()
 sensei output = do
@@ -79,15 +87,3 @@ senseiApp env signal output configDir = do
         pure senseiSwagger
           :<|> baseServer signal
           :<|> Tagged (userInterface env)
-
-senseiLog :: IO FilePath
-senseiLog = (</> ".sensei.log") <$> getHomeDirectory
-
-daemonizeServer :: IO ()
-daemonizeServer = do
-  setEnv "ENVIRONMENT" "Prod"
-  daemonize startServer
-
-startServer :: IO ()
-startServer =
-  senseiLog >>= sensei

@@ -5,7 +5,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | A "database" stored as a simple flat-file containing one line of JSON-formatted data per record.
 module Sensei.DB.File
-  ( FileDB(..), runFileDB
+  ( FileDB(..), runFileDB,
+    senseiLog, getDataFile
   )
 where
 
@@ -126,3 +127,25 @@ writeProfileFile ::
 writeProfileFile profile home = do
   let configFile = home </> "config.json"
   LBS.writeFile configFile (encode profile)
+
+{-# DEPRECATED senseiLog "this will be removed in favor of XDG data directory storage" #-}
+senseiLog :: IO FilePath
+senseiLog = (</> ".sensei.log") <$> getHomeDirectory
+
+getDataFile :: IO FilePath
+getDataFile = do
+  newLog <- getDataDirectory >>= pure . (</> "sensei.log")
+  maybeMigrateOldLog newLog
+  pure newLog
+  where
+    maybeMigrateOldLog newLog = do
+      oldLog <- senseiLog
+      oldLogExists <- doesFileExist oldLog
+      newLogExists <- doesFileExist newLog
+      when (oldLogExists && not newLogExists) $ renameFile oldLog newLog
+
+    getDataDirectory = do
+      home <- getXdgDirectory XdgData "sensei"
+      exists <- doesDirectoryExist home
+      when (not exists) $ createDirectory home
+      pure home
