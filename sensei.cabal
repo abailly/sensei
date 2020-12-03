@@ -1,5 +1,5 @@
 name:                sensei
-version:             0.11.0
+version:             0.11.1
 synopsis:            Short description of your package
 homepage:            https://github.com/githubuser/sensei#readme
 license:             BSD3
@@ -30,7 +30,7 @@ library
                      , Sensei.Wrapper
                      , Sensei.Utils
   other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
-                 Sensei.DB, Sensei.DB.File, Paths_sensei,
+                 Sensei.DB, Sensei.DB.File, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson

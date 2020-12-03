@@ -5,7 +5,6 @@
 
 module Sensei.CLI where
 
-import qualified Control.Exception.Safe as Exc
 import Data.Aeson hiding (Options, Success)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -18,9 +17,9 @@ import Data.Time
 import Data.Time.Format.ISO8601
 import Options.Applicative
 import Sensei.API
+import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.Version
-import System.Console.ANSI
 import System.Exit
 import System.IO
 import System.IO.Unsafe
@@ -160,11 +159,11 @@ userActionParser =
       <|> pure GetProfile
   )
     <|> flag'
-        GetVersions
-       ( long "versions"
-           <> short 'v'
-           <> help "retrieve the current versions of client and server"
-       )
+      GetVersions
+      ( long "versions"
+          <> short 'v'
+          <> help "retrieve the current versions of client and server"
+      )
 
 parseSenseiOptions ::
   UserProfile -> IO Options
@@ -229,26 +228,3 @@ formatTimestamp = Text.pack . formatTime defaultTimeLocale "%H:%M"
 
 timestamped :: NoteView -> [Text]
 timestamped (NoteView st note) = formatTimestamp st : Text.lines note
-
-captureNote :: IO Text.Text
-captureNote = do
-  setSGR
-    [ SetConsoleIntensity NormalIntensity,
-      SetColor Foreground Vivid White,
-      SetColor Background Dull Blue
-    ]
-  putStr "Record a note, type Ctrl+D at beginning of line when done"
-  setSGR [Reset]
-  putStrLn ""
-  capture []
-  where
-    capture :: [Text.Text] -> IO Text.Text
-    capture acc = do
-      eof <- isEOF
-      if eof
-        then pure $ Text.unlines (reverse acc)
-        else do
-          res <- Exc.try $ hGetLine stdin
-          case res of
-            Left (_ex :: Exc.IOException) -> pure $ Text.unlines (reverse acc)
-            Right txt -> capture (Text.pack txt : acc)
