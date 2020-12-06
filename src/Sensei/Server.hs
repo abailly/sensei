@@ -84,8 +84,6 @@ queryFlowSummaryS usr = do
           (GroupLevel g u gf) -> GroupLevel g u (summary gf)
       )
 
--- summarize flows@(f NE.:| _) = (flowType f, sum $ fmap duration flows)
-
 queryFlowS ::
   (DB m) => Text -> [Group] -> m [GroupViews FlowView]
 queryFlowS usr groups = do

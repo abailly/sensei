@@ -69,9 +69,7 @@ writeJSON file jsonData =
 -- | Read all the views for a given `UserProfile`
 readViewsFile :: UserProfile -> FilePath -> IO [FlowView]
 readViewsFile UserProfile {userName, userTimezone, userEndOfDay} file =
-  withBinaryFile file ReadMode $ loop accumulator userName []
-  where
-    accumulator flow = flowView flow userName (appendFlow userTimezone userEndOfDay)
+  withBinaryFile file ReadMode $ loop (flowViewBuilder userName userTimezone userEndOfDay) userName []
 
 loop :: FromJSON b => (b -> [a] -> [a]) -> Text -> [a] -> Handle -> IO [a]
 loop g usr acc hdl = do
@@ -85,27 +83,12 @@ loop g usr acc hdl = do
 
 readNotesFile :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
 readNotesFile UserProfile {userName, userTimezone} file =
-  withBinaryFile file ReadMode $ loop accumulator userName []
-  where
-    f :: Flow -> [(LocalTime, Text)] -> [(LocalTime, Text)]
-    f (Flow Note (FlowNote _ st _ note) _) fragments =
-      (utcToLocalTime userTimezone st, note) : fragments
-    f _ fragments = fragments
-
-    accumulator flow = flowView flow userName f
-
-flowView :: Flow -> Text -> (Flow -> [a] -> [a]) -> [a] -> [a]
-flowView f@Flow {..} usr mkView views =
-  if _flowUser _flowState == usr
-    then mkView f views
-    else views
+  withBinaryFile file ReadMode $ loop (notesViewBuilder userName userTimezone) userName []
 
 -- | Read all the views for a given `UserProfile`
 readCommandsFile :: UserProfile -> FilePath -> IO [CommandView]
 readCommandsFile UserProfile {userName, userTimezone} file =
-  withBinaryFile file ReadMode $ loop readTrace userName []
-  where
-    readTrace t acc = mkCommandView userTimezone t : acc
+  withBinaryFile file ReadMode $ loop (commandViewBuilder userTimezone) userName []
 
 -- | Read user profile file from given directory
 -- The `UserProfile` is expected to be stored as a JSON-encoded file named `config.json`

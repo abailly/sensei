@@ -5,7 +5,7 @@
 module Sensei.TestHelper where
 
 import Control.Concurrent.MVar
-import Control.Exception.Safe (finally)
+import Control.Exception.Safe (finally, bracket)
 import Control.Monad (unless)
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
@@ -35,6 +35,10 @@ withoutStorage builder = builder {withStorage = False}
 withApp :: AppBuilder -> SpecWith ((), Application) -> Spec
 withApp builder = around (buildApp builder)
 
+withTempFile :: (FilePath -> IO a) -> IO a
+withTempFile =
+  bracket mkTempFile removePathForcibly
+
 buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
 buildApp AppBuilder {..} act = do
   file <- mkTempFile
@@ -45,8 +49,10 @@ buildApp AppBuilder {..} act = do
   act ((), application)
     `finally` removePathForcibly file >> removePathForcibly config
   where
-    mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
     mkTempDir = mkstemp "config-sensei" >>= \(fp, h) -> hClose h >> removePathForcibly fp >> createDirectory fp >> pure fp
+
+mkTempFile :: IO FilePath
+mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
 postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
 postJSON path payload = request "POST" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
