@@ -76,7 +76,7 @@ instance ToJSON FlowType where
   toJSON End = "End"
   toJSON Other = "Other"
 
-parseFlowType :: Text -> Parser FlowType
+parseFlowType :: Applicative f => Text -> f FlowType
 parseFlowType t =
   case t of
     "Note" -> pure Note
@@ -94,10 +94,7 @@ instance ToHttpApiData FlowType where
   toUrlPiece Other = "Other"
 
 instance FromHttpApiData FlowType where
-  parseUrlPiece "End" = pure End
-  parseUrlPiece "Note" = pure Note
-  parseUrlPiece "Other" = pure Other
-  parseUrlPiece other = pure $ FlowType other
+  parseUrlPiece = parseFlowType
 
 -- | Default flow types when user does not define her own list
 -- These are the flow types available for recording, on top of the

@@ -21,7 +21,6 @@ import Preface.Utils
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.File
-import Servant.API (FromHttpApiData (parseUrlPiece))
 import System.Directory
 import System.IO
 
@@ -166,7 +165,7 @@ instance FromRow Flow where
   fromRow = do
     _ts :: UTCTime <- field
     ver <- fromInteger <$> field
-    ty <- either (error . unpack) id . parseUrlPiece <$> field
+    ty <- either (error . unpack) id . parseFlowType <$> field
     st <- either error id . eitherDecode . encodeUtf8 <$> field
     pure $ Flow ty st ver
 
