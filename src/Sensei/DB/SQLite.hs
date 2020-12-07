@@ -1,6 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Implementation of flows DB using <https://www.sqlite.org/index.html SQLite>
@@ -9,12 +9,21 @@ module Sensei.DB.SQLite where
 
 import Control.Exception.Safe
 import Control.Monad.Reader
-import Data.Text (Text, pack)
+import Data.Aeson (eitherDecode, encode)
+import qualified Data.ByteString.Lazy as LBS
+import Data.Text (Text, pack, unpack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
+import Data.Time (UTCTime)
+import Data.Time.LocalTime
 import Database.SQLite.Simple
+import Database.SQLite.Simple.ToField
+import Preface.Utils
+import Sensei.API
 import Sensei.DB
+import Sensei.DB.File
+import Servant.API (FromHttpApiData (parseUrlPiece))
 import System.Directory
 import System.IO
-import Preface.Utils
 
 data SQLiteConfig = SQLiteConfig
   { storagePath :: FilePath,
@@ -27,12 +36,12 @@ newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
 instance DB SQLiteDB where
   initLogStorage = initSQLiteDB
   writeTrace = undefined
-  writeFlow = undefined
-  writeProfile = undefined
-  readNotes = undefined
+  writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
+  writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
+  readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
   readViews = undefined
   readCommands = undefined
-  readProfile = undefined
+  readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
 
 runSQLite ::
   FilePath -> SQLiteDB a -> IO a
@@ -64,8 +73,9 @@ tableExists tblName cnx = do
     (_ : _) -> pure True
     [] -> pure False
 
-data MigrationResult = MigrationSuccessful
-  | MigrationFailed { reason :: Text }
+data MigrationResult
+  = MigrationSuccessful
+  | MigrationFailed {reason :: Text}
 
 initialMigration :: Connection -> IO MigrationResult
 initialMigration cnx = do
@@ -73,43 +83,47 @@ initialMigration cnx = do
   unless tblExists $ execute_ cnx createMigrationTable
   pure MigrationSuccessful
 
-data Migration =
-  InitialMigration
-  | Migration { name :: Text, apply :: Query, rollback :: Query }
+data Migration
+  = InitialMigration
+  | Migration {name :: Text, apply :: Query, rollback :: Query}
 
 instance Hashable Migration where
   hashOf InitialMigration = hashOf ("InitialMigration" :: Text)
-  hashOf Migration{..} = hashOf name <> hashOf (fromQuery apply) <> hashOf (fromQuery rollback)
+  hashOf Migration {..} = hashOf name <> hashOf (fromQuery apply) <> hashOf (fromQuery rollback)
 
 createLog :: Migration
 createLog =
   Migration
-  "createLog"
-  (mconcat [ "create table if not exists event_log ",
-             "( id integer primary key",
-             ", timestamp text not null",
-             ", flow_type text not null",
-             ", flow_data text not null",
-             ");"
-           ])
-  "drop table event_log;"
+    "createLog"
+    ( mconcat
+        [ "create table if not exists event_log ",
+          "( id integer primary key",
+          ", timestamp text not null",
+          ", version integer not null",
+          ", flow_type text not null",
+          ", flow_data text not null",
+          ");"
+        ]
+    )
+    "drop table event_log;"
 
 runMigration ::
   Connection -> MigrationResult -> Migration -> IO MigrationResult
-runMigration _   f@MigrationFailed{} _ = pure f -- shortcut execution when failing
+runMigration _ f@MigrationFailed {} _ = pure f -- shortcut execution when failing
 runMigration cnx _ m = do
   hasRun <- checkHasRun m cnx
-  (if not hasRun
-    then applyMigration m cnx
-    else pure MigrationSuccessful)
-    `catches` [ Handler $ \ (e :: FormatError) -> pure $ MigrationFailed (pack $ show e)
-              , Handler $ \ (e :: ResultError) -> pure $ MigrationFailed (pack $ show e)
-              , Handler $ \ (e :: SQLError) -> pure $ MigrationFailed (pack $ show e)
+  ( if not hasRun
+      then applyMigration m cnx
+      else pure MigrationSuccessful
+    )
+    `catches` [ Handler $ \(e :: FormatError) -> pure $ MigrationFailed (pack $ show e),
+                Handler $ \(e :: ResultError) -> pure $ MigrationFailed (pack $ show e),
+                Handler $ \(e :: SQLError) -> pure $ MigrationFailed (pack $ show e)
               ]
 
 checkHasRun :: Migration -> Connection -> IO Bool
 checkHasRun InitialMigration cnx = tableExists "schema_migrations" cnx
-checkHasRun m@Migration{..} cnx = do
+checkHasRun m@Migration {..} cnx = do
   let h = hashOf m
       q = "select id from schema_migrations where filename = ? and checksum = ?"
   migrationExists <- tableExists "schema_migrations" cnx
@@ -118,7 +132,7 @@ checkHasRun m@Migration{..} cnx = do
 
 applyMigration :: Migration -> Connection -> IO MigrationResult
 applyMigration InitialMigration cnx = initialMigration cnx
-applyMigration m@Migration{..} cnx = do
+applyMigration m@Migration {..} cnx = do
   let h = hashOf m
       q = "insert into schema_migrations (filename, checksum) values (?,?)"
   execute_ cnx apply
@@ -131,13 +145,40 @@ runMigrations cnx =
 
 migrateSQLiteDB :: FilePath -> IO ()
 migrateSQLiteDB sqliteFile =
-  withConnection sqliteFile $ \ cnx -> do
-  migResult <- runMigrations cnx [ InitialMigration, createLog ]
-  case migResult of
-    MigrationSuccessful -> pure ()
-    MigrationFailed err -> throwIO $ SQLiteDBError err
+  withConnection sqliteFile $ \cnx -> do
+    migResult <- runMigrations cnx [InitialMigration, createLog]
+    case migResult of
+      MigrationSuccessful -> pure ()
+      MigrationFailed err -> throwIO $ SQLiteDBError err
 
 data SQLiteDBError = SQLiteDBError Text
   deriving (Eq, Show)
 
 instance Exception SQLiteDBError
+
+instance ToRow Flow where
+  toRow Flow {..} =
+    let ts = toField (_flowStart _flowState)
+        payload = toField $ decodeUtf8' $ LBS.toStrict $ encode _flowState
+     in [ts, SQLInteger (fromIntegral currentVersion), toField $ show _flowType, payload]
+
+instance FromRow Flow where
+  fromRow = do
+    _ts :: UTCTime <- field
+    ver <- fromInteger <$> field
+    ty <- either (error . unpack) id . parseUrlPiece <$> field
+    st <- either error id . eitherDecode . encodeUtf8 <$> field
+    pure $ Flow ty st ver
+
+writeFlowSQL :: Flow -> FilePath -> IO ()
+writeFlowSQL flow sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
+    execute cnx q flow
+
+readNotesSQL :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
+readNotesSQL UserProfile {..} sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' order by timestamp"
+    notesFlow <- query_ cnx q
+    pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow

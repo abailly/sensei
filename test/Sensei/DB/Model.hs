@@ -10,12 +10,13 @@ module Sensei.DB.Model where
 
 import Control.Monad.State
 import Data.Sequence
-import Data.Text (Text, unpack, pack)
+import Data.Text (Text, pack)
 import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
+import Data.Maybe (isNothing)
 
 -- | Relevant commands issued to the underlying DB
 data Action a where
@@ -57,7 +58,7 @@ data Actions = Actions {actions :: [SomeAction]}
 startTime :: UTCTime
 startTime = UTCTime (toEnum 50000) 10000
 
-generateFlow :: UTCTime -> Int -> Gen Flow
+generateFlow :: UTCTime -> Integer -> Gen Flow
 generateFlow baseTime k = do
   typ <-
     frequency
@@ -71,18 +72,18 @@ generateFlow baseTime k = do
     _ -> generateState baseTime k
   pure $ Flow typ st currentVersion
 
-generateNote :: UTCTime -> Int -> Gen FlowState
+generateNote :: UTCTime -> Integer -> Gen FlowState
 generateNote baseTime k = do
   usr <- generateUser
-  st <- pure $ addUTCTime (toEnum $ k * 1000) baseTime
+  st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
   dir <- generateDir
   note <- generateNoteText
   pure $ FlowNote usr st dir note
 
-generateState :: UTCTime -> Int -> Gen FlowState
+generateState :: UTCTime -> Integer -> Gen FlowState
 generateState baseTime k = do
   usr <- generateUser
-  st <- pure $ addUTCTime (toEnum $ k * 1000) baseTime
+  st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
   dir <- generateDir
   pure $ FlowState usr st dir
 
@@ -95,7 +96,7 @@ generateDir = pack . getPrintableString <$> arbitrary
 generateNoteText :: Gen Text
 generateNoteText = pack . getPrintableString <$> arbitrary
 
-generateAction :: UTCTime -> Int -> Gen SomeAction
+generateAction :: UTCTime -> Integer -> Gen SomeAction
 generateAction baseTime k =
   frequency
     [ (9, SomeAction . WriteFlow <$> generateFlow baseTime k),
@@ -104,7 +105,7 @@ generateAction baseTime k =
 
 instance Arbitrary Actions where
   arbitrary =
-    Actions <$> (listOf arbitrary >>= sequence . map (generateAction startTime))
+    Actions <$> (arbitrary >>= sequence . map (generateAction startTime) . enumFromTo 1 . getPositive)
 
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
@@ -120,26 +121,35 @@ interpret _ = undefined
 runDB :: (DB db) => Action a -> db a
 runDB (WriteFlow f) = writeFlow f
 runDB (WriteTrace t) = writeTrace t
-runDB ReadNotes = readProfileOrError >>= readNotes
-runDB ReadViews = readProfileOrError >>= readViews
-runDB ReadCommands = readProfileOrError >>= readCommands
+runDB ReadNotes = readProfileOrDefault >>= readNotes
+runDB ReadViews = readProfileOrDefault >>= readViews
+runDB ReadCommands = readProfileOrDefault >>= readCommands
 
-readProfileOrError :: DB db => db UserProfile
-readProfileOrError = fmap (either (error . unpack) id) readProfile
+readProfileOrDefault :: DB db => db UserProfile
+readProfileOrDefault = fmap (either (const defaultProfile) id) readProfile
 
-validateActions :: forall db. DB db => [SomeAction] -> StateT Model db [Bool]
+validateActions :: forall db. DB db => [SomeAction] -> StateT Model db [Maybe String]
 validateActions acts = do
   sequence $ runAndCheck <$> acts
 
-runAndCheck :: DB db => SomeAction -> StateT Model db Bool
+runAndCheck :: DB db => SomeAction -> StateT Model db (Maybe String)
 runAndCheck (SomeAction act) = do
   actual <- lift $ runDB act
   expected <- interpret act
-  pure $ actual == expected
+  if actual == expected
+    then pure Nothing
+    else do
+    m <- get
+    pure $ Just $ "with state = " <> show m <>
+      ", expected : " <> show expected <>
+      ", got :  " <> show actual
 
 canReadFlowsAndTracesWritten ::
   (DB db) => (forall x. db x -> IO x) -> Actions -> Property
 canReadFlowsAndTracesWritten nt (Actions actions) = monadicIO $ do
   let start = Model startTime defaultProfile mempty mempty
+      monitorErrors Nothing = pure ()
+      monitorErrors (Just s) = monitor (counterexample s)
   res <- run $ nt $ evalStateT (validateActions actions) start
-  assert $ and res
+  forM_ res monitorErrors
+  assert $ all isNothing res

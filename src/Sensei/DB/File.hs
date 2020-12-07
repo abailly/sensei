@@ -6,7 +6,8 @@
 -- | A "database" stored as a simple flat-file containing one line of JSON-formatted data per record.
 module Sensei.DB.File
   ( FileDB(..), runFileDB,
-    senseiLog, getDataFile
+    senseiLog, getDataFile,
+    readProfileFile, writeProfileFile
   )
 where
 
