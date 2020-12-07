@@ -15,6 +15,14 @@ import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
 import Test.QuickCheck
+    ( Arbitrary(arbitrary),
+      Gen,
+      frequency,
+      Property,
+      counterexample,
+      elements,
+      Positive(getPositive),
+      PrintableString(getPrintableString) )
 import Test.QuickCheck.Monadic
 import Data.Maybe (isNothing)
 
@@ -100,7 +108,8 @@ generateAction :: UTCTime -> Integer -> Gen SomeAction
 generateAction baseTime k =
   frequency
     [ (9, SomeAction . WriteFlow <$> generateFlow baseTime k),
-      (1, pure $ SomeAction ReadNotes)
+      (1, pure $ SomeAction ReadNotes),
+      (1, pure $ SomeAction ReadViews)
     ]
 
 instance Arbitrary Actions where
@@ -116,6 +125,10 @@ interpret ReadNotes = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- gets flows
   pure $ foldr (notesViewBuilder userName userTimezone) [] fs
+interpret ReadViews = do
+  UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
+  fs <- gets flows
+  pure $ foldr (flowViewBuilder userName userTimezone userEndOfDay) [] fs
 interpret _ = undefined
 
 runDB :: (DB db) => Action a -> db a

@@ -23,6 +23,7 @@ module Sensei.Flow where
 import Data.Aeson hiding (Options)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Text (Text)
+import Data.Text.ToText
 import qualified Data.Text as Text
 import Data.Time
 import GHC.Generics
@@ -75,6 +76,12 @@ instance ToJSON FlowType where
   toJSON Note = "Note"
   toJSON End = "End"
   toJSON Other = "Other"
+
+instance ToText FlowType where
+  toText (FlowType f) = f
+  toText Note = "Note"
+  toText End = "End"
+  toText Other = "Other"
 
 parseFlowType :: Applicative f => Text -> f FlowType
 parseFlowType t =

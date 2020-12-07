@@ -38,7 +38,7 @@ instance DB SQLiteDB where
   writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
-  readViews = undefined
+  readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
   readCommands = undefined
   readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
 
@@ -159,7 +159,7 @@ instance ToRow Flow where
   toRow Flow {..} =
     let ts = toField (_flowStart _flowState)
         payload = toField $ decodeUtf8' $ LBS.toStrict $ encode _flowState
-     in [ts, SQLInteger (fromIntegral currentVersion), toField $ show _flowType, payload]
+     in [ts, SQLInteger (fromIntegral currentVersion), toField $ toText _flowType, payload]
 
 instance FromRow Flow where
   fromRow = do
@@ -181,3 +181,10 @@ readNotesSQL UserProfile {..} sqliteFile =
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' order by timestamp"
     notesFlow <- query_ cnx q
     pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
+
+readViewsSQL :: UserProfile -> FilePath -> IO [FlowView]
+readViewsSQL UserProfile {..} sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != 'Note' and flow_type != '__Trace__' order by timestamp"
+    flows <- query_ cnx q
+    pure $ foldr (flowViewBuilder userName userTimezone userEndOfDay) [] flows
