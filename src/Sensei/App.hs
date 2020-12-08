@@ -80,10 +80,10 @@ baseServer signal =
 
 senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> IO Application
 senseiApp env signal output configDir = do
-  runFileDB output configDir $ initLogStorage
+  runDB output configDir $ initLogStorage
   pure $
     serve fullAPI $
-      hoistServer fullAPI (Handler . ExceptT . try . runFileDB output configDir) $
+      hoistServer fullAPI (Handler . ExceptT . try . runDB output configDir) $
         pure senseiSwagger
           :<|> baseServer signal
           :<|> Tagged (userInterface env)

@@ -5,8 +5,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | A "database" stored as a simple flat-file containing one line of JSON-formatted data per record.
 module Sensei.DB.File
-  ( FileDB(..), runFileDB,
-    senseiLog, getDataFile,
+  ( FileDB(..), runDB,
+    getDataFile,
     readProfileFile, writeProfileFile
   )
 where
@@ -32,8 +32,8 @@ data FileDBPaths = FileDBPaths { storageFile :: FilePath,
 newtype FileDB a = FileDB { unFileDB :: ReaderT FileDBPaths IO a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
-runFileDB :: FilePath -> FilePath -> FileDB a -> IO a
-runFileDB storage config =
+runDB :: FilePath -> FilePath -> FileDB a -> IO a
+runDB storage config =
   (`runReaderT` (FileDBPaths storage config)) . unFileDB
 
 instance DB FileDB where

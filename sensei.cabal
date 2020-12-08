@@ -32,7 +32,7 @@ library
                      , Sensei.DB
                      , Sensei.DB.SQLite
   other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
-                 Sensei.DB.File, Sensei.CLI.Terminal, Paths_sensei,
+                 Sensei.DB.File, Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson

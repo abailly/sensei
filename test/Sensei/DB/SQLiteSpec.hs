@@ -10,4 +10,4 @@ spec :: Spec
 spec =
   around withTempFile $
     describe "SQLite DB" $ do
-      it "matches DB model" $ \tempdb -> property $ canReadFlowsAndTracesWritten (runSQLite tempdb)
+      it "matches DB model" $ \tempdb -> property $ canReadFlowsAndTracesWritten (runSQLite tempdb ".")
