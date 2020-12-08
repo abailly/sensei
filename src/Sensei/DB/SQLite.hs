@@ -19,7 +19,9 @@
 --                          flow_data text not null);
 -- @@
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite where
+module Sensei.DB.SQLite
+  (runDB, SQLiteDB)
+where
 
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
@@ -33,7 +35,7 @@ import Database.SQLite.Simple.ToField
 import Preface.Utils
 import Sensei.API
 import Sensei.DB
-import Sensei.DB.File
+import Sensei.DB.File (readProfileFile, writeProfileFile)
 import Sensei.DB.SQLite.Migration
 import System.Directory
 import System.IO
@@ -55,9 +57,9 @@ newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
 -- |Runs a DB action using given DB file and configuration directory.
 -- Note this runner automatically initiliazes the SQLite DB so there's
 -- no need to do it explicitly.
-runSQLite ::
+runDB ::
   FilePath -> FilePath -> SQLiteDB a -> IO a
-runSQLite dbFile configDir act =
+runDB dbFile configDir act =
   unSQLite (initSQLiteDB >> act) `runReaderT` SQLiteConfig dbFile configDir
 
 -- * Instances
