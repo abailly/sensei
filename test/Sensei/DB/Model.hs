@@ -10,12 +10,12 @@ module Sensei.DB.Model where
 
 import Control.Monad.State
 import Data.Sequence
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
 import Test.QuickCheck
-    ( Arbitrary(arbitrary),
+    (listOf, choose,  Arbitrary(arbitrary),
       Gen,
       frequency,
       Property,
@@ -108,9 +108,28 @@ generateAction :: UTCTime -> Integer -> Gen SomeAction
 generateAction baseTime k =
   frequency
     [ (9, SomeAction . WriteFlow <$> generateFlow baseTime k),
+      (7, SomeAction . WriteTrace <$> generateTrace baseTime k),
       (1, pure $ SomeAction ReadNotes),
-      (1, pure $ SomeAction ReadViews)
+      (1, pure $ SomeAction ReadViews),
+      (1, pure $ SomeAction ReadCommands)
     ]
+
+generateTrace :: UTCTime -> Integer -> Gen Trace
+generateTrace  baseTime k = do
+  _usr <- generateUser
+  st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
+  dir <- generateDir
+  pr <- generateProcess
+  args <- generateArgs
+  ex <- arbitrary
+  el <- fromInteger <$> choose (0, 100)
+  pure $ Trace st (unpack dir) pr args ex el currentVersion
+
+generateArgs :: Gen [Text]
+generateArgs = listOf $ pack . getPrintableString <$> arbitrary
+
+generateProcess :: Gen Text
+generateProcess = pack . getPrintableString <$> arbitrary
 
 instance Arbitrary Actions where
   arbitrary =
@@ -120,7 +139,7 @@ instance Arbitrary Actions where
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
 interpret (WriteFlow f) = modify $ \m@Model {flows} -> m {flows = flows |> f}
---interpret (WriteTrace t) = modify $ \ m@Model{traces} -> m { traces = traces |> t }
+interpret (WriteTrace t) = modify $ \ m@Model{traces} -> m { traces = traces |> t }
 interpret ReadNotes = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- gets flows
@@ -129,7 +148,11 @@ interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
   fs <- gets flows
   pure $ foldr (flowViewBuilder userName userTimezone userEndOfDay) [] fs
-interpret _ = undefined
+interpret ReadCommands = do
+  UserProfile {userTimezone} <- gets currentProfile
+  ts <- gets traces
+  pure $ foldr (commandViewBuilder userTimezone) [] ts
+
 
 runDB :: (DB db) => Action a -> db a
 runDB (WriteFlow f) = writeFlow f

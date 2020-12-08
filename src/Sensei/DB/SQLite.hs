@@ -34,12 +34,12 @@ newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
 
 instance DB SQLiteDB where
   initLogStorage = initSQLiteDB
-  writeTrace = undefined
+  writeTrace t = SQLiteDB $ asks storagePath >>= liftIO . writeTraceSQL t
   writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
   readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
-  readCommands = undefined
+  readCommands u = SQLiteDB $ asks storagePath >>= liftIO . readCommandsSQL u
   readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
 
 runSQLite ::
@@ -169,11 +169,26 @@ instance FromRow Flow where
     st <- either error id . eitherDecode . encodeUtf8 <$> field
     pure $ Flow ty st ver
 
+instance ToRow Trace where
+  toRow trace@Trace {..} =
+    let ts = toField timestamp
+        payload = toField $ decodeUtf8' $ LBS.toStrict $ encode trace
+     in [ts, SQLInteger (fromIntegral currentVersion), toField ("__TRACE__" :: Text), payload]
+
+instance FromRow Trace where
+  fromRow = either error id . eitherDecode . encodeUtf8 <$> field
+
 writeFlowSQL :: Flow -> FilePath -> IO ()
 writeFlowSQL flow sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
     execute cnx q flow
+
+writeTraceSQL :: Trace -> FilePath -> IO ()
+writeTraceSQL trace sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
+    execute cnx q trace
 
 readNotesSQL :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} sqliteFile =
@@ -185,6 +200,13 @@ readNotesSQL UserProfile {..} sqliteFile =
 readViewsSQL :: UserProfile -> FilePath -> IO [FlowView]
 readViewsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != 'Note' and flow_type != '__Trace__' order by timestamp"
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != 'Note' and flow_type != '__TRACE__' order by timestamp"
     flows <- query_ cnx q
     pure $ foldr (flowViewBuilder userName userTimezone userEndOfDay) [] flows
+
+readCommandsSQL :: UserProfile -> FilePath -> IO [CommandView]
+readCommandsSQL UserProfile {..} sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "select flow_data from event_log where flow_type = '__TRACE__' order by timestamp"
+    traces <- query_ cnx q
+    pure $ foldr (commandViewBuilder userTimezone) [] traces
