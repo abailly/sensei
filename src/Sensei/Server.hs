@@ -67,7 +67,6 @@ queryFlowDaySummaryS usr day = do
       summaryPeriod = (day, day)
   pure $ FlowSummary{..}
 
-
 queryFlowSummaryS ::
   (DB m) => Text -> m [GroupViews (FlowType, NominalDiffTime)]
 queryFlowSummaryS usr = do

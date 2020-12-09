@@ -22,6 +22,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text, pack)
 import Data.Time
 import Sensei.DB
+import Sensei.IO
 import Sensei.API
 import System.Directory
 import System.FilePath ((</>))
@@ -134,9 +135,3 @@ getDataFile = do
       oldLogExists <- doesFileExist oldLog
       newLogExists <- doesFileExist newLog
       when (oldLogExists && not newLogExists) $ renameFile oldLog newLog
-
-    getDataDirectory = do
-      home <- getXdgDirectory XdgData "sensei"
-      exists <- doesDirectoryExist home
-      when (not exists) $ createDirectory home
-      pure home

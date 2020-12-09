@@ -12,22 +12,22 @@ module Sensei.App where
 
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
+import Control.Exception.Safe (try)
 import Control.Monad.Except
-import Control.Exception.Safe(try)
 import Data.Swagger (Swagger)
 import Preface.Server
 import Sensei.API
 import Sensei.DB
-import Sensei.DB.File
+import Sensei.DB.SQLite
+import Sensei.IO
 import Sensei.Server
 import Sensei.Server.Config
 import Sensei.Server.OpenApi
 import Sensei.Server.UI
 import Sensei.Version
 import Servant
-import System.Directory
-import System.Posix.Daemonize
 import System.Environment (lookupEnv, setEnv)
+import System.Posix.Daemonize
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -44,7 +44,7 @@ daemonizeServer = do
 
 startServer :: IO ()
 startServer =
-  getDataFile >>= sensei
+  getConfigDirectory >>= getDataFile >>= sensei
 
 sensei :: FilePath -> IO ()
 sensei output = do
@@ -53,12 +53,6 @@ sensei output = do
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
   server <- startAppServer "" [] 23456 (senseiApp env signal output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
-  where
-    getConfigDirectory = do
-      home <- getXdgDirectory XdgConfig "sensei"
-      exists <- doesDirectoryExist home
-      when (not exists) $ createDirectory home
-      pure home
 
 baseServer ::
   (MonadIO m, DB m) =>

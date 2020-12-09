@@ -19,8 +19,9 @@
 --                          flow_data text not null);
 -- @@
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite (runDB, migrateFileDB, SQLiteDB) where
+module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB) where
 
+import Control.Exception (throwIO)
 import Control.Exception.Safe (IOException, try)
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
@@ -31,14 +32,15 @@ import Data.Time (UTCTime)
 import Data.Time.LocalTime
 import Database.SQLite.Simple
 import Database.SQLite.Simple.ToField
-import Preface.Utils
+import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.File (readProfileFile, writeProfileFile)
 import qualified Sensei.DB.File as File
 import Sensei.DB.SQLite.Migration
+import Sensei.IO
 import System.Directory
-import System.FilePath ((<.>))
+import System.FilePath ((<.>), (</>))
 import System.IO
 
 -- | The configuration for DB engine.
@@ -60,6 +62,22 @@ runDB ::
   FilePath -> FilePath -> SQLiteDB a -> IO a
 runDB dbFile configDir act =
   unSQLite act `runReaderT` SQLiteConfig dbFile configDir
+
+getDataFile :: FilePath -> IO FilePath
+getDataFile configDir = do
+  oldLog <- getDataDirectory >>= pure . (</> "sensei.log")
+  newLog <- getDataDirectory >>= pure . (</> "sensei.sqlite")
+  existOldLog <- doesFileExist oldLog
+  if existOldLog
+    then migrateOldLog oldLog newLog
+    else pure newLog
+  where
+    migrateOldLog :: FilePath -> FilePath -> IO FilePath
+    migrateOldLog old new = do
+      res <- migrateFileDB old configDir
+      case res of
+        Left err -> throwIO $ userError $ "failed to migrate File DB, aborting " <> unpack err
+        Right _ -> renameFile old new >> pure new
 
 -- | Migrate an existing File-based event log to a SQLite-based one.
 --  The old database is preserved and copied to a new File with same name

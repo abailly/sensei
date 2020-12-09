@@ -5,7 +5,7 @@
 module Sensei.TestHelper where
 
 import Control.Concurrent.MVar
-import Control.Exception.Safe (finally, bracket)
+import Control.Exception.Safe (bracket, finally)
 import Control.Monad (unless)
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
@@ -19,6 +19,7 @@ import Sensei.Server.Config
 import Sensei.Version
 import Servant
 import System.Directory
+import System.FilePath ((<.>))
 import System.IO (hClose)
 import System.Posix.Temp (mkstemp)
 import Test.Hspec (ActionWith, Spec, SpecWith, around)
@@ -37,7 +38,7 @@ withApp builder = around (buildApp builder)
 
 withTempFile :: (FilePath -> IO a) -> IO a
 withTempFile =
-  bracket mkTempFile removePathForcibly
+  bracket mkTempFile (\fp -> removePathForcibly fp >> removePathForcibly (fp <.> "old"))
 
 buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
 buildApp AppBuilder {..} act = do
