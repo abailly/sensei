@@ -7,7 +7,9 @@
 module Sensei.DB.File
   ( FileDB(..), runDB,
     getDataFile,
-    readProfileFile, writeProfileFile
+    readProfileFile, writeProfileFile,
+    -- * Utility for migration
+    readAll
   )
 where
 
@@ -52,6 +54,11 @@ initLogStorageFile ::
 initLogStorageFile output = do
   hasFile <- doesFileExist output
   unless hasFile $ openFile output WriteMode >>= hClose
+
+readAll :: FileDB [Event]
+readAll = FileDB $ do
+  file <- asks storageFile
+  liftIO $ withBinaryFile file ReadMode $ loop (:) "" []
 
 writeTraceFile :: Trace -> FilePath -> IO ()
 writeTraceFile trace file =

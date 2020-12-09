@@ -106,6 +106,7 @@ test-suite sensei-test
                      , Sensei.WaiTestHelper
                      , Sensei.WrapperSpec
                      , Sensei.DB.Model
+                     , Sensei.DB.FileSpec
                      , Sensei.DB.SQLiteSpec
   build-depends:       aeson
                      , base

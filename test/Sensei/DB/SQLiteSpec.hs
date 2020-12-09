@@ -26,12 +26,12 @@ spec =
               <$> readViews defaultProfile
               <*> readNotes defaultProfile
               <*> readCommands defaultProfile
-        actions <- generate arbitrary
+        actions <- generate $ resize 100 arbitrary
         void $ File.runDB tempdb "." $ initLogStorage >> (Model.runActions actions)
         expected <- File.runDB tempdb "." checks
 
         res <- migrateFileDB tempdb "."
-        actual <- runDB tempdb "." checks
 
         res `shouldBe` Right (tempdb <.> "old")
+        actual <- runDB tempdb "." checks
         actual `shouldBe` expected

@@ -19,14 +19,13 @@
 --                          flow_data text not null);
 -- @@
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite
-  (runDB, migrateFileDB, SQLiteDB)
-where
+module Sensei.DB.SQLite (runDB, migrateFileDB, SQLiteDB) where
 
+import Control.Exception.Safe (IOException, try)
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Lazy as LBS
-import Data.Text (Text, unpack)
+import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (UTCTime)
 import Data.Time.LocalTime
@@ -36,40 +35,52 @@ import Preface.Utils
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.File (readProfileFile, writeProfileFile)
+import qualified Sensei.DB.File as File
 import Sensei.DB.SQLite.Migration
 import System.Directory
+import System.FilePath ((<.>))
 import System.IO
 
--- |The configuration for DB engine.
+-- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
-  { storagePath :: FilePath,
-    -- ^Path to SQLite database file
+  { -- | Path to SQLite database file
+    storagePath :: FilePath,
+    -- | Directory where user-based configuration is stored. Note that
+    --  we reuse the file-based configuration mechanism from `Sensei.DB.File`, it
+    --  would probably be better to store everything into the SQLite DB file.
     configDir :: FilePath
-    -- ^Directory where user-based configuration is stored. Note that
-    -- we reuse the file-based configuration mechanism from `Sensei.DB.File`, it
-    -- would probably be better to store everything into the SQLite DB file.
   }
 
--- |Simple monad stack to run SQLite actions within the context of a `SQLiteConfig`.
+-- | Simple monad stack to run SQLite actions within the context of a `SQLiteConfig`.
 newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
   deriving (Functor, Applicative, Monad, MonadReader SQLiteConfig, MonadIO)
 
--- |Runs a DB action using given DB file and configuration directory.
+-- | Runs a DB action using given DB file and configuration directory.
 runDB ::
   FilePath -> FilePath -> SQLiteDB a -> IO a
 runDB dbFile configDir act =
   unSQLite act `runReaderT` SQLiteConfig dbFile configDir
 
--- |Migrate an existing File-based event log to a SQLite-based one.
--- The old database is preserved and copied to a new File with same name
--- but suffixed `.old`.
--- Returns either an error description or the (absolute) path to the old
--- file-based event log.
+-- | Migrate an existing File-based event log to a SQLite-based one.
+--  The old database is preserved and copied to a new File with same name
+--  but suffixed `.old`.
+--  Returns either an error description or the (absolute) path to the old
+--  file-based event log.
 migrateFileDB ::
   FilePath -> FilePath -> IO (Either Text FilePath)
-migrateFileDB = undefined
+migrateFileDB dbFile configDir = do
+  let oldLog = dbFile <.> "old"
+  renameFile dbFile oldLog
+  evs <- try $ File.runDB oldLog configDir File.readAll
+  case evs of
+    Left (e :: IOException) -> pure $ Left (pack $ show e)
+    Right events -> runDB dbFile configDir $ do
+      initSQLiteDB
+      writeAll events
+      pure $ Right oldLog
 
 -- * Instances
+
 -- Various instances for `Flow` and `Trace` to be abel to read and write from the
 -- @event_log@ table that contains all events.
 instance ToRow Flow where
@@ -116,17 +127,29 @@ initSQLiteDB = do
   unless sqliteFileExists $ liftIO $ openFile sqliteFile WriteMode >>= hClose
   liftIO $ migrateSQLiteDB sqliteFile
 
+writeAll ::
+  [Event] -> SQLiteDB ()
+writeAll events = SQLiteDB $ do
+  file <- asks storagePath
+  liftIO $
+    withConnection file $ \cnx -> do
+      let storeEvent (F flow) = insert flow cnx
+          storeEvent (T trace) = insert trace cnx
+      forM_ events storeEvent
+
 writeFlowSQL :: Flow -> FilePath -> IO ()
 writeFlowSQL flow sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
-    let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
-    execute cnx q flow
+  withConnection sqliteFile $ insert flow
 
 writeTraceSQL :: Trace -> FilePath -> IO ()
 writeTraceSQL trace sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
-    let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
-    execute cnx q trace
+  withConnection sqliteFile $ insert trace
+
+insert ::
+  ToRow q => q -> Connection -> IO ()
+insert event cnx = do
+  let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
+  execute cnx q event
 
 readNotesSQL :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} sqliteFile =
@@ -140,7 +163,7 @@ readViewsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != 'Note' and flow_type != '__TRACE__' order by timestamp"
     flows <- query_ cnx q
-    pure $ foldr (flowViewBuilder userName userTimezone userEndOfDay) [] flows
+    pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] flows
 
 readCommandsSQL :: UserProfile -> FilePath -> IO [CommandView]
 readCommandsSQL UserProfile {..} sqliteFile =

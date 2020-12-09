@@ -9,7 +9,7 @@
 module Sensei.DB.Model where
 
 import Control.Monad.State
-import Data.Sequence
+import Data.Sequence as Seq
 import Data.Text (Text, pack, unpack)
 import Data.Time
 import Sensei.API hiding ((|>))
@@ -22,7 +22,7 @@ import Test.QuickCheck
       counterexample,
       elements,
       Positive(getPositive),
-      PrintableString(getPrintableString) )
+      ASCIIString(getASCIIString) )
 import Test.QuickCheck.Monadic
 import Data.Maybe (isNothing)
 
@@ -99,10 +99,10 @@ generateUser :: Gen Text
 generateUser = elements ["arnaud", "alice"]
 
 generateDir :: Gen Text
-generateDir = pack . getPrintableString <$> arbitrary
+generateDir = pack . getASCIIString <$> arbitrary
 
 generateNoteText :: Gen Text
-generateNoteText = pack . getPrintableString <$> arbitrary
+generateNoteText = pack . getASCIIString <$> arbitrary
 
 generateAction :: UTCTime -> Integer -> Gen SomeAction
 generateAction baseTime k =
@@ -126,10 +126,10 @@ generateTrace  baseTime k = do
   pure $ Trace st (unpack dir) pr args ex el currentVersion
 
 generateArgs :: Gen [Text]
-generateArgs = listOf $ pack . getPrintableString <$> arbitrary
+generateArgs = listOf $ pack . getASCIIString <$> arbitrary
 
 generateProcess :: Gen Text
-generateProcess = pack . getPrintableString <$> arbitrary
+generateProcess = pack . getASCIIString <$> arbitrary
 
 instance Arbitrary Actions where
   arbitrary =
@@ -147,7 +147,7 @@ interpret ReadNotes = do
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
   fs <- gets flows
-  pure $ foldr (flowViewBuilder userName userTimezone userEndOfDay) [] fs
+  pure $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] fs
 interpret ReadCommands = do
   UserProfile {userTimezone} <- gets currentProfile
   ts <- gets traces
