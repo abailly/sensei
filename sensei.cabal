@@ -30,9 +30,10 @@ library
                      , Sensei.Wrapper
                      , Sensei.Utils
                      , Sensei.DB
+                     , Sensei.DB.File
                      , Sensei.DB.SQLite
   other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
-                 Sensei.DB.File, Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
+                 Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
@@ -114,6 +115,7 @@ test-suite sensei-test
                      , colour
                      , containers
                      , directory
+                     , filepath
                      , hspec
                      , hspec-discover
                      , hspec-wai

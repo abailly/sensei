@@ -153,7 +153,6 @@ interpret ReadCommands = do
   ts <- gets traces
   pure $ foldr (commandViewBuilder userTimezone) [] ts
 
-
 runDB :: (DB db) => Action a -> db a
 runDB (WriteFlow f) = writeFlow f
 runDB (WriteTrace t) = writeTrace t
@@ -163,6 +162,12 @@ runDB ReadCommands = readProfileOrDefault >>= readCommands
 
 readProfileOrDefault :: DB db => db UserProfile
 readProfileOrDefault = fmap (either (const defaultProfile) id) readProfile
+
+runActions :: (DB db) => Actions -> db [String]
+runActions (Actions actions) =
+  sequence $ runAction  <$> actions
+  where
+    runAction (SomeAction act) = show <$> runDB act
 
 validateActions :: forall db. DB db => [SomeAction] -> StateT Model db [Maybe String]
 validateActions acts = do
@@ -186,6 +191,6 @@ canReadFlowsAndTracesWritten nt (Actions actions) = monadicIO $ do
   let start = Model startTime defaultProfile mempty mempty
       monitorErrors Nothing = pure ()
       monitorErrors (Just s) = monitor (counterexample s)
-  res <- run $ nt $ evalStateT (validateActions actions) start
+  res <- run $ nt $ initLogStorage >> evalStateT (validateActions actions) start
   forM_ res monitorErrors
   assert $ all isNothing res

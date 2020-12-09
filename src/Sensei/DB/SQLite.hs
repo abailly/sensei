@@ -20,7 +20,7 @@
 -- @@
 -- The actual data is stored in the `flow_data` field as JSON.
 module Sensei.DB.SQLite
-  (runDB, SQLiteDB)
+  (runDB, migrateFileDB, SQLiteDB)
 where
 
 import Control.Monad.Reader
@@ -55,12 +55,19 @@ newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
   deriving (Functor, Applicative, Monad, MonadReader SQLiteConfig, MonadIO)
 
 -- |Runs a DB action using given DB file and configuration directory.
--- Note this runner automatically initiliazes the SQLite DB so there's
--- no need to do it explicitly.
 runDB ::
   FilePath -> FilePath -> SQLiteDB a -> IO a
 runDB dbFile configDir act =
-  unSQLite (initSQLiteDB >> act) `runReaderT` SQLiteConfig dbFile configDir
+  unSQLite act `runReaderT` SQLiteConfig dbFile configDir
+
+-- |Migrate an existing File-based event log to a SQLite-based one.
+-- The old database is preserved and copied to a new File with same name
+-- but suffixed `.old`.
+-- Returns either an error description or the (absolute) path to the old
+-- file-based event log.
+migrateFileDB ::
+  FilePath -> FilePath -> IO (Either Text FilePath)
+migrateFileDB = undefined
 
 -- * Instances
 -- Various instances for `Flow` and `Trace` to be abel to read and write from the
