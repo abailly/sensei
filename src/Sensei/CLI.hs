@@ -167,7 +167,7 @@ userActionParser =
       )
     <|> ( ShiftTimestamp
             <$> option
-              (eitherReader parseTimeDifference)
+              (eitherReader parse)
               ( long "shift-time"
                   <> short 'S'
                   <> help "shift the latest flow by the given time difference"

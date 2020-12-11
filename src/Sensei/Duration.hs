@@ -5,8 +5,10 @@ import Data.Aeson
 import Data.Bifunctor
 import Data.Time
 import Text.Parsec
+import Data.Text.Prettyprint.Doc
 import Text.Parsec.Language (haskellDef)
 import qualified Text.Parsec.Token as P
+import Data.Text.Prettyprint.Doc.Render.String (renderString)
 
 -- | A structured representation of a time difference.
 --  A `TimeDifference` is represented as fractional number of
@@ -28,9 +30,16 @@ instance FromJSON TimeDifference where
 toNominalDiffTime :: TimeDifference -> NominalDiffTime
 toNominalDiffTime (Minutes m) = fromInteger $ m * 60
 
-parseTimeDifference ::
+instance Pretty TimeDifference where
+  pretty (Minutes m) = pretty m <> pretty "m"
+
+prettyPrint ::
+  TimeDifference -> String
+prettyPrint = renderString . layoutPretty defaultLayoutOptions . pretty
+
+parse ::
   String -> Either String TimeDifference
-parseTimeDifference s =
+parse s =
   first show $ runParser timeDifferenceParser () "" s
 
 timeDifferenceParser :: Parsec String () TimeDifference
