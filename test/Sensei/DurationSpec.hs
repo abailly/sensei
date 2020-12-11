@@ -8,7 +8,7 @@ import Sensei.API
 import Data.Proxy
 
 instance Arbitrary TimeDifference where
-  arbitrary = Minutes <$> arbitrary
+  arbitrary = oneof [Minutes <$> arbitrary, Hours <$> arbitrary]
 
 parsePrettyPrinted :: TimeDifference -> Bool
 parsePrettyPrinted td =

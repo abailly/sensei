@@ -15,10 +15,12 @@ import Data.Text.Prettyprint.Doc.Render.String (renderString)
 --  seconds on the wire (Eg. in JSON, as a number)
 data TimeDifference
   = Minutes Integer
+  | Hours Integer
   deriving (Eq, Show)
 
 instance ToJSON TimeDifference where
   toJSON (Minutes m) = toJSON $ m * 60
+  toJSON (Hours h) = toJSON $ h * 3600
 
 instance FromJSON TimeDifference where
   parseJSON =
@@ -29,9 +31,11 @@ instance FromJSON TimeDifference where
 
 toNominalDiffTime :: TimeDifference -> NominalDiffTime
 toNominalDiffTime (Minutes m) = fromInteger $ m * 60
+toNominalDiffTime (Hours h) = fromInteger $ h * 3600
 
 instance Pretty TimeDifference where
   pretty (Minutes m) = pretty m <> pretty "m"
+  pretty (Hours h) = pretty h <> pretty "h"
 
 prettyPrint ::
   TimeDifference -> String
@@ -43,9 +47,15 @@ parse s =
   first show $ runParser timeDifferenceParser () "" s
 
 timeDifferenceParser :: Parsec String () TimeDifference
-timeDifferenceParser = do
-  num <- integer <* char 'm'
-  pure $ Minutes num
+timeDifferenceParser = try minutes <|> hours
+ where
+   minutes = do
+     num <- integer <* char 'm'
+     pure $ Minutes num
+
+   hours = do
+     num <- integer <* char 'h'
+     pure $ Hours num
 
 lexer :: P.GenTokenParser String u Identity
 lexer = P.makeTokenParser haskellDef
