@@ -29,3 +29,6 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses '-v' as versions display" $ do
       runOptionsParser Nothing ["-v" ] `shouldBe` Right (UserOptions GetVersions)
+
+    it "parses '-S -10m' as 10 minutes shift" $ do
+      runOptionsParser Nothing ["-S", "-10m" ] `shouldBe` Right (UserOptions $ ShiftTimestamp (Minutes (-10)))

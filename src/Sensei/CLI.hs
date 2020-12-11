@@ -35,6 +35,7 @@ data UserAction
   = GetProfile
   | SetProfile {profileFile :: FilePath}
   | GetVersions
+  | ShiftTimestamp TimeDifference
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -164,6 +165,14 @@ userActionParser =
           <> short 'v'
           <> help "retrieve the current versions of client and server"
       )
+    <|> ( ShiftTimestamp
+            <$> option
+              (eitherReader parseTimeDifference)
+              ( long "shift-time"
+                  <> short 'S'
+                  <> help "shift the latest flow by the given time difference"
+              )
+        )
 
 parseSenseiOptions ::
   UserProfile -> IO Options
