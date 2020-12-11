@@ -62,6 +62,7 @@ baseServer signal =
   killS signal
     :<|> traceS
     :<|> ( flowS
+             :<|> updateFlowStartTimeS
              :<|> queryFlowSummaryS
              :<|> queryFlowDaySummaryS
              :<|> notesDayS

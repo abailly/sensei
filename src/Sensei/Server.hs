@@ -31,6 +31,11 @@ flowS ::
 flowS _ flowTyp flow =
   writeFlow (Flow flowTyp flow currentVersion)
 
+updateFlowStartTimeS ::
+  (DB m) => Text -> TimeDifference -> m FlowState
+updateFlowStartTimeS _ timediff =
+  updateLatestFlow (toNominalDiffTime timediff)
+
 notesDayS ::
   (DB m) => Text -> Day -> m [NoteView]
 notesDayS  usr day = do

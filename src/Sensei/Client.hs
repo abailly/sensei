@@ -25,6 +25,7 @@ killC = clientIn (Proxy @KillServer) Proxy
 
 traceC :: Trace -> ClientMonad ()
 flowC :: Text -> FlowType -> FlowState -> ClientMonad ()
+updateFlowC :: Text -> TimeDifference -> ClientMonad FlowState
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
@@ -36,7 +37,7 @@ getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
 traceC
-  :<|> (flowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> commandsDayC :<|> queryFlowDayC :<|> queryFlowC)
+  :<|> (flowC :<|> updateFlowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> commandsDayC :<|> queryFlowDayC :<|> queryFlowC)
   :<|> getLogC
   :<|> (getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn senseiAPI Proxy

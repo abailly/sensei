@@ -209,6 +209,9 @@ ep (UserOptions (SetProfile file)) usrName _ _ = do
 ep (UserOptions GetVersions) _ _ _ = do
   vs <- send getVersionsC
   display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
+ep (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
+  f <- send (updateFlowC curUser diff)
+  display f
 
 println :: BS.ByteString -> IO ()
 println bs =

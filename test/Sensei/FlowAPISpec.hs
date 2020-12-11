@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.FlowAPISpec where
 
@@ -97,3 +98,18 @@ spec = withApp app $
 
       getJSON "/flows/arnaud/1995-10-10/summary"
         `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expected)
+
+    it "PATCH /flows/<user>/latest/timestamp updates latest flow's timestamp"  $ do
+      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+          trace = Trace (UTCTime (toEnum 50000) 2000) "other/directory" "git" ["bar"] 0 100 1
+
+      postJSON_ "/flows/arnaud/Other" flow1
+      postJSON_ "/flows/arnaud/Other" flow2
+      postJSON_ "/trace" trace
+
+      let expected = flow1 { _flowStart = (UTCTime (toEnum 50000) 400) }
+          timeshift :: TimeDifference = Minutes (-10)
+
+      patchJSON "/flows/arnaud/latest/timestamp" timeshift
+        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode $ expected)

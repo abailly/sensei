@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -28,7 +29,7 @@ import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Data.Time (UTCTime)
+import Data.Time (addUTCTime, UTCTime, NominalDiffTime)
 import Data.Time.LocalTime
 import Database.SQLite.Simple
 import Database.SQLite.Simple.ToField
@@ -42,6 +43,7 @@ import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
+import Data.Int (Int64)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -141,12 +143,18 @@ instance FromRow Event where
             v <- fromInteger <$> field
             pure $ F (Flow t st v)
 
+data IdFlow = IdFlow { identifier :: Int64, flow :: Flow }
+
+instance FromRow IdFlow where
+  fromRow = IdFlow <$> field <*> fromRow
+
 -- * DB Implementation
 
 instance DB SQLiteDB where
   initLogStorage = initSQLiteDB
   writeTrace t = SQLiteDB $ asks storagePath >>= liftIO . writeTraceSQL t
   writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
+  updateLatestFlow ts = SQLiteDB $ asks storagePath >>= liftIO . updateLatestFlowSQL ts
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readEvents u = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u)
   readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
@@ -186,6 +194,21 @@ insert ::
 insert event cnx = do
   let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
   execute cnx q event
+
+updateLatestFlowSQL :: NominalDiffTime -> FilePath -> IO FlowState
+updateLatestFlowSQL diff sqliteFile =
+  withConnection sqliteFile $ \cnx ->
+  withTransaction cnx $ do
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1"
+        u = "update event_log set timestamp = ?, flow_data = ? where id = ?"
+    res <- query_ cnx q
+    case res of
+      (IdFlow{identifier,flow=Flow{_flowState}}:_) -> do
+        let newTs = addUTCTime diff (_flowStart _flowState)
+            updatedFlow = _flowState { _flowStart = newTs }
+        execute cnx u [ toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
+        pure updatedFlow
+      [] -> error "no flows recorded"
 
 readEventsSQL :: UserProfile -> FilePath -> IO [Event]
 readEventsSQL _ sqliteFile =

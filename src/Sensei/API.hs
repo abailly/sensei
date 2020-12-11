@@ -67,6 +67,18 @@ type PostRecordFlow =
     :> ReqBody '[JSON] FlowState
     :> Post '[JSON] ()
 
+type PatchFlowTimeshift =
+  Summary
+    "Changes the latest recorded flow's start time by some amount of time. \
+    \If the resulting timestamp happens before the previous flow's start time, \
+    \it raises an error. \
+    \Returns the updated Flow."
+    :> Capture "user" Text
+    :> "latest"
+    :> "timestamp"
+    :> ReqBody '[JSON] TimeDifference
+    :> Patch '[JSON] FlowState
+
 type GetGroupSummary =
   Summary "Retrieve grouped summary of flows by type."
     :> Capture "user" Text
@@ -127,6 +139,7 @@ type SenseiAPI =
     :<|> "flows"
       :> Tags "Flows"
       :> ( PostRecordFlow
+             :<|> PatchFlowTimeshift
              :<|> GetGroupSummary
              :<|> GetDailySummary
              :<|> GetNotes

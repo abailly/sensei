@@ -44,6 +44,7 @@ instance DB FileDB where
   initLogStorage = FileDB $ (asks storageFile >>= liftIO . initLogStorageFile)
   writeTrace t = FileDB $ (asks storageFile >>= liftIO . writeTraceFile t)
   writeFlow t = FileDB $ (asks storageFile >>= liftIO . writeFlowFile t)
+  updateLatestFlow = undefined
   writeProfile u = FileDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readEvents = undefined
   readViews u = FileDB $ (asks storageFile >>= liftIO . readViewsFile u)

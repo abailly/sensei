@@ -24,6 +24,9 @@ class (Monad m) => DB m where
   -- | Write a new `Flow` to the DB
   writeFlow :: Flow -> m ()
 
+  -- | Update the latest's flow start time by given time difference.
+  updateLatestFlow :: NominalDiffTime -> m FlowState
+
   -- | Write user's profile to the DB
   writeProfile :: UserProfile -> m ()
 

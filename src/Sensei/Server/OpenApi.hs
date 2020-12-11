@@ -32,6 +32,14 @@ instance ToSchema Color where
           & description .~ Just "An RGB color represented as an hexadecimal string"
           & type_ .~ Just SwaggerString
 
+instance ToSchema TimeDifference where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "TimeDifference") $
+        mempty
+          & description .~ Just "A time difference, positive or negative, expressed as a number of seconds"
+          & type_ .~ Just SwaggerNumber
+
 instance ToParamSchema FlowType where
   toParamSchema _ =
     mempty
@@ -53,7 +61,7 @@ instance ToSchema FlowSummary
 instance ToParamSchema Group
 
 instance ToSchema Trace
-
+instance ToSchema Flow
 instance ToSchema Group
 
 instance ToSchema a => ToSchema (GroupViews a) where

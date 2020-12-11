@@ -16,6 +16,7 @@ module Sensei.TestHelper
     postJSON_,
     putJSON,
     putJSON_,
+    patchJSON,
 
     -- * Assertion helpers
     bodyContains,
@@ -80,6 +81,9 @@ postJSON path payload =
 
 putJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
 putJSON path payload = request "PUT" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
+
+patchJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
+patchJSON path payload = request "PATCH" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
 
 postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
 postJSON_ path payload =
