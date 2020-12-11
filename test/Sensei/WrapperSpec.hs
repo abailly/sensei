@@ -16,7 +16,6 @@ import Sensei.WaiTestHelper
 import System.Exit
 import Data.Functor
 import Test.Hspec
-import Test.Hspec.Wai hiding (request)
 
 io :: WrapperIO (WaiSession ())
 io = WrapperIO {..}

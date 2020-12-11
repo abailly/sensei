@@ -20,16 +20,17 @@
 -- * `Flow`: either notes or start time of a specific (expected) type of activity
 module Sensei.Flow where
 
+import Control.Applicative
 import Data.Aeson hiding (Options)
+import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (first))
 import Data.Text (Text)
-import Data.Text.ToText
 import qualified Data.Text as Text
+import Data.Text.ToText
 import Data.Time
 import GHC.Generics
 import Numeric.Natural
 import Servant
-import Data.Aeson.Types
 
 -- | Current version of data storage format.
 -- This version /must/ be incremented on each change to the structure of `Flow` and
@@ -38,6 +39,22 @@ import Data.Aeson.Types
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
 currentVersion = 4
+
+-- | Common type grouping all kind of events that are stored in the DB
+-- TODO: This type is in an early stage and only used currently when migrating
+-- database, refactor when exposing the full log to the user. In particular
+-- the `Flow` and `Trace` types should be unified.
+data Event
+  = F Flow
+  | T Trace
+  deriving (Eq, Show)
+
+instance ToJSON Event where
+  toJSON (F flow) = toJSON flow
+  toJSON (T trace) = toJSON trace
+
+instance FromJSON Event where
+  parseJSON v = T <$> parseJSON v <|> F <$> parseJSON v
 
 -- | Execution "trace" of a program
 data Trace = Trace

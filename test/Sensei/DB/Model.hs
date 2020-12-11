@@ -82,21 +82,16 @@ generateFlow baseTime k = do
 
 generateNote :: UTCTime -> Integer -> Gen FlowState
 generateNote baseTime k = do
-  usr <- generateUser
   st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
   dir <- generateDir
   note <- generateNoteText
-  pure $ FlowNote usr st dir note
+  pure $ FlowNote "arnaud" st dir note
 
 generateState :: UTCTime -> Integer -> Gen FlowState
 generateState baseTime k = do
-  usr <- generateUser
   st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
   dir <- generateDir
-  pure $ FlowState usr st dir
-
-generateUser :: Gen Text
-generateUser = elements ["arnaud", "alice"]
+  pure $ FlowState "arnaud" st dir  -- TODO: remove user from Flow definition
 
 generateDir :: Gen Text
 generateDir = pack . getASCIIString <$> arbitrary
@@ -116,7 +111,6 @@ generateAction baseTime k =
 
 generateTrace :: UTCTime -> Integer -> Gen Trace
 generateTrace  baseTime k = do
-  _usr <- generateUser
   st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
   dir <- generateDir
   pr <- generateProcess

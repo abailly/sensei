@@ -98,7 +98,9 @@ test-suite sensei-test
                      , Sensei.ColorSpec
                      , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
+                     , Sensei.LogSpec
                      , Sensei.ServerSpec
+                     , Sensei.Builder
                      , Sensei.TestHelper
                      , Sensei.UISpec
                      , Sensei.UserSpec

@@ -1,11 +1,38 @@
+* {
+    font-family: Helvetica, Arial, sans;
+}
+
 div#navbar {
     position: fixed;
     top:0;
     left: 0;
     width: 100%;
-    height: 30px;
+    height: 40px;
     background-color: black;
     font-color: white;
+}
+
+div#navbar ul {
+  list-style-type: none;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+}
+
+div#navbar li {
+    display: inline-block;
+}
+
+div#navbar li a {
+    display: inline-block;
+    color: white;
+    text-align: center;
+    padding: .5em 1em;
+    text-decoration: none;
+}
+
+div#navbar li a:hover {
+    background-color: #78a;
 }
 
 div#main {

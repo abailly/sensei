@@ -2,7 +2,26 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Sensei.TestHelper where
+module Sensei.TestHelper
+  ( app,
+    withoutStorage,
+    withEnv,
+    withTempFile,
+    withApp,
+    buildApp,
+
+    -- * REST Helpers
+    getJSON,
+    postJSON,
+    postJSON_,
+    putJSON,
+    putJSON_,
+
+    -- * Assertion helpers
+    bodyContains,
+    module W
+  )
+where
 
 import Control.Concurrent.MVar
 import Control.Exception.Safe (bracket, finally)
@@ -23,7 +42,7 @@ import System.FilePath ((<.>))
 import System.IO (hClose)
 import System.Posix.Temp (mkstemp)
 import Test.Hspec (ActionWith, Spec, SpecWith, around)
-import Test.Hspec.Wai as W (MatchBody (..), WaiSession, request)
+import Test.Hspec.Wai as W (MatchBody (..), WaiSession, request, shouldRespondWith)
 
 data AppBuilder = AppBuilder {withStorage :: Bool, withEnv :: Env}
 
@@ -48,7 +67,7 @@ buildApp AppBuilder {..} act = do
   signal <- newEmptyMVar
   application <- senseiApp Nothing signal file config
   act ((), application)
-    `finally` removePathForcibly file >> removePathForcibly config
+    `finally` removePathForcibly config >> removePathForcibly file
   where
     mkTempDir = mkstemp "config-sensei" >>= \(fp, h) -> hClose h >> removePathForcibly fp >> createDirectory fp >> pure fp
 
@@ -56,13 +75,15 @@ mkTempFile :: IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
 postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
-postJSON path payload = request "POST" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
+postJSON path payload =
+  request "POST" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
 
 putJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
 putJSON path payload = request "PUT" path [("Content-type", "application/json"), ("X-API-Version", toHeader senseiVersion)] (A.encode payload)
 
 postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
-postJSON_ path payload = void $ postJSON path payload
+postJSON_ path payload =
+  postJSON path payload `shouldRespondWith` 200
 
 putJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
 putJSON_ path payload = void $ putJSON path payload

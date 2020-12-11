@@ -47,11 +47,13 @@ type KillServer =
     :> Delete '[JSON] ()
 
 type DisplayVersions =
-  Summary "Get the server executable and storage versions " :> "versions"
+  Summary "Get the server executable and storage versions "
+    :> "versions"
     :> Get '[JSON] Versions
 
 type PostRecordTrace =
-  Summary "Record execution 'trace' of a single command execution." :> "trace"
+  Summary "Record execution 'trace' of a single command execution."
+    :> "trace"
     :> ReqBody '[JSON] Trace
     :> Post '[JSON] ()
 
@@ -101,6 +103,11 @@ type GetGroupedTimelines =
     :> QueryParams "group" Group
     :> Get '[JSON] [GroupViews FlowView]
 
+type GetAllLog =
+  Summary "Retrieve the complete log of all events pertaining to a given user, most recent first"
+    :> Capture "user" Text
+    :> Get '[JSON] [Event]
+
 type GetUserProfile =
   Summary "Retrieve a user's profile." :> Capture "user" Text :> Get '[JSON] UserProfile
 
@@ -118,6 +125,7 @@ type SenseiAPI =
              :<|> GetFlowsTimeline
              :<|> GetGroupedTimelines
          )
+    :<|> "log" :> GetAllLog
     :<|> "users"
       :> (GetUserProfile :<|> PutUserProfile)
     :<|> DisplayVersions

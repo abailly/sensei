@@ -124,6 +124,23 @@ instance ToRow Trace where
 instance FromRow Trace where
   fromRow = either error id . eitherDecode . encodeUtf8 <$> field
 
+instance FromRow Event where
+  fromRow = do
+    ty <- field
+    case ty of
+      "__TRACE__" -> do
+        tr <- T . either error id . eitherDecode . encodeUtf8 <$> field
+        _ver :: Integer <- field -- Discard version
+        pure tr
+      _ -> do
+        let flowType = parseFlowType ty
+        case flowType of
+          Left err -> error err
+          Right t -> do
+            st <- either error id . eitherDecode . encodeUtf8 <$> field
+            v <- fromInteger <$> field
+            pure $ F (Flow t st v)
+
 -- * DB Implementation
 
 instance DB SQLiteDB where
@@ -131,6 +148,7 @@ instance DB SQLiteDB where
   writeTrace t = SQLiteDB $ asks storagePath >>= liftIO . writeTraceSQL t
   writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
+  readEvents u = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u)
   readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
   readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
   readCommands u = SQLiteDB $ asks storagePath >>= liftIO . readCommandsSQL u
@@ -168,6 +186,12 @@ insert ::
 insert event cnx = do
   let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
   execute cnx q event
+
+readEventsSQL :: UserProfile -> FilePath -> IO [Event]
+readEventsSQL _ sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "select flow_type, flow_data, version from event_log order by timestamp desc"
+    query_ cnx q
 
 readNotesSQL :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} sqliteFile =

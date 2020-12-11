@@ -89,6 +89,12 @@ queryFlowS usr groups = do
   usrProfile@UserProfile {userStartOfDay, userEndOfDay} <- getUserProfileS usr
   groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews usrProfile
 
+getLogS ::
+  DB m => Text -> m [Event]
+getLogS userName = do
+  usrProfile <- getUserProfileS userName
+  take 50 <$> readEvents usrProfile
+
 getUserProfileS ::
   (DB m) => Text -> m UserProfile
 getUserProfileS _ = do

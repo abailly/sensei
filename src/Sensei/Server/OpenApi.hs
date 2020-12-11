@@ -5,12 +5,12 @@ module Sensei.Server.OpenApi (senseiSwagger) where
 
 import Control.Lens
 import Data.Swagger
+import Data.Text (pack)
 import Data.Time
 import Sensei.API
 import Sensei.Version
 import Servant.Swagger
 import System.Exit
-import Data.Text (pack)
 
 -- Orphan instances
 -- TODO: provide better/more specific return types in the API
@@ -61,6 +61,14 @@ instance ToSchema a => ToSchema (GroupViews a) where
     genericDeclareNamedSchemaUnrestricted defaultSchemaOptions proxy
 
 instance ToSchema Versions
+
+instance ToSchema Event where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Event") $
+        mempty
+          & description ?~ "A generic type of events encapsulating both Flows and Traces"
+          & type_ ?~ SwaggerObject
 
 senseiSwagger :: Swagger
 senseiSwagger =

@@ -32,6 +32,7 @@ data FileDBPaths = FileDBPaths { storageFile :: FilePath,
                                  configDir :: FilePath
                                }
 
+{-# DEPRECATED FileDB "This backend is deprecated in favor of Sensei.DB.SQLite" #-}
 newtype FileDB a = FileDB { unFileDB :: ReaderT FileDBPaths IO a }
   deriving (Functor, Applicative, Monad, MonadIO)
 
@@ -44,6 +45,7 @@ instance DB FileDB where
   writeTrace t = FileDB $ (asks storageFile >>= liftIO . writeTraceFile t)
   writeFlow t = FileDB $ (asks storageFile >>= liftIO . writeFlowFile t)
   writeProfile u = FileDB $ (asks configDir >>= liftIO . writeProfileFile u)
+  readEvents = undefined
   readViews u = FileDB $ (asks storageFile >>= liftIO . readViewsFile u)
   readNotes u = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
