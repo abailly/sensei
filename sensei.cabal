@@ -34,7 +34,7 @@ library
                      , Sensei.DB.SQLite
   other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
-                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.IO
+                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.IO, Sensei.Server.Tags
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , ansi-terminal
@@ -50,6 +50,7 @@ library
                      , hdaemonize
                      , http-client
                      , http-types
+                     , insert-ordered-containers
                      , lens
                      , mtl
                      , optparse-applicative
@@ -59,6 +60,7 @@ library
                      , servant
                      , servant-client
                      , servant-client-core
+                     , servant-mock
                      , servant-server
                      , servant-server-base
                      , servant-swagger

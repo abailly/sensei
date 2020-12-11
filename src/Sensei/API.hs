@@ -34,6 +34,7 @@ import Sensei.Color
 import Sensei.Flow
 import Sensei.FlowView
 import Sensei.Group
+import Sensei.Server.Tags
 import Sensei.Summary
 import Sensei.User
 import Sensei.Utils
@@ -109,14 +110,20 @@ type GetAllLog =
     :> Get '[JSON] [Event]
 
 type GetUserProfile =
-  Summary "Retrieve a user's profile." :> Capture "user" Text :> Get '[JSON] UserProfile
+  Summary "Retrieve a user's profile."
+    :> Capture "user" Text
+    :> Get '[JSON] UserProfile
 
 type PutUserProfile =
-  Summary "Define current user's profile." :> Capture "user" Text :> ReqBody '[JSON] UserProfile :> Put '[JSON] NoContent
+  Summary "Define current user's profile."
+    :> Capture "user" Text
+    :> ReqBody '[JSON] UserProfile
+    :> Put '[JSON] NoContent
 
 type SenseiAPI =
-  PostRecordTrace
+  Tags "Flows" :> PostRecordTrace
     :<|> "flows"
+      :> Tags "Flows"
       :> ( PostRecordFlow
              :<|> GetGroupSummary
              :<|> GetDailySummary
@@ -125,10 +132,13 @@ type SenseiAPI =
              :<|> GetFlowsTimeline
              :<|> GetGroupedTimelines
          )
-    :<|> "log" :> GetAllLog
+    :<|> "log"
+      :> Tags "Event Log"
+      :> GetAllLog
     :<|> "users"
+      :> Tags "User Profile"
       :> (GetUserProfile :<|> PutUserProfile)
-    :<|> DisplayVersions
+    :<|> Tags "Metadata" :> DisplayVersions
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
