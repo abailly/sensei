@@ -70,7 +70,8 @@ spec = withApp app $
       let cmd1 = Trace (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10 1
           cmd2 = Trace (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100 1
 
-          expected = [CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) "foo" 10, CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 16 40)) "git" 100]
+          expected = [CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) "foo" 10,
+                      CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 16 40)) "git" 100]
 
       postJSON_ "/trace" cmd1
       postJSON_ "/trace" cmd2

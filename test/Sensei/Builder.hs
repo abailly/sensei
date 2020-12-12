@@ -10,6 +10,10 @@ import Sensei.API
 import Sensei.TestHelper
 import Servant
 
+postEvent_ :: Event -> WaiSession () ()
+postEvent_ (T t) = postTrace_ t
+postEvent_ (F f) = postFlow_ f
+
 postFlow_ :: Flow -> WaiSession () ()
 postFlow_ Flow {_flowType, _flowState} =
   postJSON_ ("/flows/arnaud/" <> encodeUtf8 (toUrlPiece _flowType)) _flowState
