@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -9,22 +9,26 @@
 module Sensei.DB.Model where
 
 import Control.Monad.State
+import Data.Maybe (isNothing)
 import Data.Sequence as Seq
 import Data.Text (Text, pack, unpack)
 import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
 import Test.QuickCheck
-    (listOf, choose,  Arbitrary(arbitrary),
-      Gen,
-      frequency,
-      Property,
-      counterexample,
-      elements,
-      Positive(getPositive),
-      ASCIIString(getASCIIString) )
+  ( ASCIIString (getASCIIString),
+    Arbitrary (arbitrary),
+    Gen,
+    Positive (getPositive),
+    Property,
+    choose,
+    counterexample,
+    elements,
+    frequency,
+    listOf,
+    oneof,
+  )
 import Test.QuickCheck.Monadic
-import Data.Maybe (isNothing)
 
 -- | Relevant commands issued to the underlying DB
 data Action a where
@@ -91,7 +95,7 @@ generateState :: UTCTime -> Integer -> Gen FlowState
 generateState baseTime k = do
   st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
   dir <- generateDir
-  pure $ FlowState "arnaud" st dir  -- TODO: remove user from Flow definition
+  pure $ FlowState "arnaud" st dir -- TODO: remove user from Flow definition
 
 generateDir :: Gen Text
 generateDir = pack . getASCIIString <$> arbitrary
@@ -110,7 +114,7 @@ generateAction baseTime k =
     ]
 
 generateTrace :: UTCTime -> Integer -> Gen Trace
-generateTrace  baseTime k = do
+generateTrace baseTime k = do
   st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
   dir <- generateDir
   pr <- generateProcess
@@ -125,6 +129,10 @@ generateArgs = listOf $ pack . getASCIIString <$> arbitrary
 generateProcess :: Gen Text
 generateProcess = pack . getASCIIString <$> arbitrary
 
+generateEvent :: UTCTime -> Integer -> Gen Event
+generateEvent baseTime offset =
+  oneof [T <$> generateTrace baseTime offset, F <$> generateFlow baseTime offset]
+
 instance Arbitrary Actions where
   arbitrary =
     Actions <$> (arbitrary >>= sequence . map (generateAction startTime) . enumFromTo 1 . getPositive)
@@ -133,7 +141,7 @@ instance Arbitrary Actions where
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
 interpret (WriteFlow f) = modify $ \m@Model {flows} -> m {flows = flows |> f}
-interpret (WriteTrace t) = modify $ \ m@Model{traces} -> m { traces = traces |> t }
+interpret (WriteTrace t) = modify $ \m@Model {traces} -> m {traces = traces |> t}
 interpret ReadNotes = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- gets flows
@@ -159,7 +167,7 @@ readProfileOrDefault = fmap (either (const defaultProfile) id) readProfile
 
 runActions :: (DB db) => Actions -> db [String]
 runActions (Actions actions) =
-  sequence $ runAction  <$> actions
+  sequence $ runAction <$> actions
   where
     runAction (SomeAction act) = show <$> runDB act
 
@@ -174,10 +182,14 @@ runAndCheck (SomeAction act) = do
   if actual == expected
     then pure Nothing
     else do
-    m <- get
-    pure $ Just $ "with state = " <> show m <>
-      ", expected : " <> show expected <>
-      ", got :  " <> show actual
+      m <- get
+      pure $
+        Just $
+          "with state = " <> show m
+            <> ", expected : "
+            <> show expected
+            <> ", got :  "
+            <> show actual
 
 canReadFlowsAndTracesWritten ::
   (DB db) => (forall x. db x -> IO x) -> Actions -> Property
