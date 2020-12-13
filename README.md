@@ -10,7 +10,7 @@ First create a JSON file containing the user's profile:
 $ cat > profile.json
 {
   "userStartOfDay": "08:00:00",
-  "userProfileVersion": 2,
+  "userProfileVersion": 4,
   "userEndOfDay": "18:30:00",
   "userName": "arnaud",
   "userTimezone": "+01:00",
