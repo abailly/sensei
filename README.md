@@ -46,7 +46,7 @@ The configuration is currently stored in a JSON file inside XDG configuration di
 $ cat ~/.config/sensei/config.json | jq .
 {
   "userStartOfDay": "08:00:00",
-  "userProfileVersion": 2,
+  "userProfileVersion": 4,
   ...
 }
 ```
@@ -57,7 +57,7 @@ This can also be retrieved from the command-line:
 $  ep -U
 {
   "userStartOfDay": "08:00:00",
-  "userProfileVersion": 2,
+  "userProfileVersion": 4,
   "userEndOfDay": "18:30:00",
   ...
 }
