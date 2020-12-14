@@ -1,4 +1,4 @@
-import { dom as React, clear } from './dom';
+import { dom, clear } from './dom';
 import { config } from "./config";
 import { colorOf } from './color.js';
 import { get } from './request';
