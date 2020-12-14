@@ -3,12 +3,14 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Sensei.DB (
-  DB (..), Event(..), flowView, flowViewBuilder, notesViewBuilder, commandViewBuilder
+  DB (..), Event(..), Reference(..),
+  flowView, flowViewBuilder, notesViewBuilder, commandViewBuilder
   ) where
 
 import Data.Text(Text)
 import Data.Time
 import Sensei.API
+import Numeric.Natural
 
 -- | Interface to the underlying database.
 -- This interface provide high-level functions to retrieve
@@ -30,6 +32,11 @@ class (Monad m) => DB m where
   -- | Write user's profile to the DB
   writeProfile :: UserProfile -> m ()
 
+  -- | Read a single `FlowView` from the storage, pointed at by given `Reference`.
+  -- The `timestamp` argument is used to reconstruct a proper `FLowView` from the given
+  -- /now/.
+  readFlow :: UserProfile -> UTCTime -> Reference -> m (Maybe FlowView)
+
   -- | Read raw events stored in the database, younger events first.
   readEvents :: UserProfile -> m [Event]
 
@@ -47,6 +54,14 @@ class (Monad m) => DB m where
   -- | Read the user's profile
   -- This function may fail of there's no profile or the format is incorrect
   readProfile :: m (Either Text UserProfile)
+
+-- |Reference to an item in the log
+data Reference =
+  Latest
+  -- ^Refers to the latest entry in the log
+  | Pos { offset :: Natural }
+  -- ^Refers to the item located `offset` positions from the `Latest` entry
+  deriving (Eq, Show)
 
 flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Flow -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay flow =

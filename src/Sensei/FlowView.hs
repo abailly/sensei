@@ -74,6 +74,11 @@ flowOnDay ::
   Day -> FlowView -> Bool
 flowOnDay day = sameDayThan day (localDay . flowStart)
 
+-- | Take a `FlowView` from a given `Flow` at some point in time.
+mkFlowView :: TimeZone -> UTCTime -> Flow -> FlowView
+mkFlowView timezone now Flow{_flowType, _flowState} =
+  FlowView (utcToLocalTime timezone $ _flowStart _flowState) (utcToLocalTime timezone now) _flowType
+
 appendFlow :: TimeZone -> TimeOfDay -> Flow -> [FlowView] -> [FlowView]
 appendFlow _ _ Flow {_flowType = Note} views = views
 appendFlow _ _ Flow {_flowType = End} [] = []

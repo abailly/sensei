@@ -34,6 +34,7 @@ import Test.QuickCheck.Monadic
 data Action a where
   WriteFlow :: Flow -> Action ()
   WriteTrace :: Trace -> Action ()
+  ReadFlow :: UTCTime -> Reference -> Action (Maybe FlowView)
   ReadNotes :: Action [(LocalTime, Text)]
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
@@ -41,6 +42,7 @@ data Action a where
 instance Show (Action a) where
   show (WriteFlow f) = "WriteFlow " <> show f
   show (WriteTrace t) = "WriteTrace " <> show t
+  show (ReadFlow ts ref) = "ReadFlow " <> show ref <> " @ " <> show ts
   show ReadNotes = "ReadNotes"
   show ReadViews = "ReadViews"
   show ReadCommands = "ReadCommands"
@@ -67,8 +69,23 @@ instance Eq SomeAction where
 data Actions = Actions {actions :: [SomeAction]}
   deriving (Eq, Show)
 
+instance Arbitrary Actions where
+  arbitrary =
+    Actions <$> (arbitrary >>= sequence . map (generateAction startTime) . enumFromTo 1 . getPositive)
+
 startTime :: UTCTime
 startTime = UTCTime (toEnum 50000) 10000
+
+generateAction :: UTCTime -> Integer -> Gen SomeAction
+generateAction baseTime k =
+  frequency
+    [ (9, SomeAction . WriteFlow <$> generateFlow baseTime k),
+      (7, SomeAction . WriteTrace <$> generateTrace baseTime k),
+      (2, pure $ SomeAction (ReadFlow (shiftTime baseTime k) Latest)),
+      (1, pure $ SomeAction ReadNotes),
+      (1, pure $ SomeAction ReadViews),
+      (1, pure $ SomeAction ReadCommands)
+    ]
 
 generateFlow :: UTCTime -> Integer -> Gen Flow
 generateFlow baseTime k = do
@@ -84,16 +101,19 @@ generateFlow baseTime k = do
     _ -> generateState baseTime k
   pure $ Flow typ st currentVersion
 
+shiftTime :: UTCTime -> Integer -> UTCTime
+shiftTime baseTime k = addUTCTime (fromInteger $ k * 1000) baseTime
+
 generateNote :: UTCTime -> Integer -> Gen FlowState
 generateNote baseTime k = do
-  st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
+  let st = shiftTime baseTime k
   dir <- generateDir
   note <- generateNoteText
   pure $ FlowNote "arnaud" st dir note
 
 generateState :: UTCTime -> Integer -> Gen FlowState
 generateState baseTime k = do
-  st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
+  let st = shiftTime baseTime k
   dir <- generateDir
   pure $ FlowState "arnaud" st dir -- TODO: remove user from Flow definition
 
@@ -103,19 +123,9 @@ generateDir = pack . getASCIIString <$> arbitrary
 generateNoteText :: Gen Text
 generateNoteText = pack . getASCIIString <$> arbitrary
 
-generateAction :: UTCTime -> Integer -> Gen SomeAction
-generateAction baseTime k =
-  frequency
-    [ (9, SomeAction . WriteFlow <$> generateFlow baseTime k),
-      (7, SomeAction . WriteTrace <$> generateTrace baseTime k),
-      (1, pure $ SomeAction ReadNotes),
-      (1, pure $ SomeAction ReadViews),
-      (1, pure $ SomeAction ReadCommands)
-    ]
-
 generateTrace :: UTCTime -> Integer -> Gen Trace
 generateTrace baseTime k = do
-  st <- pure $ addUTCTime (fromInteger $ k * 1000) baseTime
+  let st = shiftTime baseTime k
   dir <- generateDir
   pr <- generateProcess
   args <- generateArgs
@@ -133,15 +143,17 @@ generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime offset =
   oneof [T <$> generateTrace baseTime offset, F <$> generateFlow baseTime offset]
 
-instance Arbitrary Actions where
-  arbitrary =
-    Actions <$> (arbitrary >>= sequence . map (generateAction startTime) . enumFromTo 1 . getPositive)
-
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
 interpret (WriteFlow f) = modify $ \m@Model {flows} -> m {flows = flows |> f}
 interpret (WriteTrace t) = modify $ \m@Model {traces} -> m {traces = traces |> t}
+interpret (ReadFlow t _ref) = do
+  UserProfile {userTimezone} <- gets currentProfile
+  fs <- gets flows
+  case viewr fs of
+    _ :> f -> pure (Just $ mkFlowView userTimezone t f)
+    _ -> pure Nothing
 interpret ReadNotes = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- gets flows
@@ -158,6 +170,7 @@ interpret ReadCommands = do
 runDB :: (DB db) => Action a -> db a
 runDB (WriteFlow f) = writeFlow f
 runDB (WriteTrace t) = writeTrace t
+runDB (ReadFlow t r) = readProfileOrDefault >>= \ u -> readFlow u t r
 runDB ReadNotes = readProfileOrDefault >>= readNotes
 runDB ReadViews = readProfileOrDefault >>= readViews
 runDB ReadCommands = readProfileOrDefault >>= readCommands

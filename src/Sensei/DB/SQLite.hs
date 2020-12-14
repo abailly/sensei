@@ -156,6 +156,7 @@ instance DB SQLiteDB where
   writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
   updateLatestFlow ts = SQLiteDB $ asks storagePath >>= liftIO . updateLatestFlowSQL ts
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
+  readFlow u ts r = SQLiteDB $ (asks storagePath >>= liftIO . readFlowSQL u ts r)
   readEvents u = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u)
   readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
   readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
@@ -209,6 +210,18 @@ updateLatestFlowSQL diff sqliteFile =
         execute cnx u [ toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
         pure updatedFlow
       [] -> error "no flows recorded"
+
+readFlowSQL :: UserProfile -> UTCTime -> Reference -> FilePath -> IO (Maybe FlowView)
+readFlowSQL UserProfile{userTimezone} now Latest sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+  let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1"
+  res <- query_ cnx q
+  case res of
+    [flow] -> pure $ Just $ mkFlowView userTimezone now flow
+    [] -> pure Nothing
+    _ -> error "invalid query results"
+readFlowSQL _ _ _ _ = error "Not implemented"
+
 
 readEventsSQL :: UserProfile -> FilePath -> IO [Event]
 readEventsSQL _ sqliteFile =
