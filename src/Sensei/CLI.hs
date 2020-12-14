@@ -36,6 +36,7 @@ data UserAction
   | SetProfile {profileFile :: FilePath}
   | GetVersions
   | ShiftTimestamp TimeDifference
+  | GetFlow Reference
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -173,6 +174,15 @@ userActionParser =
                   <> help "shift the latest flow by the given time difference"
               )
         )
+    <|> ( GetFlow
+            <$> option
+              (eitherReader parseRef)
+              ( long "query"
+                  <> short 'Q'
+                  <> value Latest
+                  <> help "Query some flow or group of FlowViews from underlying storage (default: latest)"
+              )
+        )
 
 parseSenseiOptions ::
   UserProfile -> IO Options
@@ -211,6 +221,9 @@ ep (UserOptions GetVersions) _ _ _ = do
   display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
 ep (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
   f <- send (updateFlowC curUser diff)
+  display f
+ep (UserOptions (GetFlow q)) curUser _ _ = do
+  f <- send (getFlowC curUser q)
   display f
 
 println :: BS.ByteString -> IO ()

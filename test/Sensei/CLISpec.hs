@@ -32,3 +32,6 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses '-S -10m' as 10 minutes shift" $ do
       runOptionsParser Nothing ["-S", "-10m" ] `shouldBe` Right (UserOptions $ ShiftTimestamp (Minutes (-10)))
+
+    it "parses '-Q latest' as retrieval of latest flow" $ do
+      runOptionsParser Nothing ["-Q", "latest" ] `shouldBe` Right (UserOptions $ GetFlow Latest)

@@ -88,6 +88,10 @@ queryFlowSummaryS usr = do
           (GroupLevel g u gf) -> GroupLevel g u (summary gf)
       )
 
+getFlowS ::
+  (DB m) => Text -> Reference -> m (Maybe FlowView)
+getFlowS _usr _ref = undefined
+
 queryFlowS ::
   (DB m) => Text -> [Group] -> m [GroupViews FlowView]
 queryFlowS usr groups = do

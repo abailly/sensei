@@ -106,6 +106,12 @@ type GetCommands =
     :> "commands"
     :> Get '[JSON] [CommandView]
 
+type GetFlow =
+  Summary "Query flows"
+    :> Capture "user" Text
+    :> Capture "ref" Reference
+    :> Get '[JSON] (Maybe FlowView)
+
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."
     :> Capture "user" Text
@@ -139,6 +145,7 @@ type SenseiAPI =
     :<|> "flows"
       :> Tags "Flows"
       :> ( PostRecordFlow
+             :<|> GetFlow
              :<|> PatchFlowTimeshift
              :<|> GetGroupSummary
              :<|> GetDailySummary

@@ -4,7 +4,7 @@
 module Sensei.Server.OpenApi (senseiSwagger) where
 
 import Control.Lens
-import Data.Swagger
+import Data.Swagger hiding (Reference)
 import Data.Text (pack)
 import Data.Time
 import Sensei.API
@@ -63,6 +63,12 @@ instance ToParamSchema Group
 instance ToSchema Trace
 instance ToSchema Flow
 instance ToSchema Group
+
+instance ToParamSchema Reference where
+  toParamSchema _ =
+        mempty
+          & enum_ ?~ ["latest", "head", "<any natural number>"]
+          & type_ .~ Just SwaggerString
 
 instance ToSchema a => ToSchema (GroupViews a) where
   declareNamedSchema proxy =
