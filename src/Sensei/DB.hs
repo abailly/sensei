@@ -10,7 +10,6 @@ module Sensei.DB (
 import Data.Text(Text)
 import Data.Time
 import Sensei.API
-import Numeric.Natural
 
 -- | Interface to the underlying database.
 -- This interface provide high-level functions to retrieve
@@ -54,14 +53,6 @@ class (Monad m) => DB m where
   -- | Read the user's profile
   -- This function may fail of there's no profile or the format is incorrect
   readProfile :: m (Either Text UserProfile)
-
--- |Reference to an item in the log
-data Reference =
-  Latest
-  -- ^Refers to the latest entry in the log
-  | Pos { offset :: Natural }
-  -- ^Refers to the item located `offset` positions from the `Latest` entry
-  deriving (Eq, Show)
 
 flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Flow -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay flow =

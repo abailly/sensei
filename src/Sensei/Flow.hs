@@ -175,3 +175,22 @@ instance FromHttpApiData NoteFormat where
   parseUrlPiece "table" = pure MarkdownTable
   parseUrlPiece "section" = pure Section
   parseUrlPiece txt = Left $ "Unknown format: " <> txt
+
+-- |Reference to an item in the log
+data Reference =
+  Latest
+  -- ^Refers to the latest entry in the log
+  | Pos { offset :: Natural }
+  -- ^Refers to the item located `offset` positions from the `Latest` entry
+  deriving (Eq, Show)
+
+instance ToHttpApiData Reference where
+  toUrlPiece Latest = "latest"
+  toUrlPiece (Pos n) = Text.pack $ show n
+
+instance FromHttpApiData Reference where
+  parseUrlPiece "latest" = pure Latest
+  parseUrlPiece txt = Pos <$> parseUrlPiece txt
+
+parseRef :: String -> Either String Reference
+parseRef = first Text.unpack . parseUrlPiece . Text.pack
