@@ -6,6 +6,7 @@
 module Sensei.CLI where
 
 import Data.Aeson hiding (Options, Success)
+import Data.Aeson.Encode.Pretty(encodePretty)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
@@ -189,7 +190,7 @@ parseSenseiOptions ::
 parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlows userProfile)
 
 display :: ToJSON a => a -> IO ()
-display = LBS.putStr . encode
+display = LBS.putStr . encodePretty
 
 ep :: Options -> Text -> UTCTime -> Text -> IO ()
 ep (QueryOptions Nothing False grps) usrName _ _ =
