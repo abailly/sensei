@@ -3,13 +3,10 @@
 
 module Sensei.FlowAPISpec where
 
-import Data.Aeson
 import Data.Time
 import Sensei.API
 import Sensei.TestHelper
 import Test.Hspec
-import Test.Hspec.Wai
-import Test.Hspec.Wai.Matcher
 
 spec :: Spec
 spec = withApp app $
@@ -33,7 +30,7 @@ spec = withApp app $
             ]
 
       getJSON "/flows/arnaud"
-        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expectedGroups)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
 
     it "GET /flows/<user>?group=Day retrieves all Flows grouped by Day" $ do
       let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
@@ -53,7 +50,7 @@ spec = withApp app $
             ]
 
       getJSON "/flows/arnaud?group=Day"
-        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expectedGroups)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
 
     it "GET /flows/<user>/<day>/notes retrieves Notes for given day" $ do
       let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
@@ -64,7 +61,7 @@ spec = withApp app $
       postJSON_ "/flows/arnaud/Note" flow2
 
       getJSON "/flows/arnaud/1995-10-11/notes"
-        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expectedNotes)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedNotes)
 
     it "GET /flows/<user>/<day>/commands retrieves commands run for given day" $ do
       let cmd1 = Trace (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10 1
@@ -77,7 +74,7 @@ spec = withApp app $
       postJSON_ "/trace" cmd2
 
       getJSON "/flows/arnaud/1995-10-10/commands"
-        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expected)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
     it "GET /flows/<user>/day/summary returns a summary of flows and traces for given day" $ do
       let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
@@ -98,7 +95,7 @@ spec = withApp app $
               }
 
       getJSON "/flows/arnaud/1995-10-10/summary"
-        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode expected)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
     it "PATCH /flows/<user>/latest/timestamp updates latest flow's timestamp"  $ do
       let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
@@ -113,4 +110,4 @@ spec = withApp app $
           timeshift :: TimeDifference = Minutes (-10)
 
       patchJSON "/flows/arnaud/latest/timestamp" timeshift
-        `shouldRespondWith` ResponseMatcher 200 [] (bodyEquals $ encode $ expected)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ expected)

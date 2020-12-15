@@ -66,6 +66,23 @@ createLog =
     )
     "drop table event_log;"
 
+createConfig :: Migration
+createConfig =
+  Migration
+    "createLog"
+    ( mconcat
+        [ "create table if not exists config_log ",
+          "( id integer primary key",
+          ", timestamp text not null",
+          ", version integer not null",
+          ", user text not null",
+          ", key text not null",
+          ", value text not null",
+          ");"
+        ]
+    )
+    "drop table config_log;"
+
 runMigration ::
   Connection -> MigrationResult -> Migration -> IO MigrationResult
 runMigration _ f@MigrationFailed {} _ = pure f -- shortcut execution when failing
@@ -105,7 +122,7 @@ runMigrations cnx =
 migrateSQLiteDB :: FilePath -> IO ()
 migrateSQLiteDB sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    migResult <- runMigrations cnx [InitialMigration, createLog]
+    migResult <- runMigrations cnx [InitialMigration, createLog, createConfig]
     case migResult of
       MigrationSuccessful -> pure ()
       MigrationFailed err -> throwIO $ SQLiteDBError err

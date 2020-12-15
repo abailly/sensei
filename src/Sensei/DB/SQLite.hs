@@ -30,6 +30,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (addUTCTime, UTCTime, NominalDiffTime)
+import qualified Data.Time as Time
 import Data.Time.LocalTime
 import Database.SQLite.Simple
 import Database.SQLite.Simple.ToField
@@ -152,6 +153,8 @@ instance FromRow IdFlow where
 
 instance DB SQLiteDB where
   initLogStorage = initSQLiteDB
+  setCurrentTime u ts = SQLiteDB $ asks storagePath >>= liftIO . setCurrentTimeSQL u ts
+  getCurrentTime u = SQLiteDB $ asks storagePath >>= liftIO . getCurrentTimeSQL u
   writeTrace t = SQLiteDB $ asks storagePath >>= liftIO . writeTraceSQL t
   writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
   updateLatestFlow ts = SQLiteDB $ asks storagePath >>= liftIO . updateLatestFlowSQL ts
@@ -171,6 +174,22 @@ initSQLiteDB = do
   sqliteFileExists <- liftIO $ doesFileExist sqliteFile
   unless sqliteFileExists $ liftIO $ openFile sqliteFile WriteMode >>= hClose
   liftIO $ migrateSQLiteDB sqliteFile
+
+setCurrentTimeSQL :: UserProfile -> UTCTime -> FilePath -> IO ()
+setCurrentTimeSQL UserProfile{userName} newTime sqliteFile =
+  withConnection sqliteFile $ \ cnx -> do
+  let q = "insert into config_log(timestamp, version, user, key, value) values (?,?,?,?,?)"
+  ts <- Time.getCurrentTime -- This is silly, isn't it?
+  execute cnx q [toField ts, toField (fromIntegral currentVersion :: Integer), toField userName, toField ("currentTime" :: Text), toField newTime ]
+
+getCurrentTimeSQL :: UserProfile -> FilePath -> IO UTCTime
+getCurrentTimeSQL UserProfile{userName} sqliteFile =
+  withConnection sqliteFile $ \ cnx -> do
+  let q = "select value from config_log where user = ? and key = 'currentTime' order by timestamp desc limit 1"
+  res <- query cnx q (Only userName)
+  case res of
+    ([ts]:_) -> pure ts
+    _ -> Time.getCurrentTime
 
 writeAll ::
   [Event] -> SQLiteDB ()

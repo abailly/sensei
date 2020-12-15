@@ -26,6 +26,7 @@ library
                      , Sensei.Server.UI
                      , Sensei.Server.Config
                      , Sensei.CLI
+                     , Sensei.Time
                      , Sensei.Version
                      , Sensei.Wrapper
                      , Sensei.Utils
@@ -37,6 +38,7 @@ library
                  Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.IO, Sensei.Server.Tags
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
+                     , ad
                      , ansi-terminal
                      , async
                      , base

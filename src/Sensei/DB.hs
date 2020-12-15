@@ -16,6 +16,14 @@ import Sensei.API
 -- and store various pieces of data for the `Server`-side operations.
 class (Monad m) => DB m where
 
+  -- | Stores the current timestamp
+  -- This is only used for development or testing purpose
+  setCurrentTime :: UserProfile -> UTCTime -> m ()
+
+  -- | Retrieves the current timestamp
+  -- This is only used for development or testing purpose
+  getCurrentTime :: UserProfile -> m UTCTime
+
    -- | Initialises the connection, engine or whatever that underlies the DB operations
   initLogStorage :: m ()
 

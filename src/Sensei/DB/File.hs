@@ -42,6 +42,8 @@ runDB storage config =
 
 instance DB FileDB where
   initLogStorage = FileDB $ (asks storageFile >>= liftIO . initLogStorageFile)
+  getCurrentTime = undefined
+  setCurrentTime = undefined
   writeTrace t = FileDB $ (asks storageFile >>= liftIO . writeTraceFile t)
   writeFlow t = FileDB $ (asks storageFile >>= liftIO . writeFlowFile t)
   updateLatestFlow = undefined

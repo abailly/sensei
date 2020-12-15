@@ -19,8 +19,8 @@ module Sensei.TestHelper
     patchJSON,
 
     -- * Assertion helpers
-    bodyContains,
-    module W
+    bodyContains, jsonBodyEquals,
+    module W,
   )
 where
 
@@ -43,7 +43,8 @@ import System.FilePath ((<.>))
 import System.IO (hClose)
 import System.Posix.Temp (mkstemp)
 import Test.Hspec (ActionWith, Spec, SpecWith, around)
-import Test.Hspec.Wai as W (MatchBody (..), WaiSession, request, shouldRespondWith)
+import Test.Hspec.Wai as W (WaiSession, request, shouldRespondWith)
+import Test.Hspec.Wai.Matcher as W
 
 data AppBuilder = AppBuilder {withStorage :: Bool, withEnv :: Env}
 
@@ -94,6 +95,10 @@ putJSON_ path payload = void $ putJSON path payload
 
 getJSON :: ByteString -> WaiSession () SResponse
 getJSON path = request "GET" path [("Accept", "application/json"), ("X-API-Version", toHeader senseiVersion)] mempty
+
+jsonBodyEquals ::
+  A.ToJSON a => a -> MatchBody
+jsonBodyEquals = bodyEquals . A.encode
 
 bodyContains :: ByteString -> MatchBody
 bodyContains fragment =
