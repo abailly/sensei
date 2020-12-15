@@ -31,7 +31,7 @@ import System.Posix.Daemonize
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
-    :<|> (KillServer :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI))
+    :<|> (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI))
     :<|> Raw
 
 fullAPI :: Proxy FullAPI
@@ -57,9 +57,11 @@ sensei output = do
 baseServer ::
   (MonadIO m, DB m) =>
   MVar () ->
-  ServerT (KillServer :<|> SenseiAPI) m
+  ServerT (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
 baseServer signal =
   killS signal
+    :<|> setCurrentTimeS
+    :<|> getCurrentTimeS
     :<|> traceS
     :<|> ( flowS
              :<|> getFlowS

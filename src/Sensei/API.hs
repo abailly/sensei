@@ -12,7 +12,7 @@
 
 module Sensei.API
   ( SenseiAPI,
-    KillServer,
+    KillServer, SetCurrentTime, GetCurrentTime,
     senseiAPI,
     module Sensei.Color,
     module Sensei.Duration,
@@ -38,6 +38,7 @@ import Sensei.FlowView
 import Sensei.Group
 import Sensei.Server.Tags
 import Sensei.Summary
+import Sensei.Time
 import Sensei.User
 import Sensei.Utils
 import Sensei.Version
@@ -46,8 +47,25 @@ import Servant
 -- * API
 
 type KillServer =
-  Summary "Ask the server to kill itself." :> "kill"
+  Summary "Ask the server to kill itself."
+    :> Tags "Development"
+    :> "kill"
     :> Delete '[JSON] ()
+
+type SetCurrentTime =
+  Summary "Set the current time of the server."
+    :> Tags "Development"
+    :> "time"
+    :> Capture "user" Text
+    :> ReqBody '[JSON] Timestamp
+    :> Put '[JSON] ()
+
+type GetCurrentTime =
+  Summary "Get the current time of the server."
+    :> Tags "Development"
+    :> "time"
+    :> Capture "user" Text
+    :> Get '[JSON] Timestamp
 
 type DisplayVersions =
   Summary "Get the server executable and storage versions "

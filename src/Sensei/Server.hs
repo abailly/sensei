@@ -10,16 +10,27 @@ import Control.Concurrent.MVar
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Text (Text)
-import Data.Time
+import Sensei.Time hiding (getCurrentTime)
 import Sensei.API
 import Sensei.DB
 import Servant
 import Sensei.Version (senseiVersion, Versions(..))
 
-
 killS ::
   MonadIO m => MVar () -> m ()
 killS signal = liftIO (putMVar signal ())
+
+setCurrentTimeS ::
+  DB m => Text -> Timestamp -> m ()
+setCurrentTimeS usr Timestamp{timestamp} = do
+  usrProfile <- getUserProfileS usr
+  setCurrentTime usrProfile timestamp
+
+getCurrentTimeS ::
+  DB m => Text -> m Timestamp
+getCurrentTimeS usr = do
+  usrProfile <- getUserProfileS usr
+  Timestamp <$> getCurrentTime usrProfile
 
 traceS ::
   (DB m) => Trace -> m ()
