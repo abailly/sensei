@@ -18,6 +18,12 @@
 --                          version integer not null,
 --                          flow_type text not null,
 --                          flow_data text not null);
+-- CREATE TABLE config_log ( id integer primary key,
+--                           timestamp text not null,
+--                           version integer not null,
+--                           user text not null,
+--                           key text not null,
+--                           value text not null);
 -- @@
 -- The actual data is stored in the `flow_data` field as JSON.
 module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB) where
@@ -27,9 +33,10 @@ import Control.Exception.Safe (IOException, try)
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Lazy as LBS
+import Data.Int (Int64)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Data.Time (addUTCTime, UTCTime, NominalDiffTime)
+import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 import qualified Data.Time as Time
 import Data.Time.LocalTime
 import Database.SQLite.Simple
@@ -44,7 +51,6 @@ import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
-import Data.Int (Int64)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -144,10 +150,15 @@ instance FromRow Event where
             v <- fromInteger <$> field
             pure $ F (Flow t st v)
 
-data IdFlow = IdFlow { identifier :: Int64, flow :: Flow }
+data IdFlow = IdFlow {identifier :: Int64, flow :: Flow}
 
 instance FromRow IdFlow where
   fromRow = IdFlow <$> field <*> fromRow
+
+-- | This instance returns a number to be used as offset value in a query
+instance ToField Reference where
+  toField Latest = SQLInteger 0
+  toField (Pos n) = SQLInteger (fromIntegral n)
 
 -- * DB Implementation
 
@@ -176,20 +187,20 @@ initSQLiteDB = do
   liftIO $ migrateSQLiteDB sqliteFile
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> FilePath -> IO ()
-setCurrentTimeSQL UserProfile{userName} newTime sqliteFile =
-  withConnection sqliteFile $ \ cnx -> do
-  let q = "insert into config_log(timestamp, version, user, key, value) values (?,?,?,?,?)"
-  ts <- Time.getCurrentTime -- This is silly, isn't it?
-  execute cnx q [toField ts, toField (fromIntegral currentVersion :: Integer), toField userName, toField ("currentTime" :: Text), toField newTime ]
+setCurrentTimeSQL UserProfile {userName} newTime sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "insert into config_log(timestamp, version, user, key, value) values (?,?,?,?,?)"
+    ts <- Time.getCurrentTime -- This is silly, isn't it?
+    execute cnx q [toField ts, toField (fromIntegral currentVersion :: Integer), toField userName, toField ("currentTime" :: Text), toField newTime]
 
 getCurrentTimeSQL :: UserProfile -> FilePath -> IO UTCTime
-getCurrentTimeSQL UserProfile{userName} sqliteFile =
-  withConnection sqliteFile $ \ cnx -> do
-  let q = "select value from config_log where user = ? and key = 'currentTime' order by timestamp desc limit 1"
-  res <- query cnx q (Only userName)
-  case res of
-    ([ts]:_) -> pure ts
-    _ -> Time.getCurrentTime
+getCurrentTimeSQL UserProfile {userName} sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "select value from config_log where user = ? and key = 'currentTime' order by timestamp desc limit 1"
+    res <- query cnx q (Only userName)
+    case res of
+      ([ts] : _) -> pure ts
+      _ -> Time.getCurrentTime
 
 writeAll ::
   [Event] -> SQLiteDB ()
@@ -218,29 +229,27 @@ insert event cnx = do
 updateLatestFlowSQL :: NominalDiffTime -> FilePath -> IO FlowState
 updateLatestFlowSQL diff sqliteFile =
   withConnection sqliteFile $ \cnx ->
-  withTransaction cnx $ do
-    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1"
-        u = "update event_log set timestamp = ?, flow_data = ? where id = ?"
-    res <- query_ cnx q
-    case res of
-      (IdFlow{identifier,flow=Flow{_flowState}}:_) -> do
-        let newTs = addUTCTime diff (_flowStart _flowState)
-            updatedFlow = _flowState { _flowStart = newTs }
-        execute cnx u [ toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
-        pure updatedFlow
-      [] -> error "no flows recorded"
+    withTransaction cnx $ do
+      let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1"
+          u = "update event_log set timestamp = ?, flow_data = ? where id = ?"
+      res <- query_ cnx q
+      case res of
+        (IdFlow {identifier, flow = Flow {_flowState}} : _) -> do
+          let newTs = addUTCTime diff (_flowStart _flowState)
+              updatedFlow = _flowState {_flowStart = newTs}
+          execute cnx u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
+          pure updatedFlow
+        [] -> error "no flows recorded"
 
 readFlowSQL :: UserProfile -> UTCTime -> Reference -> FilePath -> IO (Maybe FlowView)
-readFlowSQL UserProfile{userTimezone} now Latest sqliteFile =
+readFlowSQL UserProfile {userTimezone} now ref sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-  let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1"
-  res <- query_ cnx q
-  case res of
-    [flow] -> pure $ Just $ mkFlowView userTimezone now flow
-    [] -> pure Nothing
-    _ -> error "invalid query results"
-readFlowSQL _ _ _ _ = error "Not implemented"
-
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1 offset ?"
+    res <- query cnx q (Only ref)
+    case res of
+      [flow] -> pure $ Just $ mkFlowView userTimezone now flow
+      [] -> pure Nothing
+      _ -> error "invalid query results"
 
 readEventsSQL :: UserProfile -> FilePath -> IO [Event]
 readEventsSQL _ sqliteFile =
