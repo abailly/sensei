@@ -3,9 +3,9 @@
 
 module Sensei.FlowAPISpec where
 
-import Data.Time
 import Sensei.API
 import Sensei.TestHelper
+import Sensei.Time
 import Test.Hspec
 
 spec :: Spec
@@ -67,8 +67,10 @@ spec = withApp app $
       let cmd1 = Trace (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10 1
           cmd2 = Trace (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100 1
 
-          expected = [CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) "foo" 10,
-                      CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 16 40)) "git" 100]
+          expected =
+            [ CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) "foo" 10,
+              CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 16 40)) "git" 100
+            ]
 
       postJSON_ "/trace" cmd1
       postJSON_ "/trace" cmd2
@@ -97,7 +99,7 @@ spec = withApp app $
       getJSON "/flows/arnaud/1995-10-10/summary"
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
-    it "PATCH /flows/<user>/latest/timestamp updates latest flow's timestamp"  $ do
+    it "PATCH /flows/<user>/latest/timestamp updates latest flow's timestamp" $ do
       let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
           flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
           trace = Trace (UTCTime (toEnum 50000) 2000) "other/directory" "git" ["bar"] 0 100 1
@@ -106,8 +108,26 @@ spec = withApp app $
       postJSON_ "/flows/arnaud/Other" flow2
       postJSON_ "/trace" trace
 
-      let expected = flow1 { _flowStart = (UTCTime (toEnum 50000) 400) }
+      let expected = flow1 {_flowStart = (UTCTime (toEnum 50000) 400)}
           timeshift :: TimeDifference = Minutes (-10)
 
       patchJSON "/flows/arnaud/latest/timestamp" timeshift
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ expected)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+
+    it "GET /flows/<user>/latest retrieves latest flow" $ do
+      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+
+      postJSON_ "/flows/arnaud/Other" flow1
+      postJSON_ "/flows/arnaud/Other" flow2
+      putJSON_ "/time/arnaud" (Timestamp $ UTCTime (toEnum 50000) 1600)
+
+      let expected =
+            FlowView
+              { flowStart = LocalTime (toEnum 50000) (TimeOfDay 1 16 40),
+                flowEnd = LocalTime (toEnum 50000) (TimeOfDay 1 26 40),
+                flowType = Other
+              }
+
+      getJSON "/flows/arnaud/latest"
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
