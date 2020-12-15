@@ -120,17 +120,9 @@ spec = withApp app $
 
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Other" flow2
-      putJSON_ "/time/arnaud" (Timestamp $ UTCTime (toEnum 50000) 1600)
-
-      let expected =
-            FlowView
-              { flowStart = LocalTime (toEnum 50000) (TimeOfDay 1 16 40),
-                flowEnd = LocalTime (toEnum 50000) (TimeOfDay 1 26 40),
-                flowType = Other
-              }
 
       getJSON "/flows/arnaud/latest"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ Flow Other flow2 currentVersion)
 
     it "GET /flows/<user>/2 retrieves flow 2 steps back" $ do
       let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
@@ -140,14 +132,6 @@ spec = withApp app $
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Other" flow2
       postJSON_ "/flows/arnaud/Other" flow3
-      putJSON_ "/time/arnaud" (Timestamp $ UTCTime (toEnum 50000) 1600)
-
-      let expected =
-            FlowView
-              { flowStart = LocalTime (toEnum 50000) (TimeOfDay 1 0 0),
-                flowEnd = LocalTime (toEnum 50000) (TimeOfDay 1 26 40),
-                flowType = Other
-              }
 
       getJSON "/flows/arnaud/2"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ Flow Other flow1 currentVersion)

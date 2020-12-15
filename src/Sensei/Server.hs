@@ -100,11 +100,10 @@ queryFlowSummaryS usr = do
       )
 
 getFlowS ::
-  (DB m) => Text -> Reference -> m (Maybe FlowView)
+  (DB m) => Text -> Reference -> m (Maybe Flow)
 getFlowS usr ref = do
   profile <- getUserProfileS usr
-  ts <- getCurrentTime profile
-  readFlow profile ts ref
+  readFlow profile ref
 
 queryFlowS ::
   (DB m) => Text -> [Group] -> m [GroupViews FlowView]

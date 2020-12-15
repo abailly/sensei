@@ -25,7 +25,7 @@ killC = clientIn (Proxy @KillServer) Proxy
 
 traceC :: Trace -> ClientMonad ()
 flowC :: Text -> FlowType -> FlowState -> ClientMonad ()
-getFlowC :: Text -> Reference -> ClientMonad (Maybe FlowView)
+getFlowC :: Text -> Reference -> ClientMonad (Maybe Flow)
 updateFlowC :: Text -> TimeDifference -> ClientMonad FlowState
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
