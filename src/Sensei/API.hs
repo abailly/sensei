@@ -128,7 +128,7 @@ type GetFlow =
   Summary "Query flows"
     :> Capture "user" Text
     :> Capture "ref" Reference
-    :> Get '[JSON] (Maybe FlowView)
+    :> Get '[JSON] (Maybe Flow)
 
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."

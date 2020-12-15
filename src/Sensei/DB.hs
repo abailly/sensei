@@ -39,10 +39,8 @@ class (Monad m) => DB m where
   -- | Write user's profile to the DB
   writeProfile :: UserProfile -> m ()
 
-  -- | Read a single `FlowView` from the storage, pointed at by given `Reference`.
-  -- The `timestamp` argument is used to reconstruct a proper `FLowView` from the given
-  -- /now/.
-  readFlow :: UserProfile -> UTCTime -> Reference -> m (Maybe FlowView)
+  -- | Read a single `Flow` from the storage, pointed at by given `Reference`.
+  readFlow :: UserProfile -> Reference -> m (Maybe Flow)
 
   -- | Read raw events stored in the database, younger events first.
   readEvents :: UserProfile -> m [Event]
