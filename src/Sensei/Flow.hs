@@ -56,6 +56,11 @@ instance ToJSON Event where
 instance FromJSON Event where
   parseJSON v = T <$> parseJSON v <|> F <$> parseJSON v
 
+eventTimestamp ::
+  Event -> UTCTime
+eventTimestamp (F Flow{_flowState}) = _flowStart _flowState
+eventTimestamp (T Trace{timestamp}) = timestamp
+
 -- | Execution "trace" of a program
 data Trace = Trace
   { timestamp :: UTCTime,

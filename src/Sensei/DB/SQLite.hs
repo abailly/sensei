@@ -171,7 +171,7 @@ instance DB SQLiteDB where
   updateLatestFlow ts = SQLiteDB $ asks storagePath >>= liftIO . updateLatestFlowSQL ts
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readFlow u r = SQLiteDB $ (asks storagePath >>= liftIO . readFlowSQL u r)
-  readEvents u = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u)
+  readEvents u p = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u p)
   readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
   readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
   readCommands u = SQLiteDB $ asks storagePath >>= liftIO . readCommandsSQL u
@@ -251,11 +251,11 @@ readFlowSQL _ ref sqliteFile =
       [] -> pure Nothing
       _ -> error "invalid query results"
 
-readEventsSQL :: UserProfile -> FilePath -> IO [Event]
-readEventsSQL _ sqliteFile =
+readEventsSQL :: UserProfile -> Pagination -> FilePath -> IO [Event]
+readEventsSQL _ Page{pageNumber,pageSize} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select flow_type, flow_data, version from event_log order by timestamp desc"
-    query_ cnx q
+    let q = "select flow_type, flow_data, version from event_log order by timestamp desc limit ? offset ?"
+    query cnx q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
 
 readNotesSQL :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} sqliteFile =

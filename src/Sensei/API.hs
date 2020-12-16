@@ -12,7 +12,9 @@
 
 module Sensei.API
   ( SenseiAPI,
-    KillServer, SetCurrentTime, GetCurrentTime,
+    KillServer,
+    SetCurrentTime,
+    GetCurrentTime,
     senseiAPI,
     module Sensei.Color,
     module Sensei.Duration,
@@ -145,6 +147,7 @@ type GetGroupedTimelines =
 type GetAllLog =
   Summary "Retrieve the complete log of all events pertaining to a given user, most recent first"
     :> Capture "user" Text
+    :> QueryParam "page" Natural
     :> Get '[JSON] [Event]
 
 type GetUserProfile =

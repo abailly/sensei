@@ -9,12 +9,15 @@
 module Sensei.DB.Model where
 
 import Control.Monad.State
+import Data.Foldable (toList)
+import Data.Function (on)
 import Data.Maybe (isNothing)
 import Data.Sequence as Seq
 import Data.Text (Text, pack, unpack)
 import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
+import Test.Hspec (HasCallStack)
 import Test.QuickCheck
   ( ASCIIString (getASCIIString),
     Arbitrary (arbitrary),
@@ -34,6 +37,7 @@ import Test.QuickCheck.Monadic
 data Action a where
   WriteFlow :: Flow -> Action ()
   WriteTrace :: Trace -> Action ()
+  ReadEvents :: Pagination -> Action [Event]
   ReadFlow :: Reference -> Action (Maybe Flow)
   ReadNotes :: Action [(LocalTime, Text)]
   ReadViews :: Action [FlowView]
@@ -42,6 +46,7 @@ data Action a where
 instance Show (Action a) where
   show (WriteFlow f) = "WriteFlow " <> show f
   show (WriteTrace t) = "WriteTrace " <> show t
+  show (ReadEvents page) = "ReadEvents " <> show page
   show (ReadFlow ref) = "ReadFlow " <> show ref
   show ReadNotes = "ReadNotes"
   show ReadViews = "ReadViews"
@@ -73,6 +78,9 @@ instance Arbitrary Actions where
   arbitrary =
     Actions <$> (arbitrary >>= sequence . map (generateAction startTime) . enumFromTo 1 . getPositive)
 
+instance Arbitrary Natural where
+  arbitrary = fromInteger . getPositive <$> arbitrary
+
 startTime :: UTCTime
 startTime = UTCTime (toEnum 50000) 10000
 
@@ -82,6 +90,7 @@ generateAction baseTime k =
     [ (9, SomeAction . WriteFlow <$> generateFlow baseTime k),
       (7, SomeAction . WriteTrace <$> generateTrace baseTime k),
       (2, pure $ SomeAction (ReadFlow Latest)),
+      (1, arbitrary >>= \(n, s) -> pure (SomeAction (ReadEvents (Page n s)))),
       (1, pure $ SomeAction ReadNotes),
       (1, pure $ SomeAction ReadViews),
       (1, pure $ SomeAction ReadCommands)
@@ -154,6 +163,11 @@ interpret (ReadFlow Latest) = do
     _ :> f -> pure $ Just f
     _ -> pure Nothing
 interpret (ReadFlow _) = error "not implemented"
+interpret (ReadEvents (Page pageNum size)) = do
+  fs <- fmap F <$> gets flows
+  ts <- fmap T <$> gets traces
+  let evs = Seq.sortBy eventTimestampDesc (fs <> ts)
+  pure $ toList $ Seq.take (fromIntegral size) $ Seq.drop (fromIntegral $ (pageNum - 1) * size) evs
 interpret ReadNotes = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- gets flows
@@ -167,10 +181,19 @@ interpret ReadCommands = do
   ts <- gets traces
   pure $ foldr (commandViewBuilder userTimezone) [] ts
 
+eventTimestampDesc ::
+  Event -> Event -> Ordering
+eventTimestampDesc e e' = desc $ (compare `on` eventTimestamp) e e'
+  where
+    desc LT = GT
+    desc EQ = EQ
+    desc GT = LT
+
 runDB :: (DB db) => Action a -> db a
 runDB (WriteFlow f) = writeFlow f
 runDB (WriteTrace t) = writeTrace t
-runDB (ReadFlow r) = readProfileOrDefault >>= \ u -> readFlow u r
+runDB (ReadEvents p) = readProfileOrDefault >>= \u -> readEvents u p
+runDB (ReadFlow r) = readProfileOrDefault >>= \u -> readFlow u r
 runDB ReadNotes = readProfileOrDefault >>= readNotes
 runDB ReadViews = readProfileOrDefault >>= readViews
 runDB ReadCommands = readProfileOrDefault >>= readCommands
@@ -199,13 +222,15 @@ runAndCheck (SomeAction act) = do
       pure $
         Just $
           "with state = " <> show m
-            <> ", expected : "
+            <> ", \naction = "
+            <> show act
+            <> ", \nexpected : "
             <> show expected
-            <> ", got :  "
+            <> ", \ngot :  "
             <> show actual
 
 canReadFlowsAndTracesWritten ::
-  (DB db) => (forall x. db x -> IO x) -> Actions -> Property
+  (DB db, HasCallStack) => (forall x. db x -> IO x) -> Actions -> Property
 canReadFlowsAndTracesWritten nt (Actions actions) = monadicIO $ do
   let start = Model startTime defaultProfile mempty mempty
       monitorErrors Nothing = pure ()
