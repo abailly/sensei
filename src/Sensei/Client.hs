@@ -33,7 +33,7 @@ queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
 notesDayC :: Text -> Day -> ClientMonad [NoteView]
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
-getLogC :: Text -> ClientMonad [Event]
+getLogC :: Text -> Maybe Natural -> ClientMonad [Event]
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions

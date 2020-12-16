@@ -3,13 +3,17 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Sensei.DB (
-  DB (..), Event(..), Reference(..),
+  DB (..), Event(..), Reference(..), Pagination(..),
   flowView, flowViewBuilder, notesViewBuilder, commandViewBuilder
   ) where
 
 import Data.Text(Text)
 import Data.Time
 import Sensei.API
+
+data Pagination =
+  Page { pageNumber :: Natural, pageSize :: Natural }
+  deriving (Eq, Show)
 
 -- | Interface to the underlying database.
 -- This interface provide high-level functions to retrieve
@@ -43,11 +47,11 @@ class (Monad m) => DB m where
   readFlow :: UserProfile -> Reference -> m (Maybe Flow)
 
   -- | Read raw events stored in the database, younger events first.
-  readEvents :: UserProfile -> m [Event]
+  readEvents :: UserProfile -> Pagination -> m [Event]
 
   -- | Read all notes from DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
-  readNotes :: UserProfile -> m [(LocalTime, Text)]
+  readNotes :: UserProfile ->  m [(LocalTime, Text)]
 
   -- | Read all flows and construct `FlowView` items from the DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone

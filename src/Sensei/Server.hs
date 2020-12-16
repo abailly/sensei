@@ -10,6 +10,7 @@ import Control.Concurrent.MVar
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Text (Text)
+import Data.Maybe(fromMaybe)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.API
 import Sensei.DB
@@ -112,10 +113,10 @@ queryFlowS usr groups = do
   groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews usrProfile
 
 getLogS ::
-  DB m => Text -> m [Event]
-getLogS userName = do
+  DB m => Text -> Maybe Natural -> m [Event]
+getLogS userName page = do
   usrProfile <- getUserProfileS userName
-  take 50 <$> readEvents usrProfile
+  readEvents usrProfile (Page (fromMaybe 1 page) 50)
 
 getUserProfileS ::
   (DB m) => Text -> m UserProfile

@@ -30,3 +30,10 @@ spec = withApp app $
 
       getJSON "/log/arnaud"
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ take 50 $ reverse events)
+
+    it "GET /logs/<user>?page=2 returns next 50 events" $ do
+      events <- liftIO $ generate (sequence $ map (generateEvent (UTCTime (toEnum 50000) 0)) [1 :: Integer .. 100])
+      mapM_ postEvent_ events
+
+      getJSON "/log/arnaud?page=2"
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ drop 50 $ reverse events)
