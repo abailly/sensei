@@ -148,7 +148,7 @@ type GetAllLog =
   Summary "Retrieve the complete log of all events pertaining to a given user, most recent first"
     :> Capture "user" Text
     :> QueryParam "page" Natural
-    :> Get '[JSON] [Event]
+    :> Get '[JSON] (Headers '[Header "Link" Text] [Event])
 
 type GetUserProfile =
   Summary "Retrieve a user's profile."

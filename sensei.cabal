@@ -52,6 +52,7 @@ library
                      , filepath
                      , hdaemonize
                      , http-client
+                     , http-link-header
                      , http-types
                      , insert-ordered-containers
                      , lens
@@ -129,6 +130,7 @@ test-suite sensei-test
                      , hspec
                      , hspec-discover
                      , hspec-wai
+                     , http-link-header
                      , http-media
                      , http-types
                      , mtl
@@ -139,6 +141,7 @@ test-suite sensei-test
                      , sensei
                      , servant-client-core
                      , servant-server
+                     , servant-server-base
                      , text
                      , time
                      , unix

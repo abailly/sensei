@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -37,7 +38,7 @@ import Test.QuickCheck.Monadic
 data Action a where
   WriteFlow :: Flow -> Action ()
   WriteTrace :: Trace -> Action ()
-  ReadEvents :: Pagination -> Action [Event]
+  ReadEvents :: Pagination -> Action EventsQueryResult
   ReadFlow :: Reference -> Action (Maybe Flow)
   ReadNotes :: Action [(LocalTime, Text)]
   ReadViews :: Action [FlowView]
@@ -167,7 +168,12 @@ interpret (ReadEvents (Page pageNum size)) = do
   fs <- fmap F <$> gets flows
   ts <- fmap T <$> gets traces
   let evs = Seq.sortBy eventTimestampDesc (fs <> ts)
-  pure $ toList $ Seq.take (fromIntegral size) $ Seq.drop (fromIntegral $ (pageNum - 1) * size) evs
+      totalEvents = fromIntegral $ Seq.length evs
+      events = toList $ Seq.take (fromIntegral size) $ Seq.drop (fromIntegral $ (pageNum - 1) * size) evs
+      eventsCount = fromIntegral $ Prelude.length events
+      startIndex = min (fromIntegral $ (pageNum - 1) * size) totalEvents
+      endIndex = min (fromIntegral $ pageNum * size) totalEvents
+  pure EventsQueryResult{..}
 interpret ReadNotes = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- gets flows
