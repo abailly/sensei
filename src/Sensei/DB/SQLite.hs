@@ -251,11 +251,18 @@ readFlowSQL _ ref sqliteFile =
       [] -> pure Nothing
       _ -> error "invalid query results"
 
-readEventsSQL :: UserProfile -> Pagination -> FilePath -> IO [Event]
+readEventsSQL :: UserProfile -> Pagination -> FilePath -> IO EventsQueryResult
 readEventsSQL _ Page{pageNumber,pageSize} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select flow_type, flow_data, version from event_log order by timestamp desc limit ? offset ?"
-    query cnx q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
+        count = "select count(*) from event_log"
+    events <- query cnx q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
+    [[numEvents]] <- query_ cnx count
+    let totalEvents = fromInteger numEvents
+        eventsCount = fromIntegral $ length events
+        startIndex = min ((pageNumber - 1) * pageSize) totalEvents
+        endIndex = min (pageNumber * pageSize) totalEvents
+    pure $ EventsQueryResult{..}
 
 readNotesSQL :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} sqliteFile =

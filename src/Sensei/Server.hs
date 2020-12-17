@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -9,13 +10,16 @@ module Sensei.Server where
 import Control.Concurrent.MVar
 import Control.Monad.Trans
 import qualified Data.List as List
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Data.Maybe(fromMaybe)
+import Network.HTTP.Link
+import Network.URI.Extra()
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.API
 import Sensei.DB
 import Servant
 import Sensei.Version (senseiVersion, Versions(..))
+import Data.String (IsString(fromString))
 
 killS ::
   MonadIO m => MVar () -> m ()
@@ -113,10 +117,15 @@ queryFlowS usr groups = do
   groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews usrProfile
 
 getLogS ::
-  DB m => Text -> Maybe Natural -> m [Event]
+  DB m => Text -> Maybe Natural -> m (Headers '[Header "Link" Text] [Event])
 getLogS userName page = do
   usrProfile <- getUserProfileS userName
-  readEvents usrProfile (Page (fromMaybe 1 page) 50)
+  EventsQueryResult{..} <- readEvents usrProfile (Page (fromMaybe 1 page) 50)
+  let nextPageUri = "/logs/" <> unpack userName <> "?page=" <> show (fromMaybe 1 page + 1)
+      nextHeader = if endIndex < totalEvents
+                   then Just (Link (fromString nextPageUri) [(Rel, "next")])
+                   else Nothing
+  pure $ maybe noHeader (addHeader . writeLinkHeader . (:[])) nextHeader $ events
 
 getUserProfileS ::
   (DB m) => Text -> m UserProfile

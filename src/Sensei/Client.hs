@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -33,12 +34,18 @@ queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
 notesDayC :: Text -> Day -> ClientMonad [NoteView]
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
-getLogC :: Text -> Maybe Natural -> ClientMonad [Event]
+getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [Event])
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
 traceC
-  :<|> (flowC :<|> getFlowC :<|> updateFlowC :<|> queryFlowSummaryC :<|> queryFlowDaySummaryC :<|> notesDayC :<|> commandsDayC :<|> queryFlowDayC :<|> queryFlowC)
+  :<|> ( flowC :<|> getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
+           :<|> queryFlowDaySummaryC
+           :<|> notesDayC
+           :<|> commandsDayC
+           :<|> queryFlowDayC
+           :<|> queryFlowC
+         )
   :<|> getLogC
   :<|> (getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn senseiAPI Proxy

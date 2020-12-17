@@ -48,7 +48,9 @@ instance DB FileDB where
   writeFlow t = FileDB $ (asks storageFile >>= liftIO . writeFlowFile t)
   updateLatestFlow = undefined
   writeProfile u = FileDB $ (asks configDir >>= liftIO . writeProfileFile u)
-  readEvents _ _ = readAll
+  readEvents _ _ = do
+    events <- readAll
+    pure $ EventsQueryResult events 0 0 0 0
   readFlow _ _ = pure Nothing
   readViews u = FileDB $ (asks storageFile >>= liftIO . readViewsFile u)
   readNotes u = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)

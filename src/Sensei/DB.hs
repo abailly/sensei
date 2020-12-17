@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Sensei.DB (
-  DB (..), Event(..), Reference(..), Pagination(..),
+  DB (..), Event(..), Reference(..), Pagination(..), EventsQueryResult(..),
   flowView, flowViewBuilder, notesViewBuilder, commandViewBuilder
   ) where
 
@@ -13,6 +13,14 @@ import Sensei.API
 
 data Pagination =
   Page { pageNumber :: Natural, pageSize :: Natural }
+  deriving (Eq, Show)
+
+data EventsQueryResult =
+  EventsQueryResult { events :: [Event],
+                      eventsCount :: Natural,
+                      startIndex :: Natural,
+                      endIndex :: Natural,
+                      totalEvents :: Natural }
   deriving (Eq, Show)
 
 -- | Interface to the underlying database.
@@ -28,7 +36,7 @@ class (Monad m) => DB m where
   -- This is only used for development or testing purpose
   getCurrentTime :: UserProfile -> m UTCTime
 
-   -- | Initialises the connection, engine or whatever that underlies the DB operations
+  -- | Initialises the connection, engine or whatever that underlies the DB operations.
   initLogStorage :: m ()
 
   -- | Write a new `Trace` to the DB
@@ -47,7 +55,7 @@ class (Monad m) => DB m where
   readFlow :: UserProfile -> Reference -> m (Maybe Flow)
 
   -- | Read raw events stored in the database, younger events first.
-  readEvents :: UserProfile -> Pagination -> m [Event]
+  readEvents :: UserProfile -> Pagination -> m EventsQueryResult
 
   -- | Read all notes from DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
