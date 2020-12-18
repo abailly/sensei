@@ -10,9 +10,9 @@ module Sensei.Server where
 import Control.Concurrent.MVar
 import Control.Monad.Trans
 import qualified Data.List as List
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
-import Network.HTTP.Link
+import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
@@ -124,9 +124,17 @@ getLogS userName page = do
   EventsQueryResult {..} <- readEvents usrProfile (Page (fromMaybe 1 page) 50)
   let nextHeader =
         if endIndex < totalEvents
-          then nextPageUri userName page >>= \uri -> Just (Link uri [(Rel, "next")])
+          then nextPageLink userName page
           else Nothing
-  pure $ maybe noHeader (addHeader . writeLinkHeader . (: [])) nextHeader $ events
+      previousHeader =
+        if startIndex > 1
+          then previousPageLink userName page
+          else Nothing
+      links =
+        case catMaybes [nextHeader, previousHeader] of
+          [] -> noHeader
+          ls -> addHeader $ writeLinkHeader ls
+  pure $ links events
 
 getUserProfileS ::
   (DB m) => Text -> m UserProfile
