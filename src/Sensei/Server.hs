@@ -1,25 +1,24 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module Sensei.Server where
 
 import Control.Concurrent.MVar
 import Control.Monad.Trans
 import qualified Data.List as List
-import Data.Text (Text, unpack)
-import Data.Maybe(fromMaybe)
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Network.HTTP.Link
-import Network.URI.Extra()
-import Sensei.Time hiding (getCurrentTime)
+import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
+import Sensei.Time hiding (getCurrentTime)
+import Sensei.Version (Versions (..), senseiVersion)
 import Servant
-import Sensei.Version (senseiVersion, Versions(..))
-import Data.String (IsString(fromString))
 
 killS ::
   MonadIO m => MVar () -> m ()
@@ -27,7 +26,7 @@ killS signal = liftIO (putMVar signal ())
 
 setCurrentTimeS ::
   DB m => Text -> Timestamp -> m ()
-setCurrentTimeS usr Timestamp{timestamp} = do
+setCurrentTimeS usr Timestamp {timestamp} = do
   usrProfile <- getUserProfileS usr
   setCurrentTime usrProfile timestamp
 
@@ -54,7 +53,7 @@ updateFlowStartTimeS _ timediff =
 
 notesDayS ::
   (DB m) => Text -> Day -> m [NoteView]
-notesDayS  usr day = do
+notesDayS usr day = do
   usrProfile <- getUserProfileS usr
   notes <- readNotes usrProfile
   pure $ map (uncurry NoteView) $ filter (sameDayThan day (localDay . fst)) notes
@@ -79,14 +78,16 @@ queryFlowDaySummaryS usr day = do
   usrProfile <- getUserProfileS usr
   views <- readViews usrProfile
   commands <- readCommands usrProfile
-  let summaryFlows = views
-        |> filter (flowOnDay day)
-        |> summarize
-      summaryCommands = commands
-        |> filter (commandOnDay day)
-        |> summarize
+  let summaryFlows =
+        views
+          |> filter (flowOnDay day)
+          |> summarize
+      summaryCommands =
+        commands
+          |> filter (commandOnDay day)
+          |> summarize
       summaryPeriod = (day, day)
-  pure $ FlowSummary{..}
+  pure $ FlowSummary {..}
 
 queryFlowSummaryS ::
   (DB m) => Text -> m [GroupViews (FlowType, NominalDiffTime)]
@@ -120,12 +121,12 @@ getLogS ::
   DB m => Text -> Maybe Natural -> m (Headers '[Header "Link" Text] [Event])
 getLogS userName page = do
   usrProfile <- getUserProfileS userName
-  EventsQueryResult{..} <- readEvents usrProfile (Page (fromMaybe 1 page) 50)
-  let nextPageUri = "/logs/" <> unpack userName <> "?page=" <> show (fromMaybe 1 page + 1)
-      nextHeader = if endIndex < totalEvents
-                   then Just (Link (fromString nextPageUri) [(Rel, "next")])
-                   else Nothing
-  pure $ maybe noHeader (addHeader . writeLinkHeader . (:[])) nextHeader $ events
+  EventsQueryResult {..} <- readEvents usrProfile (Page (fromMaybe 1 page) 50)
+  let nextHeader =
+        if endIndex < totalEvents
+          then nextPageUri userName page >>= \uri -> Just (Link uri [(Rel, "next")])
+          else Nothing
+  pure $ maybe noHeader (addHeader . writeLinkHeader . (: [])) nextHeader $ events
 
 getUserProfileS ::
   (DB m) => Text -> m UserProfile
@@ -137,7 +138,7 @@ getUserProfileS _ = do
 
 putUserProfileS ::
   (DB m) => Text -> UserProfile -> m NoContent
-putUserProfileS  _ profile = do
+putUserProfileS _ profile = do
   writeProfile profile
   pure NoContent
 

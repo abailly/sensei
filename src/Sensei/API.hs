@@ -15,7 +15,7 @@ module Sensei.API
     KillServer,
     SetCurrentTime,
     GetCurrentTime,
-    senseiAPI,
+    senseiAPI, nextPageUri,
     module Sensei.Color,
     module Sensei.Duration,
     module Sensei.Flow,
@@ -31,7 +31,7 @@ module Sensei.API
   )
 where
 
-import Data.Text (Text)
+import Data.Text (unpack, Text)
 import Data.Time
 import Sensei.Color
 import Sensei.Duration
@@ -45,6 +45,8 @@ import Sensei.User
 import Sensei.Utils
 import Sensei.Version
 import Servant
+import Network.URI.Extra (uriFromString)
+import Data.Maybe (fromMaybe)
 
 -- * API
 
@@ -185,3 +187,7 @@ type SenseiAPI =
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
+
+nextPageUri :: Text -> Maybe Natural -> Maybe URI
+nextPageUri userName page =
+  uriFromString $ "/logs/" <> unpack userName <> "?page=" <> show (succ $ fromMaybe 1 page)
