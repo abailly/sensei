@@ -15,7 +15,9 @@ module Sensei.API
     KillServer,
     SetCurrentTime,
     GetCurrentTime,
-    senseiAPI, nextPageUri,
+    senseiAPI,
+    nextPageLink,
+    previousPageLink,
     module Sensei.Color,
     module Sensei.Duration,
     module Sensei.Flow,
@@ -31,8 +33,11 @@ module Sensei.API
   )
 where
 
-import Data.Text (unpack, Text)
+import Control.Applicative ((<|>))
+import Data.Text (Text, pack, unpack)
 import Data.Time
+import Network.HTTP.Link as Link
+import Network.URI.Extra (uriFromString)
 import Sensei.Color
 import Sensei.Duration
 import Sensei.Flow
@@ -45,8 +50,6 @@ import Sensei.User
 import Sensei.Utils
 import Sensei.Version
 import Servant
-import Network.URI.Extra (uriFromString)
-import Data.Maybe (fromMaybe)
 
 -- * API
 
@@ -188,6 +191,16 @@ type SenseiAPI =
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
 
-nextPageUri :: Text -> Maybe Natural -> Maybe URI
-nextPageUri userName page =
-  uriFromString $ "/logs/" <> unpack userName <> "?page=" <> show (succ $ fromMaybe 1 page)
+nextPageLink :: Text -> Maybe Natural -> Maybe Link.Link
+nextPageLink userName page = do
+  p <- page <|> pure 1
+  let next = show (succ p)
+  uri <- uriFromString $ "/logs/" <> unpack userName <> "?page=" <> next
+  pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
+
+previousPageLink :: Text -> Maybe Natural -> Maybe Link.Link
+previousPageLink userName page = do
+  p <- page
+  let prev = show (pred p)
+  uri <- uriFromString $ "/logs/" <> unpack userName <> "?page=" <> prev
+  pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
