@@ -6,7 +6,7 @@
 module Sensei.CLI where
 
 import Data.Aeson hiding (Options, Success)
-import Data.Aeson.Encode.Pretty(encodePretty)
+import Data.Aeson.Encode.Pretty (encodePretty)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
@@ -21,16 +21,19 @@ import Sensei.API
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.Version
+import Servant (Headers (getResponse))
 import System.Exit
 import System.IO
 import System.IO.Unsafe
-import Servant (Headers(getResponse))
 
 data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
   | RecordOptions {recordType :: FlowType}
-  | NotesOptions {notesDay :: Day, format :: NoteFormat}
+  | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
   | UserOptions {userAction :: UserAction}
+  deriving (Show, Eq)
+
+data NotesQuery = QueryDay Day | QuerySearch Text
   deriving (Show, Eq)
 
 data UserAction
@@ -64,7 +67,7 @@ optionsParser :: Maybe [FlowType] -> Parser Options
 optionsParser flows =
   QueryOptions <$> optional dayParser <*> summarizeParser <*> many groupParser
     <|> RecordOptions <$> flowTypeParser flows
-    <|> NotesOptions <$> dayParser <* notesParser <*> formatParser
+    <|> NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> searchParser)) <*> formatParser
     <|> UserOptions <$> (profileParser *> userActionParser)
 
 {-# INLINE today #-}
@@ -91,6 +94,16 @@ dayParser =
         <> value today
         <> help "date to filter on, in ISO8601 format (YYYY-mm-dd)"
     )
+
+searchParser :: Parser NotesQuery
+searchParser =
+  QuerySearch . Text.pack
+    <$> strOption
+      ( long "search"
+          <> short 's'
+          <> metavar "TEXT"
+          <> help "full-text query to search notes."
+      )
 
 summarizeParser :: Parser Bool
 summarizeParser =
@@ -202,8 +215,10 @@ ep (QueryOptions (Just day) False _) usrName _ _ =
   send (queryFlowDayC usrName day) >>= display
 ep (QueryOptions (Just day) True _) usrName _ _ =
   send (queryFlowDaySummaryC usrName day) >>= display
-ep (NotesOptions day noteFormat) usrName _ _ =
+ep (NotesOptions (QueryDay day) noteFormat) usrName _ _ =
   send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
+ep (NotesOptions (QuerySearch txt) noteFormat) usrName _ _ =
+  send (searchNotesC usrName (Just txt)) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
 ep (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do

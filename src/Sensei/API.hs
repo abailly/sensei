@@ -126,6 +126,12 @@ type GetNotes =
     :> "notes"
     :> Get '[JSON] (Headers '[Header "Link" Text] [NoteView])
 
+type SearchNotes =
+  Summary "Run a full-text search on all notes, retrieving matching notes."
+    :> Capture "user" Text
+    :> QueryParam "search" Text
+    :> Get '[JSON] [NoteView]
+
 type GetCommands =
   Summary "Retrieve sequence of executed commands for some day."
     :> Capture "user" Text
@@ -182,6 +188,9 @@ type SenseiAPI =
              :<|> GetFlowsTimeline
              :<|> GetGroupedTimelines
          )
+    :<|> "notes"
+      :> Tags "Notes"
+      :> SearchNotes
     :<|> "log"
       :> Tags "Event Log"
       :> GetAllLog

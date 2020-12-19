@@ -35,3 +35,7 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses '-Q latest' as retrieval of latest flow" $ do
       runOptionsParser Nothing ["-Q", "latest" ] `shouldBe` Right (UserOptions $ GetFlow Latest)
+
+    it "parses '-N --search foo' as search query" $ do
+      runOptionsParser Nothing ["-N", "--search", "foo", "-f", "section" ] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
+      runOptionsParser Nothing ["-N", "-s", "foo", "-f", "section" ] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
