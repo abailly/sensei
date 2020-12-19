@@ -1,7 +1,9 @@
 import style from './style.css';
 import charts from './charts';
 import logs from './logs';
+import notes from './notes';
 import { setUserProfile } from './user.js';
+import { formatISODate } from './date.js';
 import Navigo from 'navigo';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,11 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     .on('/flows', function() {
       charts();
     })
+    .on('/notes', function() {
+      notes(router, document.getElementById('main'), formatISODate(new Date()));
+    })
+    .on('/notes/:page', function(params) {
+      notes(router, document.getElementById('main'), params.page);
+    })
     .on('/log/:page', function(params) {
-      logs(router, params.page);
+      logs(router, document.getElementById('main'), params.page);
     })
     .on('/log', function() {
-      logs(router, 1);
+      logs(router, document.getElementById('main'), 1);
     })
     .on(function() {
       charts();

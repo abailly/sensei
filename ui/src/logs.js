@@ -1,28 +1,16 @@
-import { dom, clear } from './dom';
+import { dom, clearElement } from './dom';
 import { config } from "./config";
 import { colorOf } from './color.js';
 import { get } from './request';
-
-function pagination(router, links) {
-  if (!links) return "";
-
-  return <div class='pagination'>
-    {
-      <button disabled={!links.prev} class='btn-prev' onclick={() => router.navigate(`/log/${links.prev.page}`)}>&lt;&lt;</button>
-    }
-    {
-      <button disabled={!links.next} class='btn-next' onclick={() => router.navigate(`/log/${links.next.page}`)}>&gt;&gt;</button>
-    }
-  </div>;
-}
+import { pagination } from './page.js';
 
 /*
   Display (latest) event log entries from the server
 */
-export default function logs(router, page) {
-  clear('main');
+export default function logs(router, container, page) {
+  clearElement(container);
   get(`/log/${config.user}?page=${page}`, (logEntries, links) => {
-    const logDiv = pagination(router, links);
+    const logDiv = pagination('log', router, links);
     const logTable =
       <table class='tbl-log'>
         <thead>
@@ -41,7 +29,7 @@ export default function logs(router, page) {
           }
         </tbody>
       </table>;
-    document.getElementById('main').appendChild(logDiv);
-    document.getElementById('main').appendChild(logTable);
+    container.appendChild(logDiv);
+    container.appendChild(logTable);
   });
 };
