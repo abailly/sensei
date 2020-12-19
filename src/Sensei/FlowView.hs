@@ -23,6 +23,7 @@ import Data.Time
 import GHC.Generics
 import Sensei.Flow
 import Sensei.Summary
+import Sensei.Time
 import Sensei.Utils
 
 -- | A single note

@@ -53,7 +53,7 @@ instance DB FileDB where
     pure $ EventsQueryResult events 0 0 0 0
   readFlow _ _ = pure Nothing
   readViews u = FileDB $ (asks storageFile >>= liftIO . readViewsFile u)
-  readNotes u = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
+  readNotes u _ = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
   readProfile = FileDB $ (asks configDir >>= liftIO . readProfileFile)
 

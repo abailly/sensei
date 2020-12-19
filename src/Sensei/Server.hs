@@ -55,8 +55,8 @@ notesDayS ::
   (DB m) => Text -> Day -> m [NoteView]
 notesDayS usr day = do
   usrProfile <- getUserProfileS usr
-  notes <- readNotes usrProfile
-  pure $ map (uncurry NoteView) $ filter (sameDayThan day (localDay . fst)) notes
+  notes <- readNotes usrProfile (rangeFromDay day (userTimezone usrProfile))
+  pure $ map (uncurry NoteView) notes
 
 commandsDayS ::
   (DB m) => Text -> Day -> m [CommandView]

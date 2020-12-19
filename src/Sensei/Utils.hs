@@ -1,13 +1,11 @@
 module Sensei.Utils
   ( (|>),
-    sameDayThan,
     -- TODO: move that somewhere else...
     module Numeric.Natural,
   )
 where
 
 import Data.Function ((&))
-import Data.Time (Day)
 import Numeric.Natural
 
 -- | "pipe" operator common in other languages
@@ -15,7 +13,3 @@ import Numeric.Natural
 -- the standard library
 (|>) :: a -> (a -> b) -> b
 (|>) = (&)
-
-sameDayThan :: Day -> (a -> Day) -> a -> Bool
-sameDayThan day selector a =
-  selector a == day

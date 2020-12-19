@@ -1,5 +1,7 @@
 module Sensei.DB.SQLiteSpec where
 
+import Data.Functor (void)
+import Data.Text (Text)
 import Sensei.API
 import Sensei.DB
 import qualified Sensei.DB.File as File
@@ -7,10 +9,8 @@ import Sensei.DB.Model (canReadFlowsAndTracesWritten)
 import qualified Sensei.DB.Model as Model
 import Sensei.DB.SQLite (migrateFileDB, runDB)
 import Sensei.TestHelper
-import System.FilePath((<.>))
-import Data.Functor(void)
-import Data.Time(LocalTime, UTCTime(..))
-import Data.Text(Text)
+import Sensei.Time hiding (getCurrentTime)
+import System.FilePath ((<.>))
 import Test.Hspec
 import Test.QuickCheck
 
@@ -35,18 +35,19 @@ spec =
 
         res <- runDB tempdb "." $ do
           initLogStorage
-          setCurrentTime defaultProfile  time1
-          setCurrentTime defaultProfile  time2
+          setCurrentTime defaultProfile time1
+          setCurrentTime defaultProfile time2
           getCurrentTime defaultProfile
 
         res `shouldBe` time2
 
       it "can migrate a File-based log to SQLite-based one" $ \tempdb -> do
         let checks :: DB db => db ([FlowView], [(LocalTime, Text)], [CommandView])
-            checks = (,,)
-              <$> readViews defaultProfile
-              <*> readNotes defaultProfile
-              <*> readCommands defaultProfile
+            checks =
+              (,,)
+                <$> readViews defaultProfile
+                <*> readNotes defaultProfile (TimeRange Model.startTime (addUTCTime 1000000 Model.startTime))
+                <*> readCommands defaultProfile
         actions <- generate $ resize 100 arbitrary
         void $ File.runDB tempdb "." $ initLogStorage >> (Model.runActions actions)
         expected <- File.runDB tempdb "." checks

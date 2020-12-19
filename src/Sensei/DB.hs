@@ -2,32 +2,43 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Sensei.DB (
-  DB (..), Event(..), Reference(..), Pagination(..), EventsQueryResult(..),
-  flowView, flowViewBuilder, notesViewBuilder, commandViewBuilder
-  ) where
 
-import Data.Text(Text)
+module Sensei.DB
+  ( DB (..),
+    Event (..),
+    Reference (..),
+    Pagination (..),
+    EventsQueryResult (..),
+    TimeRange (..),
+    inRange,
+    flowView,
+    flowViewBuilder,
+    notesViewBuilder,
+    commandViewBuilder,
+  )
+where
+
+import Data.Text (Text)
 import Data.Time
 import Sensei.API
+import Sensei.Time
 
-data Pagination =
-  Page { pageNumber :: Natural, pageSize :: Natural }
+data Pagination = Page {pageNumber :: Natural, pageSize :: Natural}
   deriving (Eq, Show)
 
-data EventsQueryResult =
-  EventsQueryResult { events :: [Event],
-                      eventsCount :: Natural,
-                      startIndex :: Natural,
-                      endIndex :: Natural,
-                      totalEvents :: Natural }
+data EventsQueryResult = EventsQueryResult
+  { events :: [Event],
+    eventsCount :: Natural,
+    startIndex :: Natural,
+    endIndex :: Natural,
+    totalEvents :: Natural
+  }
   deriving (Eq, Show)
 
 -- | Interface to the underlying database.
 -- This interface provide high-level functions to retrieve
 -- and store various pieces of data for the `Server`-side operations.
 class (Monad m) => DB m where
-
   -- | Stores the current timestamp
   -- This is only used for development or testing purpose
   setCurrentTime :: UserProfile -> UTCTime -> m ()
@@ -59,7 +70,7 @@ class (Monad m) => DB m where
 
   -- | Read all notes from DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
-  readNotes :: UserProfile ->  m [(LocalTime, Text)]
+  readNotes :: UserProfile -> TimeRange -> m [(LocalTime, Text)]
 
   -- | Read all flows and construct `FlowView` items from the DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
@@ -87,8 +98,8 @@ notesViewBuilder userName userTimezone flow = flowView flow userName f
 commandViewBuilder :: TimeZone -> Trace -> [CommandView] -> [CommandView]
 commandViewBuilder userTimezone t acc = mkCommandView userTimezone t : acc
 
--- |Basically a combination of a `filter` and a single step of a fold
--- Should be refactored to something more standard
+-- | Basically a combination of a `filter` and a single step of a fold
+--  Should be refactored to something more standard
 flowView :: Flow -> Text -> (Flow -> [a] -> [a]) -> [a] -> [a]
 flowView f@Flow {..} usr mkView views =
   if _flowUser _flowState == usr
