@@ -70,3 +70,8 @@ table.tbl-log td {
     vertical-align: top;
     border: 1px solid black;
 }
+
+
+div#notes .note-full {
+    padding: 1em;
+}

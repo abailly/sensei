@@ -1,9 +1,24 @@
 import showdown from 'showdown';
+import { config } from "./config";
+import { get } from './request';
+import { dom, clearElement } from './dom';
+import { pagination } from './page';
+
+function markdownNote(note) {
+  return new showdown.Converter({ simplifiedAutoLink: true })
+    .makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent);
+}
 
 function formatNote(note) {
   return "<div class='note'>" +
-    new showdown.Converter({ simplifiedAutoLink: true }).makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent) +
+    markdownNote(note) +
     "</div>";
+}
+
+function formatNoteDiv(note) {
+  const noteDiv = <div class='note-full'></div>;
+  noteDiv.innerHTML = markdownNote(note);
+  return noteDiv;
 }
 
 /**
@@ -27,3 +42,21 @@ export function drawNotes(container, notesData) {
   };
   chart.draw(dataTable, options);
 }
+
+/*
+  Display (latest) event log entries from the server
+*/
+export default function notes(router, container, page) {
+  clearElement(container);
+  get(`/flows/${config.user}/2020-12-18/notes`, (notesList, links) => {
+    const notesPage = pagination('notes', router, links);
+    const notesDiv =
+      <div id='notes-list'>
+        {
+          notesList.map(formatNoteDiv)
+        }
+      </div>;
+    container.appendChild(notesPage);
+    container.appendChild(notesDiv);
+  });
+};
