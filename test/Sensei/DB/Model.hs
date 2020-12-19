@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -40,7 +40,7 @@ data Action a where
   WriteTrace :: Trace -> Action ()
   ReadEvents :: Pagination -> Action EventsQueryResult
   ReadFlow :: Reference -> Action (Maybe Flow)
-  ReadNotes :: Action [(LocalTime, Text)]
+  ReadNotes :: TimeRange -> Action [(LocalTime, Text)]
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
 
@@ -49,7 +49,7 @@ instance Show (Action a) where
   show (WriteTrace t) = "WriteTrace " <> show t
   show (ReadEvents page) = "ReadEvents " <> show page
   show (ReadFlow ref) = "ReadFlow " <> show ref
-  show ReadNotes = "ReadNotes"
+  show (ReadNotes range) = "ReadNotes " <> show range
   show ReadViews = "ReadViews"
   show ReadCommands = "ReadCommands"
 
@@ -92,7 +92,7 @@ generateAction baseTime k =
       (7, SomeAction . WriteTrace <$> generateTrace baseTime k),
       (2, pure $ SomeAction (ReadFlow Latest)),
       (1, arbitrary >>= \(n, s) -> pure (SomeAction (ReadEvents (Page n s)))),
-      (1, pure $ SomeAction ReadNotes),
+      (1, choose (0, k) >>= \n -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime n)))),
       (1, pure $ SomeAction ReadViews),
       (1, pure $ SomeAction ReadCommands)
     ]
@@ -173,10 +173,10 @@ interpret (ReadEvents (Page pageNum size)) = do
       eventsCount = fromIntegral $ Prelude.length events
       startIndex = min (fromIntegral $ (pageNum - 1) * size) totalEvents
       endIndex = min (fromIntegral $ pageNum * size) totalEvents
-  pure EventsQueryResult{..}
-interpret ReadNotes = do
+  pure EventsQueryResult {..}
+interpret (ReadNotes rge) = do
   UserProfile {userName, userTimezone} <- gets currentProfile
-  fs <- gets flows
+  fs <- Seq.filter (inRange rge . _flowStart . _flowState) <$> gets flows
   pure $ foldr (notesViewBuilder userName userTimezone) [] fs
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
@@ -200,7 +200,7 @@ runDB (WriteFlow f) = writeFlow f
 runDB (WriteTrace t) = writeTrace t
 runDB (ReadEvents p) = readProfileOrDefault >>= \u -> readEvents u p
 runDB (ReadFlow r) = readProfileOrDefault >>= \u -> readFlow u r
-runDB ReadNotes = readProfileOrDefault >>= readNotes
+runDB (ReadNotes rge) = readProfileOrDefault >>= \u -> readNotes u rge
 runDB ReadViews = readProfileOrDefault >>= readViews
 runDB ReadCommands = readProfileOrDefault >>= readCommands
 

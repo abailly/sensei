@@ -172,7 +172,7 @@ instance DB SQLiteDB where
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readFlow u r = SQLiteDB $ (asks storagePath >>= liftIO . readFlowSQL u r)
   readEvents u p = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u p)
-  readNotes u = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u
+  readNotes u rge = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u rge
   readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
   readCommands u = SQLiteDB $ asks storagePath >>= liftIO . readCommandsSQL u
   readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
@@ -252,7 +252,7 @@ readFlowSQL _ ref sqliteFile =
       _ -> error "invalid query results"
 
 readEventsSQL :: UserProfile -> Pagination -> FilePath -> IO EventsQueryResult
-readEventsSQL _ Page{pageNumber,pageSize} sqliteFile =
+readEventsSQL _ Page {pageNumber, pageSize} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select flow_type, flow_data, version from event_log order by timestamp desc limit ? offset ?"
         count = "select count(*) from event_log"
@@ -262,13 +262,13 @@ readEventsSQL _ Page{pageNumber,pageSize} sqliteFile =
         eventsCount = fromIntegral $ length events
         startIndex = min ((pageNumber - 1) * pageSize) totalEvents
         endIndex = min (pageNumber * pageSize) totalEvents
-    pure $ EventsQueryResult{..}
+    pure $ EventsQueryResult {..}
 
-readNotesSQL :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
-readNotesSQL UserProfile {..} sqliteFile =
+readNotesSQL :: UserProfile -> TimeRange -> FilePath -> IO [(LocalTime, Text)]
+readNotesSQL UserProfile {..} TimeRange {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' order by timestamp"
-    notesFlow <- query_ cnx q
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
+    notesFlow <- query cnx q [rangeStart, rangeEnd]
     pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
 
 readViewsSQL :: UserProfile -> FilePath -> IO [FlowView]
