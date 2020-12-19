@@ -24,6 +24,7 @@ import Sensei.Version
 import System.Exit
 import System.IO
 import System.IO.Unsafe
+import Servant (Headers(getResponse))
 
 data Options
   = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
@@ -202,7 +203,7 @@ ep (QueryOptions (Just day) False _) usrName _ _ =
 ep (QueryOptions (Just day) True _) usrName _ _ =
   send (queryFlowDaySummaryC usrName day) >>= display
 ep (NotesOptions day noteFormat) usrName _ _ =
-  send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
+  send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
 ep (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do

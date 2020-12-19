@@ -32,7 +32,7 @@ queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
-notesDayC :: Text -> Day -> ClientMonad [NoteView]
+notesDayC :: Text -> Day -> ClientMonad (Headers '[Header "Link" Text] [NoteView])
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [Event])
 getUserProfileC :: Text -> ClientMonad UserProfile

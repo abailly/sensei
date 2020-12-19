@@ -3,6 +3,9 @@
 
 module Sensei.FlowAPISpec where
 
+import Data.Maybe (catMaybes)
+import Data.Text.Encoding (encodeUtf8)
+import Network.HTTP.Link (writeLinkHeader)
 import Sensei.API
 import Sensei.TestHelper
 import Sensei.Time
@@ -52,7 +55,7 @@ spec = withApp app $
       getJSON "/flows/arnaud?group=Day"
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
 
-    it "GET /flows/<user>/<day>/notes retrieves Notes for given day" $ do
+    it "GET /flows/<user>/<day>/notes retrieves Notes for given day with link headers" $ do
       let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
           flow2 = FlowNote "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
           expectedNotes = [NoteView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) "some note"]
@@ -61,7 +64,18 @@ spec = withApp app $
       postJSON_ "/flows/arnaud/Note" flow2
 
       getJSON "/flows/arnaud/1995-10-11/notes"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedNotes)
+        `shouldRespondWith` ResponseMatcher
+          200
+          [ "Link"
+              <:> encodeUtf8
+                ( writeLinkHeader $
+                    catMaybes
+                      [ nextDayLink "arnaud" (Just $ toEnum 50001),
+                        previousDayLink "arnaud" (Just $ toEnum 50001)
+                      ]
+                )
+          ]
+          (jsonBodyEquals expectedNotes)
 
     it "GET /flows/<user>/<day>/commands retrieves commands run for given day" $ do
       let cmd1 = Trace (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10 1
