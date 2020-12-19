@@ -52,11 +52,19 @@ updateFlowStartTimeS _ timediff =
   updateLatestFlow (toNominalDiffTime timediff)
 
 notesDayS ::
-  (DB m) => Text -> Day -> m [NoteView]
+  (DB m) => Text -> Day -> m (Headers '[Header "Link" Text] [NoteView])
 notesDayS usr day = do
   usrProfile <- getUserProfileS usr
   notes <- readNotes usrProfile (rangeFromDay day (userTimezone usrProfile))
-  pure $ map (uncurry NoteView) notes
+  let hdrs =
+        addHeader
+          ( writeLinkHeader $
+              catMaybes $
+                [ nextDayLink usr (Just day),
+                  previousDayLink usr (Just day)
+                ]
+          )
+  pure $ hdrs $ map (uncurry NoteView) notes
 
 commandsDayS ::
   (DB m) => Text -> Day -> m [CommandView]

@@ -48,10 +48,11 @@ export function drawNotes(container, notesData) {
 */
 export default function notes(router, container, page) {
   clearElement(container);
-  get(`/flows/${config.user}/2020-12-18/notes`, (notesList, links) => {
+  get(`/flows/${config.user}/${page}/notes`, (notesList, links) => {
     const notesPage = pagination('notes', router, links);
     const notesDiv =
       <div id='notes-list'>
+        <h2>Notes for {page} </h2>
         {
           notesList.map(formatNoteDiv)
         }
