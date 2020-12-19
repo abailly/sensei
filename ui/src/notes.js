@@ -11,7 +11,7 @@ function markdownNote(note) {
 
 function formatNote(note) {
   return "<div class='note'>" +
-    markdownNote(note) +
+    new showdown.Converter({ simplifiedAutoLink: true }).makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent) +
     "</div>";
 }
 
