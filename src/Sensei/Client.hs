@@ -34,6 +34,7 @@ queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
 queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
 notesDayC :: Text -> Day -> ClientMonad (Headers '[Header "Link" Text] [NoteView])
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
+searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
 getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [Event])
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
@@ -46,6 +47,7 @@ traceC
            :<|> queryFlowDayC
            :<|> queryFlowC
          )
+  :<|> searchNotesC
   :<|> getLogC
   :<|> (getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn senseiAPI Proxy

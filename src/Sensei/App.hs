@@ -73,6 +73,7 @@ baseServer signal =
              :<|> queryFlowDayS
              :<|> queryFlowS
          )
+    :<|> searchNoteS
     :<|> getLogS
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
