@@ -2,6 +2,14 @@
     font-family: Helvetica, Arial, sans;
 }
 
+code {
+    font-family: monospace;
+}
+
+pre {
+    background-color: #eee;
+}
+
 div#navbar {
     position: fixed;
     top:0;
@@ -74,4 +82,18 @@ table.tbl-log td {
 
 div#notes .note-full {
     padding: 1em;
+}
+
+.note-full h3 {
+    display:inline-block;
+    width: 6%;
+    vertical-align: top;
+    color:lightgray;
+    font-size:80%;
+}
+
+.note-content {
+    display: inline-block;
+    width:94%;
+    vertical-align: top;
 }

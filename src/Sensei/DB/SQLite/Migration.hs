@@ -83,6 +83,20 @@ createConfig =
     )
     "drop table config_log;"
 
+createNotesSearch :: Migration
+createNotesSearch =
+  Migration
+  "createNotesSearch"
+  "create virtual table notes_search using fts5(id, note);"
+  "drop table notes_search;"
+
+populateSearch :: Migration
+populateSearch =
+  Migration
+  "populateSearch"
+  "insert into notes_search select id,json_extract(flow_data, '$._flowNote') from event_log where flow_type = 'Note';"
+  "delete from notes_search;"
+
 runMigration ::
   Connection -> MigrationResult -> Migration -> IO MigrationResult
 runMigration _ f@MigrationFailed {} _ = pure f -- shortcut execution when failing
@@ -122,7 +136,7 @@ runMigrations cnx =
 migrateSQLiteDB :: FilePath -> IO ()
 migrateSQLiteDB sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    migResult <- runMigrations cnx [InitialMigration, createLog, createConfig]
+    migResult <- runMigrations cnx [InitialMigration, createLog, createConfig, createNotesSearch, populateSearch]
     case migResult of
       MigrationSuccessful -> pure ()
       MigrationFailed err -> throwIO $ SQLiteDBError err
