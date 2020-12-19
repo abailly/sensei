@@ -20,6 +20,9 @@ export function dom(tagName, attrs = {}, ...children) {
   for (const attr in attrs) {
     if (attr === 'class') {
       elem.classList.add(attrs[attr].split(' +'));
+    } else if (attr.startsWith('on') && typeof attrs[attr] === 'function') {
+      const eventName = attr.substring(2).toLowerCase();
+      elem.addEventListener(eventName, attrs[attr]);
     } else {
       elem[attr] = attrs[attr];
     }

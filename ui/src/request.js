@@ -1,3 +1,24 @@
+import parse from 'parse-link-header';
+
+/** Extract `Link` header(s) data from the given request.
+The request is expected to be completed, eg. this should be called when
+it's fully loaded. If there is a  `Link` header, its content will be parsed
+and an object returned, otherwise it returns `null`.
+
+@param {XMLHttpRequest} xhr The fully loaded request object from which
+  to extract response headrer
+@see https://www.npmjs.com/package/parse-link-header for
+*/
+function extractLinks(xhr) {
+  const linkHdr = xhr.getResponseHeader('Link');
+  if (linkHdr) {
+    return parse(linkHdr);
+  } else {
+    return null;
+  }
+}
+
+
 export function get(url, callback) {
   const xhr = new XMLHttpRequest();
   xhr.open('GET', url);
@@ -6,7 +27,12 @@ export function get(url, callback) {
     if (xhr.status >= 200 && xhr.status < 300) {
       try {
         const flowData = JSON.parse(xhr.responseText);
-        callback(flowData);
+        const links = extractLinks(xhr);
+        if (links) {
+          callback(flowData, links);
+        } else {
+          callback(flowData);
+        }
       } catch (e) {
         // JSON.parse can throw a SyntaxError
         if (e instanceof SyntaxError) {

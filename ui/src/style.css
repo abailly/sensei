@@ -36,9 +36,9 @@ div#navbar li a:hover {
 }
 
 div#main {
-    padding: 1em;
-    margin-top: 30px;
-    width: 100%;
+    top: 40px;
+    position: relative;
+    padding:1em;
 }
 
 div#timelines {
@@ -57,4 +57,16 @@ div#timelines {
 .note {
     max-width: 20em;
     padding: .5em;
+}
+
+table.tbl-log {
+    border-collapse: collapse;
+    border: 1px solid black;
+}
+
+table.tbl-log td {
+    padding: .3em;
+    text-align: left;
+    vertical-align: top;
+    border: 1px solid black;
 }

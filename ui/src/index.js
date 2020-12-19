@@ -17,9 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
     .on('/flows', function() {
       charts();
     })
+    .on('/log/:page', function(params) {
+      logs(router, params.page);
+    })
     .on('/log', function() {
-      logs();
-    }).on(function() {
+      logs(router, 1);
+    })
+    .on(function() {
       charts();
     }).resolve();
 
