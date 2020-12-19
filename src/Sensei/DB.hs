@@ -72,6 +72,9 @@ class (Monad m) => DB m where
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
   readNotes :: UserProfile -> TimeRange -> m [(LocalTime, Text)]
 
+  -- | Full-text search of notes
+  searchNotes :: UserProfile -> Text -> m [(LocalTime, Text)]
+
   -- | Read all flows and construct `FlowView` items from the DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
   readViews :: UserProfile -> m [FlowView]

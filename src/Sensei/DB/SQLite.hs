@@ -51,6 +51,7 @@ import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
+import Data.Bifunctor (Bifunctor(first))
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -173,6 +174,7 @@ instance DB SQLiteDB where
   readFlow u r = SQLiteDB $ (asks storagePath >>= liftIO . readFlowSQL u r)
   readEvents u p = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u p)
   readNotes u rge = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u rge
+  searchNotes u txt = SQLiteDB $ asks storagePath >>= liftIO . searchNotesSQL u txt
   readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
   readCommands u = SQLiteDB $ asks storagePath >>= liftIO . readCommandsSQL u
   readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
@@ -214,17 +216,28 @@ writeAll events = SQLiteDB $ do
 
 writeFlowSQL :: Flow -> FilePath -> IO ()
 writeFlowSQL flow sqliteFile =
-  withConnection sqliteFile $ insert flow
+  withConnection sqliteFile $ \ cnx -> do
+  rid <- insert flow cnx
+  updateNotesIndex rid flow cnx
+
+updateNotesIndex :: Int -> Flow -> Connection -> IO ()
+updateNotesIndex rid Flow{..} cnx
+  | _flowType == Note = do
+      let q = "insert into notes_search (id, note) values (?, ?)"
+      execute cnx q [toField rid, SQLText $ _flowNote _flowState]
+  | otherwise = pure ()
 
 writeTraceSQL :: Trace -> FilePath -> IO ()
 writeTraceSQL trace sqliteFile =
-  withConnection sqliteFile $ insert trace
+  withConnection sqliteFile $ void . insert trace
 
 insert ::
-  ToRow q => q -> Connection -> IO ()
+  ToRow q => q -> Connection -> IO Int
 insert event cnx = do
   let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
   execute cnx q event
+  [[r]] <- query_ cnx "SELECT last_insert_rowid()"
+  pure r
 
 updateLatestFlowSQL :: NominalDiffTime -> FilePath -> IO FlowState
 updateLatestFlowSQL diff sqliteFile =
@@ -270,6 +283,13 @@ readNotesSQL UserProfile {..} TimeRange {..} sqliteFile =
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
     notesFlow <- query cnx q [rangeStart, rangeEnd]
     pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
+
+searchNotesSQL :: UserProfile -> Text -> FilePath -> IO [(LocalTime, Text)]
+searchNotesSQL UserProfile {..} text sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    let q = "select timestamp, note from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
+    notesFlow <- query cnx q [text]
+    pure $ fmap (first $ utcToLocalTime userTimezone) notesFlow
 
 readViewsSQL :: UserProfile -> FilePath -> IO [FlowView]
 readViewsSQL UserProfile {..} sqliteFile =

@@ -16,8 +16,14 @@ function formatNote(note) {
 }
 
 function formatNoteDiv(note) {
-  const noteDiv = <div class='note-full'></div>;
-  noteDiv.innerHTML = markdownNote(note);
+  const noteDiv = <div class='note-full'>
+    <h3>{new Date(note.noteStart).toLocaleTimeString()} </h3>
+  </div>;
+  const content = <div class='note-content'>
+  </div>;
+
+  content.innerHTML = new showdown.Converter({ simplifiedAutoLink: true }).makeHtml(note.noteContent);
+  noteDiv.appendChild(content);
   return noteDiv;
 }
 
