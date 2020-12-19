@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setUserProfile();
 
   const root = null;
-  const useHash = false;
+  const useHash = true;
   const router = new Navigo(root, useHash);
 
   router
