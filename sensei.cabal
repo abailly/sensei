@@ -1,21 +1,21 @@
 name:                sensei
 version:             0.18.0
-synopsis:            Short description of your package
-homepage:            https://github.com/githubuser/sensei#readme
+synopsis:            A tool to collect information about one's coding process
+homepage:            https://github.com/abailly/sensei#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2017 Author name here
+author:              Arnaud Bailly
+maintainer:          arnaud@pankzsoft.com
+copyright:           2020 Arnaud Bailly
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
-cabal-version:       >=1.10
+cabal-version:       >=2.0
 
 -- To avoid duplicated efforts in documentation and dealing with the
 -- complications of embedding Haddock markup inside cabal files, it is
 -- common to point users to the README.md file.
-description:         Please see the README on Github at <https://github.com/githubuser/sensei#readme>
+description:         Please see the README on Github at <https://github.com/abailly/sensei#readme>
 
 library
   hs-source-dirs:      src
