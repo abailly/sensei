@@ -20,10 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
       charts();
     })
     .on('/notes', function() {
-      notes(router, document.getElementById('main'), formatISODate(new Date()));
+      notes.list(router, document.getElementById('main'), formatISODate(new Date()));
     })
     .on('/notes/:page', function(params) {
-      notes(router, document.getElementById('main'), params.page);
+      notes.list(router, document.getElementById('main'), params.page);
+    })
+    .on('/search', function() {
+      notes.search(router, document.getElementById('main'));
     })
     .on('/log/:page', function(params) {
       logs(router, document.getElementById('main'), params.page);
