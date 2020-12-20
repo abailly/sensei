@@ -6,6 +6,7 @@ import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
 import { colorOf } from './color.js';
+import {drawTimeline} from "./css-timeline.js";
 
 /**
    Draw a timeline chart in given element with given data
@@ -34,6 +35,7 @@ function createTimelineContainer(day, data, notesData) {
   const commandsName = 'cmd-checkbox-' + day;
   const summaryName = 'summary-checkbox-' + day;
   const chart = <div id={'chart-' + day} class="timeline-chart" />;
+  const chart2 = <div class="timeline-chart" />;
   const notesDiv = <div id={'notes-' + day} class="timeline-chart" />;
   const commandsDiv = <div id={'commands-' + day} class="timeline-chart" />;
   const summaryDiv = <div id={'summary-' + day} class="summary" />;
@@ -58,13 +60,16 @@ function createTimelineContainer(day, data, notesData) {
       {notesDiv}
       {commandsDiv}
       {summaryDiv}
+      {chart2}
     </div>;
 
   details.addEventListener('change', (e) => {
     if (e.target.checked) {
       drawChart(chart, day, data, f => f.flowType);
+      drawTimeline(chart2, data);
     } else {
       drawChart(chart, day, data);
+      drawTimeline(chart2, data);
     }
   });
 
@@ -98,6 +103,7 @@ function createTimelineContainer(day, data, notesData) {
 
   document.getElementById('timelines').appendChild(container);
   drawChart(chart, day, data);
+  drawTimeline(chart2, data);
 }
 
 /**
