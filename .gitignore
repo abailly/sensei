@@ -6,3 +6,5 @@ TAGS
 /.stack-work-build/
 *.hie
 .idea
+*.iml
+*.code-workspace
