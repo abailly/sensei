@@ -1,7 +1,7 @@
 import showdown from 'showdown';
 import { config } from "./config";
 import { get } from './request';
-import { dom, clearElement } from './dom';
+import { dom, clear, clearElement } from './dom';
 import { pagination } from './page';
 
 function markdownNote(note) {
@@ -49,10 +49,7 @@ export function drawNotes(container, notesData) {
   chart.draw(dataTable, options);
 }
 
-/*
-  Display (latest) event log entries from the server
-*/
-export default function notes(router, container, page) {
+function list(router, container, page) {
   clearElement(container);
   get(`/flows/${config.user}/${page}/notes`, (notesList, links) => {
     const notesPage = pagination('notes', router, links);
@@ -67,3 +64,36 @@ export default function notes(router, container, page) {
     container.appendChild(notesDiv);
   });
 };
+
+function search(router, container) {
+  clearElement(container);
+  var debounce = false;
+  function do_search(e) {
+    const q = e.target.value;
+    const results = document.getElementById('search-results');
+    clearElement(results);
+
+    if (q.length > 0 && !debounce) {
+      debounce = true;
+      get(`/notes/${config.user}?search=${encodeURI(q)}`, (searchResult) => {
+        const resList = <div>
+          {
+            searchResult.map(formatNoteDiv)
+          }
+        </div>;
+        results.appendChild(resList);
+        debounce = false;
+      });
+    }
+  };
+  const searchDiv = <div id='notes-search'>
+    <div id='search-input'><label for='search-query'>Search</label><input name='search-query' id='search-query' type='text' oninput={do_search} /></div>
+    <div id='search-results'></div>
+  </div>;
+  container.appendChild(searchDiv);
+};
+
+/*
+  Display (latest) event log entries from the server
+*/
+export default { list, search };
