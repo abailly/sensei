@@ -1,17 +1,48 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.UserSpec where
 
 import Data.Aeson
 import qualified Data.Map as Map
+import Data.Proxy
+import Data.Text (Text, pack)
 import Data.Time.LocalTime
 import Sensei.API
+import Sensei.ColorSpec ()
+import Sensei.DB.Model ()
 import Sensei.TestHelper
 import Test.Hspec
+import Test.QuickCheck
+import Test.QuickCheck.Classes
+
+-- * Orphan Instances
+
+instance Arbitrary TimeOfDay where
+  arbitrary = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger <$> choose (0, 59))
+
+instance Arbitrary TimeZone where
+  arbitrary = TimeZone <$> choose (- 12 * 59, 12 * 59) <*> arbitrary <*> pure "TST"
+
+generateUser :: Gen Text
+generateUser = resize 20 (pack . getASCIIString <$> arbitrary)
+
+instance Arbitrary UserProfile where
+  arbitrary =
+    UserProfile
+      <$> generateUser
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
 
 spec :: Spec
 spec = describe "Users Management" $ do
   describe "User Profile" $ do
+    it "can serialise/deserialise to/from JSON" $
+      lawsCheck (jsonLaws (Proxy @UserProfile))
+
     it "can deserialize version 0 JSON" $ do
       let jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\", \"userTimezone\":\"+01:00\"}"
       eitherDecode jsonProfile
