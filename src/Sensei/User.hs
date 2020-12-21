@@ -99,7 +99,7 @@ instance ToJSON UserProfile where
       [ "userName" .= userName,
         "userTimezone" .= userTimezone,
         "userStartOfDay" .= userStartOfDay,
-        "userEndOfDay" .= userStartOfDay,
+        "userEndOfDay" .= userEndOfDay,
         "userFlowTypes" .= userFlowTypes,
         "userCommands" .= userCommands,
         "userProfileVersion" .= currentVersion
