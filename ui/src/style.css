@@ -99,7 +99,9 @@ div#notes .note-full {
 }
 
 
-
+.timeline-controls {
+    padding-bottom: 12px;
+}
 
 
 .timelines-years {
@@ -155,4 +157,21 @@ div#notes .note-full {
 div [id^='timeline-container-'] {
     height: 80px;
     padding-bottom: 16px;
+    display: flex;
+    flex-direction: row;
+}
+
+.timeline-header {
+    display: flex;
+    align-content: center;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-header h2,
+.timeline-header h3,
+.timeline-header h4 {
+    margin: 0 0 1px 0;
+    font-weight: normal;
+    font-size: 14px;
 }
