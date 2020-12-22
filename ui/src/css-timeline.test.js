@@ -67,7 +67,7 @@ describe('CSS Timeline', () => {
         config.userStartOfDay = '08:00:00';
         config.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
-        drawTimeline(container, '2020-12-17', flowData);
+        drawTimeline(container, '2020-12-17', '08:30:00', '17:00:00', flowData);
         expect(container).toMatchSnapshot();
     });
 });
