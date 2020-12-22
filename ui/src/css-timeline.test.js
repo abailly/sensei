@@ -46,9 +46,21 @@ const flowData = [
 ];
 
 describe('CSS Timeline', () => {
-    test('expect timiline to be drawn', () => {
+    test('expect timeline to be drawn', () => {
         let container = document.createElement("div");
         drawTimeline(container, '2020-12-17', '08:30:00', '17:00:00', flowData);
+        expect(container).toMatchSnapshot();
+    });
+
+    test('expect timeline to be drawn with negative left margin when flow start before user start of day', () => {
+        let container = document.createElement("div");
+        drawTimeline(container, '2020-12-17', '09:00:00', '17:00:00', flowData);
+        expect(container).toMatchSnapshot();
+    });
+
+    test('expect timeline to be drawn with positive left margin when flow start after user start of day', () => {
+        let container = document.createElement("div");
+        drawTimeline(container, '2020-12-17', '08:00:00', '17:00:00', flowData);
         expect(container).toMatchSnapshot();
     });
 });
