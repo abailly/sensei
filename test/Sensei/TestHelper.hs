@@ -19,7 +19,8 @@ module Sensei.TestHelper
     patchJSON,
 
     -- * Assertion helpers
-    bodyContains, jsonBodyEquals,
+    bodyContains,
+    jsonBodyEquals,
     module W,
   )
 where
@@ -97,8 +98,14 @@ getJSON :: ByteString -> WaiSession () SResponse
 getJSON path = request "GET" path [("Accept", "application/json"), ("X-API-Version", toHeader senseiVersion)] mempty
 
 jsonBodyEquals ::
-  A.ToJSON a => a -> MatchBody
-jsonBodyEquals = bodyEquals . A.encode
+  (Eq a, Show a, A.FromJSON a) => a -> MatchBody
+jsonBodyEquals expected = MatchBody $ \_ body ->
+  case A.eitherDecode body of
+    Right actual ->
+      if actual /= expected
+        then Just ("expected " <> show expected <> ", got " <> show actual)
+        else Nothing
+    Left err -> Just err
 
 bodyContains :: ByteString -> MatchBody
 bodyContains fragment =

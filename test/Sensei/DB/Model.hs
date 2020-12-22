@@ -97,15 +97,18 @@ generateAction baseTime k =
       (1, pure $ SomeAction ReadCommands)
     ]
 
-generateFlow :: UTCTime -> Integer -> Gen Flow
-generateFlow baseTime k = do
-  typ <-
+instance Arbitrary FlowType where
+  arbitrary =
     frequency
       [ (4, elements defaultFlowTypes),
         (3, pure Note),
         (1, pure End),
         (2, pure Other)
       ]
+
+generateFlow :: UTCTime -> Integer -> Gen Flow
+generateFlow baseTime k = do
+  typ <- arbitrary
   st <- case typ of
     Note -> generateNote baseTime k
     _ -> generateState baseTime k
