@@ -104,18 +104,16 @@ div#notes .note-full {
 
 .timelines-years {
     position: absolute;
-    top: 250px;
-    padding: 0 0 0 100px;
+    padding: 60px 0 0 100px;
     margin: 0;
     white-space: nowrap;
-    border-top: 1px solid #282828;
+    border-bottom: 1px solid #282828;
     list-style: none;
-    /* Fix display: inline-block spacing issue */;
     font-size: 0;
 }
 .timelines-years li {
     position: relative;
-    top: -6px;
+    top: 6px;
     display: inline-block;
     width: 100px;
     color: #868686;
@@ -123,19 +121,15 @@ div#notes .note-full {
     line-height: 11px;
     text-indent: -12px;
 }
-/* Display last year */
 .timelines-years li:last-child {
     width: 100px;
 }
 
-/* Timeline - Events */
 .timeline-events {
     position: absolute;
-    top: 170px;
     padding: 0 0 0 100px;
     list-style: none;
     white-space: nowrap;
-    /* Fix display: inline-block spacing issue */;
     font-size: 0;
 }
 .timeline-events h2,
@@ -156,4 +150,9 @@ div#notes .note-full {
 .timeline-events li {
     position: relative;
     display: inline-block;
+}
+
+div [id^='timeline-container-'] {
+    height: 80px;
+    padding-bottom: 16px;
 }
