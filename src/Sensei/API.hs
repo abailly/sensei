@@ -29,7 +29,7 @@ module Sensei.API
     module Sensei.User,
     module Sensei.Utils,
     GroupViews (..),
-    Trace (..),
+    Event (..),
     Group (..),
     UserProfile (..),
   )
@@ -84,14 +84,14 @@ type DisplayVersions =
 type PostRecordTrace =
   Summary "Record execution 'trace' of a single command execution."
     :> "trace"
-    :> ReqBody '[JSON] Trace
+    :> ReqBody '[JSON] Event
     :> Post '[JSON] ()
 
 type PostRecordFlow =
   Summary "Record start of some type of Flow."
     :> Capture "user" Text
     :> Capture "flowType" FlowType
-    :> ReqBody '[JSON] FlowState
+    :> ReqBody '[JSON] Event
     :> Post '[JSON] ()
 
 type PatchFlowTimeshift =
@@ -104,7 +104,7 @@ type PatchFlowTimeshift =
     :> "latest"
     :> "timestamp"
     :> ReqBody '[JSON] TimeDifference
-    :> Patch '[JSON] FlowState
+    :> Patch '[JSON] Event
 
 type GetGroupSummary =
   Summary "Retrieve grouped summary of flows by type."
@@ -143,7 +143,7 @@ type GetFlow =
   Summary "Query flows"
     :> Capture "user" Text
     :> Capture "ref" Reference
-    :> Get '[JSON] (Maybe Flow)
+    :> Get '[JSON] (Maybe Event)
 
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."

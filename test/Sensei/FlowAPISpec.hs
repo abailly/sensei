@@ -15,13 +15,13 @@ spec :: Spec
 spec = withApp app $
   describe "Flows API" $ do
     it "POST /flows/<user>/Other with Flow body register start of a flow event" $ do
-      let flow = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+      let flow = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
       postJSON "/flows/arnaud/Other" flow
         `shouldRespondWith` 200
 
     it "GET /flows/<user> retrieves all Flows ungrouped" $ do
-      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = FlowState "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
+      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Meeting" flow2
 
@@ -36,8 +36,8 @@ spec = withApp app $
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
 
     it "GET /flows/<user>?group=Day retrieves all Flows grouped by Day" $ do
-      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = FlowState "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
+      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Meeting" flow2
 
@@ -56,8 +56,8 @@ spec = withApp app $
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
 
     it "GET /flows/<user>/<day>/notes retrieves Notes for given day with link headers" $ do
-      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = FlowNote "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
+      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = NoteFlow "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
           expectedNotes = [NoteView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) "some note"]
 
       postJSON_ "/flows/arnaud/Other" flow1
@@ -78,8 +78,8 @@ spec = withApp app $
           (jsonBodyEquals expectedNotes)
 
     it "GET /flows/<user>/<day>/commands retrieves commands run for given day" $ do
-      let cmd1 = Trace (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10 1
-          cmd2 = Trace (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100 1
+      let cmd1 = Trace "arnaud" (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10
+          cmd2 = Trace "arnaud" (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100
 
           expected =
             [ CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) "foo" 10,
@@ -93,10 +93,10 @@ spec = withApp app $
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
     it "GET /flows/<user>/day/summary returns a summary of flows and traces for given day" $ do
-      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
-          cmd1 = Trace (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10 1
-          cmd2 = Trace (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100 1
+      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = Flow (FlowType "Learning") "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+          cmd1 = Trace "arnaud" (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10
+          cmd2 = Trace "arnaud" (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100
 
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Learning" flow2
@@ -114,38 +114,38 @@ spec = withApp app $
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
     it "PATCH /flows/<user>/latest/timestamp updates latest flow's timestamp" $ do
-      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
-          trace = Trace (UTCTime (toEnum 50000) 2000) "other/directory" "git" ["bar"] 0 100 1
+      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = Flow Other "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+          trace = Trace "arnaud" (UTCTime (toEnum 50000) 2000) "other/directory" "git" ["bar"] 0 100
 
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Other" flow2
       postJSON_ "/trace" trace
 
-      let expected = flow1 {_flowStart = (UTCTime (toEnum 50000) 400)}
+      let expected = flow1 {_flowTimestamp = (UTCTime (toEnum 50000) 400)}
           timeshift :: TimeDifference = Minutes (-10)
 
       patchJSON "/flows/arnaud/latest/timestamp" timeshift
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
     it "GET /flows/<user>/latest retrieves latest flow" $ do
-      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = Flow Other "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
 
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Other" flow2
 
       getJSON "/flows/arnaud/latest"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ Flow Other flow2 currentVersion)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals flow2)
 
     it "GET /flows/<user>/2 retrieves flow 2 steps back" $ do
-      let flow1 = FlowState "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = FlowState "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
-          flow3 = FlowState "arnaud" (UTCTime (toEnum 50000) 2000) "some/directory"
+      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+          flow2 = Flow Other "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+          flow3 = Flow Other "arnaud" (UTCTime (toEnum 50000) 2000) "some/directory"
 
       postJSON_ "/flows/arnaud/Other" flow1
       postJSON_ "/flows/arnaud/Other" flow2
       postJSON_ "/flows/arnaud/Other" flow3
 
       getJSON "/flows/arnaud/2"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals $ Flow Other flow1 currentVersion)
+        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals flow1)

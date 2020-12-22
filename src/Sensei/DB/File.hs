@@ -70,11 +70,11 @@ readAll = FileDB $ do
   file <- asks storageFile
   liftIO $ withBinaryFile file ReadMode $ loop (:) "" []
 
-writeTraceFile :: Trace -> FilePath -> IO ()
+writeTraceFile :: Event -> FilePath -> IO ()
 writeTraceFile trace file =
   writeJSON file (encode trace)
 
-writeFlowFile :: Flow -> FilePath -> IO ()
+writeFlowFile :: Event -> FilePath -> IO ()
 writeFlowFile flow file =
   writeJSON file (encode flow)
 

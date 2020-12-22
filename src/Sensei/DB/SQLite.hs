@@ -41,7 +41,7 @@ import qualified Data.Time as Time
 import Data.Time.LocalTime
 import Database.SQLite.Simple
 import Database.SQLite.Simple.ToField
-import Preface.Utils (decodeUtf8', toText)
+import Preface.Utils (decodeUtf8')
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.File (readProfileFile, writeProfileFile)
@@ -52,6 +52,8 @@ import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
 import Data.Bifunctor (Bifunctor(first))
+import GHC.Stack (HasCallStack)
+import Control.Exception.Safe (catch)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -69,9 +71,12 @@ newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
 
 -- | Runs a DB action using given DB file and configuration directory.
 runDB ::
+  HasCallStack =>
   FilePath -> FilePath -> SQLiteDB a -> IO a
 runDB dbFile configDir act =
-  unSQLite act `runReaderT` SQLiteConfig dbFile configDir
+  (unSQLite act `runReaderT` SQLiteConfig dbFile configDir)
+  `catch`
+  \ (ex :: ResultError) -> error (show ex)
 
 getDataFile :: FilePath -> IO FilePath
 getDataFile configDir = do
@@ -95,6 +100,7 @@ getDataFile configDir = do
 --  Returns either an error description or the (absolute) path to the old
 --  file-based event log.
 migrateFileDB ::
+  HasCallStack =>
   FilePath -> FilePath -> IO (Either Text FilePath)
 migrateFileDB dbFile configDir = do
   let oldLog = dbFile <.> "old"
@@ -109,49 +115,21 @@ migrateFileDB dbFile configDir = do
 
 -- * Instances
 
--- Various instances for `Flow` and `Trace` to be abel to read and write from the
--- @event_log@ table that contains all events.
-instance ToRow Flow where
-  toRow Flow {..} =
-    let ts = toField (_flowStart _flowState)
-        payload = toField $ decodeUtf8' $ LBS.toStrict $ encode _flowState
-     in [ts, SQLInteger (fromIntegral currentVersion), toField $ toText _flowType, payload]
-
-instance FromRow Flow where
-  fromRow = do
-    _ts :: UTCTime <- field
-    ver <- fromInteger <$> field
-    ty <- either (error . unpack) id . parseFlowType <$> field
-    st <- either error id . eitherDecode . encodeUtf8 <$> field
-    pure $ Flow ty st ver
-
-instance ToRow Trace where
-  toRow trace@Trace {..} =
-    let ts = toField timestamp
-        payload = toField $ decodeUtf8' $ LBS.toStrict $ encode trace
-     in [ts, SQLInteger (fromIntegral currentVersion), toField ("__TRACE__" :: Text), payload]
-
-instance FromRow Trace where
-  fromRow = either error id . eitherDecode . encodeUtf8 <$> field
+instance ToRow Event where
+  toRow e =
+    let ts = toField (eventTimestamp e)
+        payload = toField $ decodeUtf8' $ LBS.toStrict $ encode e
+     in [ts, SQLInteger (fromIntegral currentVersion), toField ("__EVENT__" :: Text), payload]
 
 instance FromRow Event where
   fromRow = do
-    ty <- field
-    case ty of
-      "__TRACE__" -> do
-        tr <- T . either error id . eitherDecode . encodeUtf8 <$> field
-        _ver :: Integer <- field -- Discard version
-        pure tr
-      _ -> do
-        let flowType = parseFlowType ty
-        case flowType of
-          Left err -> error err
-          Right t -> do
-            st <- either error id . eitherDecode . encodeUtf8 <$> field
-            v <- fromInteger <$> field
-            pure $ F (Flow t st v)
+    _ts :: UTCTime <- field
+    _ver :: Integer <- field
+    _ty :: Text <- field
+    case _ver of
+      _ -> either error id . eitherDecode . encodeUtf8 <$> field
 
-data IdFlow = IdFlow {identifier :: Int64, flow :: Flow}
+data IdFlow = IdFlow {identifier :: Int64, event :: Event}
 
 instance FromRow IdFlow where
   fromRow = IdFlow <$> field <*> fromRow
@@ -205,33 +183,37 @@ getCurrentTimeSQL UserProfile {userName} sqliteFile =
       _ -> Time.getCurrentTime
 
 writeAll ::
+  HasCallStack =>
   [Event] -> SQLiteDB ()
 writeAll events = SQLiteDB $ do
   file <- asks storagePath
   liftIO $
-    withConnection file $ \cnx -> do
-      let storeEvent (F flow) = insert flow cnx
-          storeEvent (T trace) = insert trace cnx
-      forM_ events storeEvent
+    withConnection file $ \cnx -> forM_ events (`insert` cnx)
 
-writeFlowSQL :: Flow -> FilePath -> IO ()
-writeFlowSQL flow sqliteFile =
+writeFlowSQL ::
+  HasCallStack =>
+  Event -> FilePath -> IO ()
+writeFlowSQL e sqliteFile =
   withConnection sqliteFile $ \ cnx -> do
-  rid <- insert flow cnx
-  updateNotesIndex rid flow cnx
+  rid <- insert e cnx
+  updateNotesIndex rid e cnx
 
-updateNotesIndex :: Int -> Flow -> Connection -> IO ()
-updateNotesIndex rid Flow{..} cnx
-  | _flowType == Note = do
+updateNotesIndex ::
+  HasCallStack =>
+  Int -> Event -> Connection -> IO ()
+updateNotesIndex rid (EventNote NoteFlow{..}) cnx =
       let q = "insert into notes_search (id, note) values (?, ?)"
-      execute cnx q [toField rid, SQLText $ _flowNote _flowState]
-  | otherwise = pure ()
+      in execute cnx q [toField rid, SQLText $ _noteContent]
+updateNotesIndex _ _ _ = pure ()
 
-writeTraceSQL :: Trace -> FilePath -> IO ()
-writeTraceSQL trace sqliteFile =
-  withConnection sqliteFile $ void . insert trace
+writeTraceSQL ::
+  HasCallStack =>
+  Event -> FilePath -> IO ()
+writeTraceSQL e sqliteFile =
+  withConnection sqliteFile $ void . insert e
 
 insert ::
+  HasCallStack =>
   ToRow q => q -> Connection -> IO Int
 insert event cnx = do
   let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
@@ -239,7 +221,9 @@ insert event cnx = do
   [[r]] <- query_ cnx "SELECT last_insert_rowid()"
   pure r
 
-updateLatestFlowSQL :: NominalDiffTime -> FilePath -> IO FlowState
+updateLatestFlowSQL ::
+  HasCallStack =>
+  NominalDiffTime -> FilePath -> IO Event
 updateLatestFlowSQL diff sqliteFile =
   withConnection sqliteFile $ \cnx ->
     withTransaction cnx $ do
@@ -247,14 +231,17 @@ updateLatestFlowSQL diff sqliteFile =
           u = "update event_log set timestamp = ?, flow_data = ? where id = ?"
       res <- query_ cnx q
       case res of
-        (IdFlow {identifier, flow = Flow {_flowState}} : _) -> do
-          let newTs = addUTCTime diff (_flowStart _flowState)
-              updatedFlow = _flowState {_flowStart = newTs}
+        (IdFlow {identifier, event = EventFlow f@Flow {_flowTimestamp}} : _) -> do
+          let newTs = addUTCTime diff _flowTimestamp
+              updatedFlow = EventFlow f {_flowTimestamp = newTs}
           execute cnx u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
           pure updatedFlow
+        (IdFlow {event} : _) -> pure event -- don't change other events
         [] -> error "no flows recorded"
 
-readFlowSQL :: UserProfile -> Reference -> FilePath -> IO (Maybe Flow)
+readFlowSQL ::
+  HasCallStack =>
+  UserProfile -> Reference -> FilePath -> IO (Maybe Event)
 readFlowSQL _ ref sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1 offset ?"
@@ -264,10 +251,12 @@ readFlowSQL _ ref sqliteFile =
       [] -> pure Nothing
       _ -> error "invalid query results"
 
-readEventsSQL :: UserProfile -> Pagination -> FilePath -> IO EventsQueryResult
+readEventsSQL ::
+  HasCallStack =>
+  UserProfile -> Pagination -> FilePath -> IO EventsQueryResult
 readEventsSQL _ Page {pageNumber, pageSize} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select flow_type, flow_data, version from event_log order by timestamp desc limit ? offset ?"
+    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
         count = "select count(*) from event_log"
     events <- query cnx q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
     [[numEvents]] <- query_ cnx count
@@ -277,30 +266,38 @@ readEventsSQL _ Page {pageNumber, pageSize} sqliteFile =
         endIndex = min (pageNumber * pageSize) totalEvents
     pure $ EventsQueryResult {..}
 
-readNotesSQL :: UserProfile -> TimeRange -> FilePath -> IO [(LocalTime, Text)]
+readNotesSQL ::
+  HasCallStack =>
+  UserProfile -> TimeRange -> FilePath -> IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} TimeRange {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
+    let q = "select timestamp, version, flow_type, flow_data from event_log where datetime(timestamp) between ? and ? order by timestamp"
     notesFlow <- query cnx q [rangeStart, rangeEnd]
     pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
 
-searchNotesSQL :: UserProfile -> Text -> FilePath -> IO [(LocalTime, Text)]
+searchNotesSQL ::
+  HasCallStack =>
+  UserProfile -> Text -> FilePath -> IO [(LocalTime, Text)]
 searchNotesSQL UserProfile {..} text sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, note from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
     notesFlow <- query cnx q [text]
     pure $ fmap (first $ utcToLocalTime userTimezone) notesFlow
 
-readViewsSQL :: UserProfile -> FilePath -> IO [FlowView]
+readViewsSQL ::
+  HasCallStack =>
+  UserProfile -> FilePath -> IO [FlowView]
 readViewsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != 'Note' and flow_type != '__TRACE__' order by timestamp"
+    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp"
     flows <- query_ cnx q
     pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] flows
 
-readCommandsSQL :: UserProfile -> FilePath -> IO [CommandView]
+readCommandsSQL ::
+  HasCallStack =>
+  UserProfile -> FilePath -> IO [CommandView]
 readCommandsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select flow_data from event_log where flow_type = '__TRACE__' order by timestamp"
+    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp"
     traces <- query_ cnx q
     pure $ foldr (commandViewBuilder userTimezone) [] traces

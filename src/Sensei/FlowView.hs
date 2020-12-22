@@ -1,9 +1,9 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -49,13 +49,15 @@ instance HasSummary CommandView Text where
       |> fmap (\cmds@(f :| _) -> (commandProcess f, sum $ fmap commandElapsed cmds))
 
 mkCommandView ::
-  TimeZone -> Trace -> CommandView
-mkCommandView tz Trace {..} =
-  CommandView
-    { commandStart = utcToLocalTime tz timestamp,
-      commandProcess = process,
-      commandElapsed = elapsed
-    }
+  TimeZone -> Event -> Maybe CommandView
+mkCommandView tz (EventTrace Trace {..}) =
+  Just
+    CommandView
+      { commandStart = utcToLocalTime tz _traceTimestamp,
+        commandProcess = _traceProcess,
+        commandElapsed = _traceElapsed
+      }
+mkCommandView _ _ = Nothing
 
 commandOnDay ::
   Day -> CommandView -> Bool
@@ -75,22 +77,17 @@ flowOnDay ::
   Day -> FlowView -> Bool
 flowOnDay day = sameDayThan day (localDay . flowStart)
 
--- | Take a `FlowView` from a given `Flow` at some point in time.
-mkFlowView :: TimeZone -> UTCTime -> Flow -> FlowView
-mkFlowView timezone now Flow{_flowType, _flowState} =
-  FlowView (utcToLocalTime timezone $ _flowStart _flowState) (utcToLocalTime timezone now) _flowType
-
-appendFlow :: TimeZone -> TimeOfDay -> Flow -> [FlowView] -> [FlowView]
-appendFlow _ _ Flow {_flowType = Note} views = views
-appendFlow _ _ Flow {_flowType = End} [] = []
-appendFlow tz _ Flow {_flowType = End, _flowState} (v : vs) =
-  v {flowEnd = utcToLocalTime tz $ _flowStart _flowState} : vs
-appendFlow tz dayEnd Flow {..} views =
+appendFlow :: TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
+appendFlow _ _ (EventFlow (Flow {_flowType = End})) [] = []
+appendFlow tz _ (EventFlow (Flow {_flowType = End, ..})) (v : vs) =
+  v {flowEnd = utcToLocalTime tz _flowTimestamp} : vs
+appendFlow tz dayEnd (EventFlow (Flow {..})) views =
   let view = FlowView st st _flowType
-      st = utcToLocalTime tz $ _flowStart _flowState
+      st = utcToLocalTime tz _flowTimestamp
    in case views of
         (v : vs) -> view : fillFlowEnd dayEnd v st : vs
         [] -> [view]
+appendFlow _ _ _ views = views
 
 -- OUCH
 fillFlowEnd :: TimeOfDay -> FlowView -> LocalTime -> FlowView
