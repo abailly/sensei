@@ -63,11 +63,11 @@ function createTimelineContainer(day, data, notesData) {
 
   details.addEventListener('change', (e) => {
     if (e.target.checked) {
-      drawChart(chart, day, data, f => f.flowType);
-      drawTimeline(chart2, data);
+      // drawChart(chart, day, data, f => f.flowType);
+      drawTimeline(chart2, day, data);
     } else {
-      drawChart(chart, day, data);
-      drawTimeline(chart2, data);
+      // drawChart(chart, day, data);
+      drawTimeline(chart2, day, data);
     }
   });
 
@@ -100,8 +100,8 @@ function createTimelineContainer(day, data, notesData) {
   });
 
   document.getElementById('timelines').appendChild(container);
-  drawChart(chart, day, data);
-  drawTimeline(chart2, data);
+  // drawChart(chart, day, data);
+  drawTimeline(chart2, day, data);
 }
 
 /**
