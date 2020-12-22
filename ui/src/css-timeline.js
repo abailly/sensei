@@ -1,6 +1,7 @@
 import {dom} from './dom.js';
 import {formatISOTime} from "./date.js";
 import {colorOf} from './color.js';
+import {DateTimeFormatter, LocalTime} from "@js-joda/core";
 
 const THIRTY_MINUTES = 30;
 const MILLISECONDS = 1000;
@@ -17,32 +18,35 @@ function drawTimelineFlow(flow) {
 
 }
 
-function drawTimelineHour(start) {
-    return <li>{formatISOTime(new Date(start))}</li>;
+function drawTimelineHour(time) {
+    return <li>{time.format(DateTimeFormatter.ofPattern('HH:mm'))}</li>;
 
 }
 
-export function drawTimeline(container, day, flowData) {
+export function drawTimeline(container, day, userStartOfDay, userEndOfDay, flowData) {
     const timelineContainer = <div id={'timeline-container-' + day}/>;
+    const timelineHeader = <div class='timeline-header' />;
+    const timelineEventsContainer = <div />;
     const timelineEvents = <ul class='timeline-events'/>;
     const timelineHours = <ul class='timelines-years'/>;
 
     function drawTimelineHours() {
-        const firstFlow = flowData[0];
-        const lastFlow = flowData.slice(-1)[0];
-        const nbHalfHours = (new Date(lastFlow.flowEnd).getHours() - new Date(firstFlow.flowStart).getHours()) * 2
-        const firsFlowStartDate = new Date(firstFlow.flowStart);
+        const startTime = LocalTime.parse(userStartOfDay);
+        const nbHalfHours = (LocalTime.parse(userEndOfDay).hour() - startTime.hour()) * 2
         for (let i = 0; i < nbHalfHours; i++) {
-            const hour = new Date(firsFlowStartDate.getFullYear(), firsFlowStartDate.getMonth(), firsFlowStartDate.getDate(), firsFlowStartDate.getHours(), firsFlowStartDate.getMinutes() + i * THIRTY_MINUTES);
-            timelineHours.appendChild(drawTimelineHour(hour));
+            const time =  startTime.plusMinutes(i * THIRTY_MINUTES);
+            timelineHours.appendChild(drawTimelineHour(time));
         }
     }
 
+    timelineHeader.appendChild(<h3>{day}</h3>);
     drawTimelineHours();
     flowData.forEach(flow => {
         timelineEvents.appendChild(drawTimelineFlow(flow));
-        timelineContainer.appendChild(timelineEvents);
+        timelineEventsContainer.appendChild(timelineEvents);
     })
-    timelineContainer.appendChild(timelineHours);
+    timelineEventsContainer.appendChild(timelineHours);
+    timelineContainer.appendChild(timelineHeader);
+    timelineContainer.appendChild(timelineEventsContainer);
     container.appendChild(timelineContainer);
 }

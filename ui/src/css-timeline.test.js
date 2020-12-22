@@ -48,7 +48,7 @@ const flowData = [
 describe('CSS Timeline', () => {
     test('expect timiline to be drawn', () => {
         let container = document.createElement("div");
-        drawTimeline(container, '2020-12-17', flowData);
+        drawTimeline(container, '2020-12-17', '08:30:00', '17:00:00', flowData);
         expect(container).toMatchSnapshot();
     });
 });
