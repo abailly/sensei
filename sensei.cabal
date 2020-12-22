@@ -104,6 +104,7 @@ test-suite sensei-test
   main-is:             Spec.hs
   other-modules:       Sensei.CLISpec
                      , Sensei.ColorSpec
+                     , Sensei.FlowSpec
                      , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
                      , Sensei.LogSpec
