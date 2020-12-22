@@ -36,10 +36,10 @@ import Test.QuickCheck.Monadic
 
 -- | Relevant commands issued to the underlying DB
 data Action a where
-  WriteFlow :: Flow -> Action ()
-  WriteTrace :: Trace -> Action ()
+  WriteFlow :: Event -> Action ()
+  WriteTrace :: Event -> Action ()
   ReadEvents :: Pagination -> Action EventsQueryResult
-  ReadFlow :: Reference -> Action (Maybe Flow)
+  ReadFlow :: Reference -> Action (Maybe Event)
   ReadNotes :: TimeRange -> Action [(LocalTime, Text)]
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
@@ -58,8 +58,8 @@ instance Show (Action a) where
 data Model = Model
   { currentTimestamp :: UTCTime,
     currentProfile :: UserProfile,
-    flows :: Seq Flow,
-    traces :: Seq Trace
+    flows :: Seq Event,
+    traces :: Seq Event
   }
   deriving (Eq, Show)
 
@@ -106,29 +106,28 @@ instance Arbitrary FlowType where
         (2, pure Other)
       ]
 
-generateFlow :: UTCTime -> Integer -> Gen Flow
+generateFlow :: UTCTime -> Integer -> Gen Event
 generateFlow baseTime k = do
   typ <- arbitrary
-  st <- case typ of
-    Note -> generateNote baseTime k
-    _ -> generateState baseTime k
-  pure $ Flow typ st currentVersion
+  case typ of
+    Note -> EventNote <$> generateNote baseTime k
+    _ -> EventFlow <$> generateState typ baseTime k
 
 shiftTime :: UTCTime -> Integer -> UTCTime
 shiftTime baseTime k = addUTCTime (fromInteger $ k * 1000) baseTime
 
-generateNote :: UTCTime -> Integer -> Gen FlowState
+generateNote :: UTCTime -> Integer -> Gen NoteFlow
 generateNote baseTime k = do
   let st = shiftTime baseTime k
   dir <- generateDir
   note <- generateNoteText
-  pure $ FlowNote "arnaud" st dir note
+  pure $ NoteFlow "arnaud" st dir note
 
-generateState :: UTCTime -> Integer -> Gen FlowState
-generateState baseTime k = do
+generateState :: FlowType -> UTCTime -> Integer -> Gen Flow
+generateState ftype baseTime k = do
   let st = shiftTime baseTime k
   dir <- generateDir
-  pure $ FlowState "arnaud" st dir -- TODO: remove user from Flow definition
+  pure $ Flow ftype "arnaud" st dir -- TODO: remove user from Flow definition
 
 generateDir :: Gen Text
 generateDir = pack . getASCIIString <$> arbitrary
@@ -136,7 +135,7 @@ generateDir = pack . getASCIIString <$> arbitrary
 generateNoteText :: Gen Text
 generateNoteText = pack . getASCIIString <$> arbitrary
 
-generateTrace :: UTCTime -> Integer -> Gen Trace
+generateTrace :: UTCTime -> Integer -> Gen Event
 generateTrace baseTime k = do
   let st = shiftTime baseTime k
   dir <- generateDir
@@ -144,7 +143,7 @@ generateTrace baseTime k = do
   args <- generateArgs
   ex <- arbitrary
   el <- fromInteger <$> choose (0, 100)
-  pure $ Trace st (unpack dir) pr args ex el currentVersion
+  pure $ EventTrace $ Trace "arnaud" st (unpack dir) pr args ex el
 
 generateArgs :: Gen [Text]
 generateArgs = listOf $ pack . getASCIIString <$> arbitrary
@@ -154,7 +153,7 @@ generateProcess = pack . getASCIIString <$> arbitrary
 
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime offset =
-  oneof [T <$> generateTrace baseTime offset, F <$> generateFlow baseTime offset]
+  oneof [generateTrace baseTime offset, generateFlow baseTime offset]
 
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
@@ -168,8 +167,8 @@ interpret (ReadFlow Latest) = do
     _ -> pure Nothing
 interpret (ReadFlow _) = error "not implemented"
 interpret (ReadEvents (Page pageNum size)) = do
-  fs <- fmap F <$> gets flows
-  ts <- fmap T <$> gets traces
+  fs <- gets flows
+  ts <- gets traces
   let evs = Seq.sortBy eventTimestampDesc (fs <> ts)
       totalEvents = fromIntegral $ Seq.length evs
       events = toList $ Seq.take (fromIntegral size) $ Seq.drop (fromIntegral $ (pageNum - 1) * size) evs
@@ -179,7 +178,7 @@ interpret (ReadEvents (Page pageNum size)) = do
   pure EventsQueryResult {..}
 interpret (ReadNotes rge) = do
   UserProfile {userName, userTimezone} <- gets currentProfile
-  fs <- Seq.filter (inRange rge . _flowStart . _flowState) <$> gets flows
+  fs <- Seq.filter (inRange rge . eventTimestamp) <$> gets flows
   pure $ foldr (notesViewBuilder userName userTimezone) [] fs
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile

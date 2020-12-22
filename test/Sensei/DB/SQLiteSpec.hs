@@ -62,10 +62,10 @@ spec =
       it "indexes newly inserted note on the fly" $ \tempdb -> do
         let noteTime = (UTCTime (toEnum 50000) 1000)
             content = "foo bar baz cat"
-            note1 = FlowNote "arnaud" noteTime "some/dir" content
+            note1 = NoteFlow "arnaud" noteTime "some/dir" content
         res <- runDB tempdb "." $ do
           initLogStorage
-          writeFlow (Flow Note note1 currentVersion)
+          writeFlow (EventNote note1)
           searchNotes defaultProfile "foo"
 
         res `shouldBe` [(utcToLocalTime (userTimezone defaultProfile) noteTime, content)]

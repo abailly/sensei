@@ -30,9 +30,9 @@ spec = describe "Event & Flow" $ do
 
   it "can deserialize version 4 JSON Event(s)" $ do
     let evs :: Either String [Event] = eitherDecode eventsVersion4JSON
-        Right (F Flow{_flowState}) = head <$> evs
+        Right (EventNote note) = head <$> evs
 
-    _flowDir _flowState
+    _noteDir note
       `shouldBe` "w\x0017\x0016\x0007Z!)QN."
 
 eventsVersion4JSON :: LBS.ByteString

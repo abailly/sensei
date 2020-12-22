@@ -11,12 +11,17 @@ import Sensei.TestHelper
 import Servant
 
 postEvent_ :: Event -> WaiSession () ()
-postEvent_ (T t) = postTrace_ t
-postEvent_ (F f) = postFlow_ f
+postEvent_ (EventTrace t) = postTrace_ t
+postEvent_ (EventFlow f) = postFlow_ f
+postEvent_ (EventNote n) = postNote_ n
 
 postFlow_ :: Flow -> WaiSession () ()
-postFlow_ Flow {_flowType, _flowState} =
-  postJSON_ ("/flows/arnaud/" <> encodeUtf8 (toUrlPiece _flowType)) _flowState
+postFlow_ f@Flow {_flowType} =
+  postJSON_ ("/flows/arnaud/" <> encodeUtf8 (toUrlPiece _flowType)) (EventFlow f)
+
+postNote_ :: NoteFlow -> WaiSession () ()
+postNote_ n =
+  postJSON_ ("/flows/arnaud/Note") (EventNote n)
 
 postTrace_ :: Trace -> WaiSession () ()
 postTrace_ trace =

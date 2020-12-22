@@ -30,7 +30,7 @@ spec =
   withApp app $
     describe "Program wrapper" $ do
       it "records execution trace of wrapped program and returns program's exit code" $ do
-        res <- wrapProg io "git" ["status"] "somedir"
+        res <- wrapProg io "arnaud" "git" ["status"] "somedir"
         res `isExpectedToBe` ExitSuccess
 
       it "selects program to run from User Profile" $ do

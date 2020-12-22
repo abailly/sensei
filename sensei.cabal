@@ -76,6 +76,7 @@ library
                      , text
                      , time
                      , unix
+                     , unordered-containers
                      , wai
                      , wai-app-static
                      , wai-cors

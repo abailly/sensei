@@ -22,6 +22,7 @@ import Data.Text (Text)
 import Data.Time
 import Sensei.API
 import Sensei.Time
+import Data.Maybe (fromJust)
 
 data Pagination = Page {pageNumber :: Natural, pageSize :: Natural}
   deriving (Eq, Show)
@@ -51,19 +52,19 @@ class (Monad m) => DB m where
   initLogStorage :: m ()
 
   -- | Write a new `Trace` to the DB
-  writeTrace :: Trace -> m ()
+  writeTrace :: Event -> m ()
 
   -- | Write a new `Flow` to the DB
-  writeFlow :: Flow -> m ()
+  writeFlow :: Event -> m ()
 
   -- | Update the latest's flow start time by given time difference.
-  updateLatestFlow :: NominalDiffTime -> m FlowState
+  updateLatestFlow :: NominalDiffTime -> m Event
 
   -- | Write user's profile to the DB
   writeProfile :: UserProfile -> m ()
 
   -- | Read a single `Flow` from the storage, pointed at by given `Reference`.
-  readFlow :: UserProfile -> Reference -> m (Maybe Flow)
+  readFlow :: UserProfile -> Reference -> m (Maybe Event)
 
   -- | Read raw events stored in the database, younger events first.
   readEvents :: UserProfile -> Pagination -> m EventsQueryResult
@@ -86,25 +87,26 @@ class (Monad m) => DB m where
   -- This function may fail of there's no profile or the format is incorrect
   readProfile :: m (Either Text UserProfile)
 
-flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Flow -> [FlowView] -> [FlowView]
+flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay flow =
   flowView flow userName (appendFlow userTimezone userEndOfDay)
 
-notesViewBuilder :: Text -> TimeZone -> Flow -> [(LocalTime, Text)] -> [(LocalTime, Text)]
+notesViewBuilder :: Text -> TimeZone -> Event -> [(LocalTime, Text)] -> [(LocalTime, Text)]
 notesViewBuilder userName userTimezone flow = flowView flow userName f
   where
-    f :: Flow -> [(LocalTime, Text)] -> [(LocalTime, Text)]
-    f (Flow Note (FlowNote _ st _ note) _) fragments =
+    f :: Event -> [(LocalTime, Text)] -> [(LocalTime, Text)]
+    f (EventNote (NoteFlow _ st _ note)) fragments =
       (utcToLocalTime userTimezone st, note) : fragments
     f _ fragments = fragments
 
-commandViewBuilder :: TimeZone -> Trace -> [CommandView] -> [CommandView]
-commandViewBuilder userTimezone t acc = mkCommandView userTimezone t : acc
+commandViewBuilder :: TimeZone -> Event -> [CommandView] -> [CommandView]
+commandViewBuilder userTimezone t@(EventTrace _) acc = fromJust (mkCommandView userTimezone t) : acc
+commandViewBuilder _ _ acc = acc
 
 -- | Basically a combination of a `filter` and a single step of a fold
 --  Should be refactored to something more standard
-flowView :: Flow -> Text -> (Flow -> [a] -> [a]) -> [a] -> [a]
-flowView f@Flow {..} usr mkView views =
-  if _flowUser _flowState == usr
-    then mkView f views
+flowView :: Event -> Text -> (Event -> [a] -> [a]) -> [a] -> [a]
+flowView e usr mkView views =
+  if eventUser e == usr
+    then mkView e views
     else views
