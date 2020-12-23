@@ -1,18 +1,19 @@
 import {dom} from './dom.js';
 import {colorOf} from './color.js';
+import { config } from "./config";
 import {ChronoUnit, DateTimeFormatter, LocalDateTime, LocalTime} from "@js-joda/core";
 
 const THIRTY_MINUTES = 30;
 const HALF_HOUR_WIDTH = 100;
 
-export function drawTimeline(container, day, userStartOfDay, userEndOfDay, flowData) {
+export function drawTimeline(container, day, flowData) {
     const timelineContainer = <div id={'timeline-container-' + day}/>;
     const timelineHeader = <div class='timeline-header' />;
     const timelineEventsContainer = <div />;
     const timelineEvents = <ul class='timeline-events'/>;
     const timelineHours = <ul class='timelines-years'/>;
-    const startTime = LocalTime.parse(userStartOfDay);
-    const endTime = LocalTime.parse(userEndOfDay);
+    const startTime = LocalTime.parse(config.userStartOfDay);
+    const endTime = LocalTime.parse(config.userEndOfDay);
 
     function flowLeftMargin(flow) {
         if(flowData[0] !== flow) {

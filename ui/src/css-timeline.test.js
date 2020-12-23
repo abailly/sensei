@@ -1,5 +1,6 @@
 import {dom} from './dom.js';
 import {formatISOTime} from "./date.js";
+import { config } from "./config";
 
 import {describe, expect, test} from '@jest/globals';
 import {drawTimeline} from "./css-timeline";
@@ -47,20 +48,26 @@ const flowData = [
 
 describe('CSS Timeline', () => {
     test('expect timeline to be drawn', () => {
+        config.userStartOfDay = '08:30:00';
+        config.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
-        drawTimeline(container, '2020-12-17', '08:30:00', '17:00:00', flowData);
+        drawTimeline(container, '2020-12-17', flowData);
         expect(container).toMatchSnapshot();
     });
 
     test('expect timeline to be drawn with negative left margin when flow start before user start of day', () => {
+        config.userStartOfDay = '09:00:00';
+        config.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
-        drawTimeline(container, '2020-12-17', '09:00:00', '17:00:00', flowData);
+        drawTimeline(container, '2020-12-17', flowData);
         expect(container).toMatchSnapshot();
     });
 
     test('expect timeline to be drawn with positive left margin when flow start after user start of day', () => {
+        config.userStartOfDay = '08:00:00';
+        config.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
-        drawTimeline(container, '2020-12-17', '08:00:00', '17:00:00', flowData);
+        drawTimeline(container, '2020-12-17', flowData);
         expect(container).toMatchSnapshot();
     });
 });
