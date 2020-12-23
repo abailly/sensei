@@ -32,6 +32,8 @@ import Control.Exception (throwIO)
 import Control.Exception.Safe (IOException, try)
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
+import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as A
 import qualified Data.ByteString.Lazy as LBS
 import Data.Int (Int64)
 import Data.Text (Text, pack, unpack)
@@ -130,10 +132,38 @@ typeOf EventNote{} = "Note"
 instance FromRow Event where
   fromRow = do
     _ts :: UTCTime <- field
-    _ver :: Integer <- field
-    _ty :: Text <- field
-    case _ver of
-      _ -> either error id . eitherDecode . encodeUtf8 <$> field
+    ver :: Integer <- field
+    ty :: Text <- field
+    if ver >= 5
+      then either error id . eitherDecode . encodeUtf8 <$> field
+      else case ty of
+             "__TRACE__" -> decodeTracev4 <$> field
+             "Note" -> decodeNotev4 <$> field
+             _ -> decodeFlowv4 ty <$> field
+      where
+        decodeTracev4 txt =
+          let val = eitherDecode $ encodeUtf8 txt
+          in case val of
+            Left err -> error err
+            Right j -> case A.parse parseEventFromv4 j of
+                         A.Success t -> t
+                         A.Error f -> error f
+        decodeNotev4 txt =
+          let val = eitherDecode $ encodeUtf8 txt
+          in case val of
+            Left err -> error err
+            Right j -> case A.parse parseNoteFromv4 j of
+                         A.Success t -> EventNote t
+                         A.Error f -> error f
+        decodeFlowv4 ty txt =
+          let val = eitherDecode $ encodeUtf8 txt
+              maybetype = parseFlowType ty
+          in case (val, maybetype) of
+               (Left err, _) -> error err
+               (_, Nothing) -> error $ "failed to decode flow type " <> unpack ty
+               (Right j, Just ftype) -> case A.parse parseFlowFromv4 j of
+                                          A.Success t -> EventFlow t { _flowType = ftype }
+                                          A.Error f -> error f
 
 data IdFlow = IdFlow {identifier :: Int64, event :: Event}
 
@@ -277,7 +307,7 @@ readNotesSQL ::
   UserProfile -> TimeRange -> FilePath -> IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} TimeRange {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where datetime(timestamp) between ? and ? order by timestamp"
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
     notesFlow <- query cnx q [rangeStart, rangeEnd]
     pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
 
@@ -295,7 +325,7 @@ readViewsSQL ::
   UserProfile -> FilePath -> IO [FlowView]
 readViewsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp"
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
     flows <- query_ cnx q
     pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] flows
 
@@ -304,6 +334,6 @@ readCommandsSQL ::
   UserProfile -> FilePath -> IO [CommandView]
 readCommandsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp"
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' order by timestamp"
     traces <- query_ cnx q
     pure $ foldr (commandViewBuilder userTimezone) [] traces

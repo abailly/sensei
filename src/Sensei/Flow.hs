@@ -90,11 +90,11 @@ parseNoteFromv4 =
 
 parseFlowFromv4 :: Value -> Parser Flow
 parseFlowFromv4 =
-  withObject "NoteFlow" $ \state -> do
+  withObject "Flow" $ \state -> do
     Flow <$> pure Other
-      <*> state .: "_flowDir"
-      <*> state .: "_flowStart"
       <*> state .: "_flowUser"
+      <*> state .: "_flowStart"
+      <*> state .: "_flowDir"
 
 instance ToJSON Event where
   toJSON (EventFlow f) =

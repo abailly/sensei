@@ -91,6 +91,14 @@ flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Event -> [FlowView] -> [Flow
 flowViewBuilder userName userTimezone userEndOfDay flow =
   flowView flow userName (appendFlow userTimezone userEndOfDay)
 
+-- | Basically a combination of a `filter` and a single step of a fold
+--  Should be refactored to something more standard
+flowView :: Event -> Text -> (Event -> [a] -> [a]) -> [a] -> [a]
+flowView e usr mkView views =
+  if eventUser e == usr
+    then mkView e views
+    else views
+
 notesViewBuilder :: Text -> TimeZone -> Event -> [(LocalTime, Text)] -> [(LocalTime, Text)]
 notesViewBuilder userName userTimezone flow = flowView flow userName f
   where
@@ -102,11 +110,3 @@ notesViewBuilder userName userTimezone flow = flowView flow userName f
 commandViewBuilder :: TimeZone -> Event -> [CommandView] -> [CommandView]
 commandViewBuilder userTimezone t@(EventTrace _) acc = fromJust (mkCommandView userTimezone t) : acc
 commandViewBuilder _ _ acc = acc
-
--- | Basically a combination of a `filter` and a single step of a fold
---  Should be refactored to something more standard
-flowView :: Event -> Text -> (Event -> [a] -> [a]) -> [a] -> [a]
-flowView e usr mkView views =
-  if eventUser e == usr
-    then mkView e views
-    else views
