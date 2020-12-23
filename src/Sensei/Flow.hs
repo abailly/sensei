@@ -16,6 +16,7 @@
 -- * `FlowNote`: notes
 module Sensei.Flow where
 
+import Control.Applicative
 import Data.Aeson hiding (Options)
 import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (first))
@@ -27,7 +28,6 @@ import Data.Time
 import GHC.Generics
 import Numeric.Natural
 import Servant
-import Control.Applicative
 
 -- | Current version of data storage format.
 -- This version /must/ be incremented on each change to the structure of `Event` and
@@ -46,17 +46,17 @@ data Event
 
 instance FromJSON Event where
   parseJSON =
-    withObject "Event" $ \ obj -> do
-    v :: Natural <- obj .: "version" <|> obj .: "_version"
-    case v of
-      4 -> parseEventFromv4 obj
-      _ -> do
-        t <- obj .: "tag"
-        case t of
-             "Note" -> EventNote <$> parseJSON (Object obj)
-             "Trace" -> EventTrace <$> parseJSON (Object obj)
-             "Flow" -> EventFlow <$> parseJSON (Object obj)
-             o -> fail ("cannot parse Event with tag " <> o)
+    withObject "Event" $ \obj -> do
+      v :: Natural <- obj .: "version" <|> obj .: "_version"
+      case v of
+        4 -> parseEventFromv4 obj
+        _ -> do
+          t <- obj .: "tag"
+          case t of
+            "Note" -> EventNote <$> parseJSON (Object obj)
+            "Trace" -> EventTrace <$> parseJSON (Object obj)
+            "Flow" -> EventFlow <$> parseJSON (Object obj)
+            o -> fail ("cannot parse Event with tag " <> o)
 
 parseEventFromv4 :: Object -> Parser Event
 parseEventFromv4 obj =
@@ -65,13 +65,11 @@ parseEventFromv4 obj =
     parseFlow = do
       ty <- obj .: "_flowType"
       st <- obj .: "_flowState"
-      flip (withObject "FlowState") st $ \ state -> do
-        dr <- state .: "_flowDir"
-        ts <- state .: "_flowStart"
-        us <- state .: "_flowUser"
-        case ty of
-          Note -> state .: "_flowNote" >>= pure . EventNote . NoteFlow us ts dr
-          _ -> pure $ EventFlow $ Flow ty us ts dr
+      case ty of
+        Note -> EventNote <$> parseNoteFromv4 st
+        _ -> do
+          fl <- parseFlowFromv4 st
+          pure $ EventFlow fl { _flowType = ty }
     parseTrace = do
       ts <- obj .: "timestamp"
       el <- obj .: "elapsed"
@@ -81,6 +79,22 @@ parseEventFromv4 obj =
       ex <- obj .: "exit_code"
       pure $ EventTrace $ Trace "" ts dr pr ar ex el
 
+parseNoteFromv4 :: Value -> Parser NoteFlow
+parseNoteFromv4 =
+  withObject "NoteFlow" $ \state -> do
+    NoteFlow
+      <$> state .: "_flowUser"
+      <*> state .: "_flowStart"
+      <*> state .: "_flowDir"
+      <*> state .: "_flowNote"
+
+parseFlowFromv4 :: Value -> Parser Flow
+parseFlowFromv4 =
+  withObject "NoteFlow" $ \state -> do
+    Flow <$> pure Other
+      <*> state .: "_flowDir"
+      <*> state .: "_flowStart"
+      <*> state .: "_flowUser"
 
 instance ToJSON Event where
   toJSON (EventFlow f) =
@@ -155,7 +169,6 @@ eventUser ::
 eventUser (EventFlow f) = _flowUser f
 eventUser (EventTrace t) = _traceUser t
 eventUser (EventNote n) = _noteUser n
-
 
 data FlowType
   = FlowType Text
