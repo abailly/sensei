@@ -25,4 +25,4 @@ postNote_ n =
 
 postTrace_ :: Trace -> WaiSession () ()
 postTrace_ trace =
-  postJSON_ "/trace" trace
+  postJSON_ "/trace" (EventTrace trace)
