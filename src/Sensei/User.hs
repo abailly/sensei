@@ -89,9 +89,9 @@ parseJSONFromVersion v o =
         _ -> o .: "userFlowTypes"
 
     parseCommands =
-      case v of
-        4 -> o .: "userCommands"
-        _ -> pure Nothing
+      if v < 4
+      then pure Nothing
+      else o .: "userCommands"
 
 instance ToJSON UserProfile where
   toJSON UserProfile {..} =
