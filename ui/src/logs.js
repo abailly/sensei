@@ -19,12 +19,12 @@ export default function logs(router, container, page) {
         <tbody>
           {
             logEntries.map(entry => {
-              const flowType = entry._flowType ?? "Trace";
+              const flowType = entry.flowType ?? entry.tag;
               const color = colorOf(flowType);
               return <tr class={flowType} style={`background-color: ${color};`} >
-                <td>{entry.timestamp ?? entry._flowState._flowStart}</td>
+                <td>{entry.traceTimestamp ?? entry.flowTimestamp ?? entry.noteTimestamp}</td>
                 <td>{flowType}</td>
-                <td>{JSON.stringify(entry._flowState ? entry._flowState : entry)}</td>
+                <td>{JSON.stringify(entry)}</td>
               </tr>;
             })
           }
