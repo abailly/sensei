@@ -41,7 +41,7 @@ import qualified Data.Time as Time
 import Data.Time.LocalTime
 import Database.SQLite.Simple
 import Database.SQLite.Simple.ToField
-import Preface.Utils (decodeUtf8')
+import Preface.Utils (toText, decodeUtf8')
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.File (readProfileFile, writeProfileFile)
@@ -119,7 +119,13 @@ instance ToRow Event where
   toRow e =
     let ts = toField (eventTimestamp e)
         payload = toField $ decodeUtf8' $ LBS.toStrict $ encode e
-     in [ts, SQLInteger (fromIntegral currentVersion), toField ("__EVENT__" :: Text), payload]
+        typ = typeOf e
+     in [ts, SQLInteger (fromIntegral currentVersion), toField (typ :: Text), payload]
+
+typeOf :: Event -> Text
+typeOf EventTrace{} = "__TRACE__"
+typeOf (EventFlow Flow{_flowType}) = toText _flowType
+typeOf EventNote{} = "Note"
 
 instance FromRow Event where
   fromRow = do
