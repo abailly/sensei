@@ -22,6 +22,7 @@ module Sensei.TestHelper
     bodyContains,
     jsonBodyEquals,
     module W,
+    SResponse,
   )
 where
 
