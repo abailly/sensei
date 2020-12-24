@@ -4,6 +4,42 @@ import { colorOf } from './color.js';
 import { get } from './request';
 import { pagination } from './page.js';
 
+function formatTraceEntry(entry) {
+  return <tr class='log-entry entry-trace'>
+    <td>{entry.traceTimestamp}</td>
+    <td>Trace</td>
+    <td>{entry.traceDirectory}</td>
+    <td>{JSON.stringify(entry)}</td>
+  </tr>;
+}
+
+function formatNoteEntry(entry) {
+  return <tr class='log-entry entry-note'>
+    <td>{entry.noteTimestamp}</td>
+    <td>Note</td>
+    <td>{entry.noteDir}</td>
+    <td>{entry.noteContent}</td>
+  </tr>;
+}
+
+function formatFlowEntry(entry) {
+  const color = colorOf(entry.flowType);
+  return <tr class='log-entry entry-flow' style={`background-color: ${color};`} >
+    <td>{entry.flowTimestamp}</td>
+    <td>Flow</td>
+    <td>{entry.flowDir}</td>
+    <td>{entry.flowType}</td>
+  </tr>;
+}
+
+function formatLogEntry(entry) {
+  switch (entry.tag) {
+    case 'Trace': return formatTraceEntry(entry);
+    case 'Note': return formatNoteEntry(entry);
+    case 'Flow': return formatFlowEntry(entry);
+    default: return '';
+  };
+}
 /*
   Display (latest) event log entries from the server
 */
@@ -14,19 +50,11 @@ export default function logs(router, container, page) {
     const logTable =
       <table class='tbl-log'>
         <thead>
-          <tr><th>Timestamp</th><th>Type</th><th>Data</th></tr>
+          <tr><th>Timestamp</th><th>Type</th><th>Dir</th><th>Details</th></tr>
         </thead>
         <tbody>
           {
-            logEntries.map(entry => {
-              const flowType = entry.flowType ?? entry.tag;
-              const color = colorOf(flowType);
-              return <tr class={flowType} style={`background-color: ${color};`} >
-                <td>{entry.traceTimestamp ?? entry.flowTimestamp ?? entry.noteTimestamp}</td>
-                <td>{flowType}</td>
-                <td>{JSON.stringify(entry)}</td>
-              </tr>;
-            })
+            logEntries.map(formatLogEntry)
           }
         </tbody>
       </table>;
