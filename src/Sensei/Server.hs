@@ -36,15 +36,9 @@ getCurrentTimeS usr = do
   usrProfile <- getUserProfileS usr
   Timestamp <$> getCurrentTime usrProfile
 
-traceS ::
+postEventS ::
   (DB m) => Event -> m ()
-traceS trace =
-  writeTrace trace
-
-flowS ::
-  (DB m) => Text -> FlowType -> Event -> m ()
-flowS _ _flowTyp flow =
-  writeFlow flow
+postEventS = writeEvent
 
 updateFlowStartTimeS ::
   (DB m) => Text -> TimeDifference -> m Event
@@ -150,7 +144,7 @@ getLogS userName page = do
         case catMaybes [nextHeader, previousHeader] of
           [] -> noHeader
           ls -> addHeader $ writeLinkHeader ls
-  pure $ links events
+  pure $ links resultEvents
 
 getUserProfileS ::
   (DB m) => Text -> m UserProfile

@@ -65,7 +65,7 @@ spec =
             note1 = NoteFlow "arnaud" noteTime "some/dir" content
         res <- runDB tempdb "." $ do
           initLogStorage
-          writeFlow (EventNote note1)
+          writeEvent (EventNote note1)
           searchNotes defaultProfile "foo"
 
         res `shouldBe` [(utcToLocalTime (userTimezone defaultProfile) noteTime, content)]

@@ -181,8 +181,7 @@ instance DB SQLiteDB where
   initLogStorage = initSQLiteDB
   setCurrentTime u ts = SQLiteDB $ asks storagePath >>= liftIO . setCurrentTimeSQL u ts
   getCurrentTime u = SQLiteDB $ asks storagePath >>= liftIO . getCurrentTimeSQL u
-  writeTrace t = SQLiteDB $ asks storagePath >>= liftIO . writeTraceSQL t
-  writeFlow f = SQLiteDB $ asks storagePath >>= liftIO . writeFlowSQL f
+  writeEvent t = SQLiteDB $ asks storagePath >>= liftIO . writeEventSQL t
   updateLatestFlow ts = SQLiteDB $ asks storagePath >>= liftIO . updateLatestFlowSQL ts
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readFlow u r = SQLiteDB $ (asks storagePath >>= liftIO . readFlowSQL u r)
@@ -226,14 +225,6 @@ writeAll events = SQLiteDB $ do
   liftIO $
     withConnection file $ \cnx -> forM_ events (`insert` cnx)
 
-writeFlowSQL ::
-  HasCallStack =>
-  Event -> FilePath -> IO ()
-writeFlowSQL e sqliteFile =
-  withConnection sqliteFile $ \ cnx -> do
-  rid <- insert e cnx
-  updateNotesIndex rid e cnx
-
 updateNotesIndex ::
   HasCallStack =>
   Int -> Event -> Connection -> IO ()
@@ -242,11 +233,13 @@ updateNotesIndex rid (EventNote NoteFlow{..}) cnx =
       in execute cnx q [toField rid, SQLText $ _noteContent]
 updateNotesIndex _ _ _ = pure ()
 
-writeTraceSQL ::
+writeEventSQL ::
   HasCallStack =>
   Event -> FilePath -> IO ()
-writeTraceSQL e sqliteFile =
-  withConnection sqliteFile $ void . insert e
+writeEventSQL e sqliteFile =
+  withConnection sqliteFile $ \ cnx -> do
+  rid <- insert e cnx
+  updateNotesIndex rid e cnx
 
 insert ::
   HasCallStack =>
@@ -294,10 +287,10 @@ readEventsSQL _ Page {pageNumber, pageSize} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
         count = "select count(*) from event_log"
-    events <- query cnx q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
+    resultEvents <- query cnx q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
     [[numEvents]] <- query_ cnx count
     let totalEvents = fromInteger numEvents
-        eventsCount = fromIntegral $ length events
+        eventsCount = fromIntegral $ length resultEvents
         startIndex = min ((pageNumber - 1) * pageSize) totalEvents
         endIndex = min (pageNumber * pageSize) totalEvents
     pure $ EventsQueryResult {..}

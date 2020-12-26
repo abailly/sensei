@@ -81,16 +81,8 @@ type DisplayVersions =
     :> "versions"
     :> Get '[JSON] Versions
 
-type PostRecordTrace =
-  Summary "Record execution 'trace' of a single command execution."
-    :> "trace"
-    :> ReqBody '[JSON] Event
-    :> Post '[JSON] ()
-
-type PostRecordFlow =
-  Summary "Record start of some type of Flow."
-    :> Capture "user" Text
-    :> Capture "flowType" FlowType
+type PostEvent =
+  Summary "Record a new `Event` in the log."
     :> ReqBody '[JSON] Event
     :> Post '[JSON] ()
 
@@ -175,25 +167,25 @@ type PutUserProfile =
     :> Put '[JSON] NoContent
 
 type SenseiAPI =
-  Tags "Flows" :> PostRecordTrace
-    :<|> "flows"
-      :> Tags "Flows"
-      :> ( PostRecordFlow
-             :<|> GetFlow
-             :<|> PatchFlowTimeshift
-             :<|> GetGroupSummary
-             :<|> GetDailySummary
-             :<|> GetNotes
-             :<|> GetCommands
-             :<|> GetFlowsTimeline
-             :<|> GetGroupedTimelines
-         )
+  "flows"
+    :> Tags "Flows"
+    :> ( GetFlow
+           :<|> PatchFlowTimeshift
+           :<|> GetGroupSummary
+           :<|> GetDailySummary
+           :<|> GetNotes
+           :<|> GetCommands
+           :<|> GetFlowsTimeline
+           :<|> GetGroupedTimelines
+       )
     :<|> "notes"
       :> Tags "Notes"
       :> SearchNotes
     :<|> "log"
       :> Tags "Event Log"
-      :> GetAllLog
+      :> ( PostEvent
+             :<|> GetAllLog
+         )
     :<|> "users"
       :> Tags "User Profile"
       :> (GetUserProfile :<|> PutUserProfile)
@@ -206,14 +198,14 @@ nextPageLink :: Text -> Maybe Natural -> Maybe Link.Link
 nextPageLink userName page = do
   p <- page <|> pure 1
   let next = show (succ p)
-  uri <- uriFromString $ "/logs/" <> unpack userName <> "?page=" <> next
+  uri <- uriFromString $ "/log/" <> unpack userName <> "?page=" <> next
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
 previousPageLink :: Text -> Maybe Natural -> Maybe Link.Link
 previousPageLink userName page = do
   p <- page
   let prev = show (pred p)
-  uri <- uriFromString $ "/logs/" <> unpack userName <> "?page=" <> prev
+  uri <- uriFromString $ "/log/" <> unpack userName <> "?page=" <> prev
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
 
 nextDayLink :: Text -> Maybe Day -> Maybe Link.Link

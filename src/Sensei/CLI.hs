@@ -223,9 +223,9 @@ ep (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
-      send $ flowC curUser Note (EventNote $ NoteFlow curUser startDate curDir txt)
-    other ->
-      send $ flowC curUser other (EventFlow $ Flow ftype curUser startDate curDir)
+      send $ postEventC (EventNote $ NoteFlow curUser startDate curDir txt)
+    _ ->
+      send $ postEventC (EventFlow $ Flow ftype curUser startDate curDir)
 ep (UserOptions GetProfile) usrName _ _ =
   send (getUserProfileC usrName) >>= display
 ep (UserOptions (SetProfile file)) usrName _ _ = do

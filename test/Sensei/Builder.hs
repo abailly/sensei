@@ -6,27 +6,23 @@
 module Sensei.Builder where
 
 import Data.Functor (void)
-import Data.Text.Encoding (encodeUtf8)
 import Sensei.API
 import Sensei.TestHelper
-import Servant
+
+postEvent :: Event -> WaiSession () SResponse
+postEvent e =  postJSON ("/log") e
 
 postEvent_ :: Event -> WaiSession () ()
-postEvent_ (EventTrace t) = postTrace_ t
-postEvent_ (EventFlow f) = postFlow_ f
-postEvent_ (EventNote n) = postNote_ n
+postEvent_ =  void . postEvent
 
 postFlow :: Flow -> WaiSession () SResponse
-postFlow f@Flow {_flowType} =
-  postJSON ("/flows/arnaud/" <> encodeUtf8 (toUrlPiece _flowType)) (EventFlow f)
+postFlow = postEvent . EventFlow
 
 postFlow_ :: Flow -> WaiSession () ()
-postFlow_ = void . postFlow
+postFlow_ = postEvent_ . EventFlow
 
 postNote_ :: NoteFlow -> WaiSession () ()
-postNote_ n =
-  postJSON_ ("/flows/arnaud/Note") (EventNote n)
+postNote_ = postEvent_ . EventNote
 
 postTrace_ :: Trace -> WaiSession () ()
-postTrace_ trace =
-  postJSON_ "/trace" (EventTrace trace)
+postTrace_ = postEvent_ . EventTrace

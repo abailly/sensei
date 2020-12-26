@@ -113,6 +113,10 @@ instance ToJSON Event where
           H.insert "tag" "Note" $
             H.insert "version" (toJSON currentVersion) obj
 
+isTrace :: Event -> Bool
+isTrace EventTrace{} = True
+isTrace _ = False
+
 data Flow = Flow
   { _flowType :: FlowType,
     _flowUser :: Text,

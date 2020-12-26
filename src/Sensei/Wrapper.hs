@@ -7,7 +7,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (pack)
 import Data.Time (UTCTime, diffUTCTime)
-import Sensei.Client (ClientMonad, getUserProfileC, traceC)
+import Sensei.Client (ClientMonad, getUserProfileC, postEventC)
 import Sensei.Flow
 import Sensei.User
 import System.Exit (ExitCode (..))
@@ -66,7 +66,7 @@ wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   st <- getCurrentTime
   ex <- runProcess realProg progArgs
   en <- getCurrentTime
-  send (traceC $ EventTrace $ Trace (pack curUser) en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st))
+  send (postEventC $ EventTrace $ Trace (pack curUser) en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st))
   pure ex
 
 toInt :: ExitCode -> Int
