@@ -44,8 +44,7 @@ instance DB FileDB where
   initLogStorage = FileDB $ (asks storageFile >>= liftIO . initLogStorageFile)
   getCurrentTime = undefined
   setCurrentTime = undefined
-  writeTrace t = FileDB $ (asks storageFile >>= liftIO . writeTraceFile t)
-  writeFlow t = FileDB $ (asks storageFile >>= liftIO . writeFlowFile t)
+  writeEvent t = FileDB $ (asks storageFile >>= liftIO . writeEventFile t)
   updateLatestFlow = undefined
   writeProfile u = FileDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readEvents _ _ = do
@@ -70,13 +69,9 @@ readAll = FileDB $ do
   file <- asks storageFile
   liftIO $ withBinaryFile file ReadMode $ loop (:) "" []
 
-writeTraceFile :: Event -> FilePath -> IO ()
-writeTraceFile trace file =
-  writeJSON file (encode trace)
-
-writeFlowFile :: Event -> FilePath -> IO ()
-writeFlowFile flow file =
-  writeJSON file (encode flow)
+writeEventFile :: Event -> FilePath -> IO ()
+writeEventFile event file =
+  writeJSON file (encode event)
 
 writeJSON :: FilePath -> LBS.ByteString -> IO ()
 writeJSON file jsonData =

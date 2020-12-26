@@ -62,9 +62,7 @@ baseServer signal =
   killS signal
     :<|> setCurrentTimeS
     :<|> getCurrentTimeS
-    :<|> traceS
-    :<|> ( flowS
-             :<|> getFlowS
+    :<|> ( getFlowS
              :<|> updateFlowStartTimeS
              :<|> queryFlowSummaryS
              :<|> queryFlowDaySummaryS
@@ -74,7 +72,7 @@ baseServer signal =
              :<|> queryFlowS
          )
     :<|> searchNoteS
-    :<|> getLogS
+    :<|> (postEventS :<|> getLogS)
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 

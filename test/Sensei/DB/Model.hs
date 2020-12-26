@@ -36,8 +36,7 @@ import Test.QuickCheck.Monadic
 
 -- | Relevant commands issued to the underlying DB
 data Action a where
-  WriteFlow :: Event -> Action ()
-  WriteTrace :: Event -> Action ()
+  WriteEvent :: Event -> Action ()
   ReadEvents :: Pagination -> Action EventsQueryResult
   ReadFlow :: Reference -> Action (Maybe Event)
   ReadNotes :: TimeRange -> Action [(LocalTime, Text)]
@@ -45,8 +44,7 @@ data Action a where
   ReadCommands :: Action [CommandView]
 
 instance Show (Action a) where
-  show (WriteFlow f) = "WriteFlow " <> show f
-  show (WriteTrace t) = "WriteTrace " <> show t
+  show (WriteEvent f) = "WriteEvent " <> show f
   show (ReadEvents page) = "ReadEvents " <> show page
   show (ReadFlow ref) = "ReadFlow " <> show ref
   show (ReadNotes range) = "ReadNotes " <> show range
@@ -58,8 +56,7 @@ instance Show (Action a) where
 data Model = Model
   { currentTimestamp :: UTCTime,
     currentProfile :: UserProfile,
-    flows :: Seq Event,
-    traces :: Seq Event
+    events :: Seq Event
   }
   deriving (Eq, Show)
 
@@ -88,8 +85,7 @@ startTime = UTCTime (toEnum 50000) 10000
 generateAction :: UTCTime -> Integer -> Gen SomeAction
 generateAction baseTime k =
   frequency
-    [ (9, SomeAction . WriteFlow <$> generateFlow baseTime k),
-      (7, SomeAction . WriteTrace <$> generateTrace baseTime k),
+    [ (9, SomeAction . WriteEvent <$> generateEvent baseTime k),
       (2, pure $ SomeAction (ReadFlow Latest)),
       (1, arbitrary >>= \(n, s) -> pure (SomeAction (ReadEvents (Page n s)))),
       (1, choose (0, k) >>= \n -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime n)))),
@@ -158,35 +154,34 @@ generateEvent baseTime offset =
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
-interpret (WriteFlow f) = modify $ \m@Model {flows} -> m {flows = flows |> f}
-interpret (WriteTrace t) = modify $ \m@Model {traces} -> m {traces = traces |> t}
+interpret (WriteEvent f) = modify $ \m@Model {events} -> m {events = events |> f}
 interpret (ReadFlow Latest) = do
-  fs <- gets flows
+  fs <- Seq.filter (not . isTrace) <$> gets events
   case viewr fs of
-    _ :> f -> pure $ Just f
+    _ :> f@EventFlow{} -> pure $ Just f
+    _ :> n@EventNote{} -> pure $ Just n
     _ -> pure Nothing
 interpret (ReadFlow _) = error "not implemented"
 interpret (ReadEvents (Page pageNum size)) = do
-  fs <- gets flows
-  ts <- gets traces
-  let evs = Seq.sortBy eventTimestampDesc (fs <> ts)
+  es <- gets events
+  let evs = Seq.sortBy eventTimestampDesc es
       totalEvents = fromIntegral $ Seq.length evs
-      events = toList $ Seq.take (fromIntegral size) $ Seq.drop (fromIntegral $ (pageNum - 1) * size) evs
-      eventsCount = fromIntegral $ Prelude.length events
+      resultEvents = toList $ Seq.take (fromIntegral size) $ Seq.drop (fromIntegral $ (pageNum - 1) * size) evs
+      eventsCount = fromIntegral $ Prelude.length resultEvents
       startIndex = min (fromIntegral $ (pageNum - 1) * size) totalEvents
       endIndex = min (fromIntegral $ pageNum * size) totalEvents
   pure EventsQueryResult {..}
 interpret (ReadNotes rge) = do
   UserProfile {userName, userTimezone} <- gets currentProfile
-  fs <- Seq.filter (inRange rge . eventTimestamp) <$> gets flows
+  fs <- Seq.filter (inRange rge . eventTimestamp) <$> gets events
   pure $ foldr (notesViewBuilder userName userTimezone) [] fs
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
-  fs <- gets flows
+  fs <- gets events
   pure $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] fs
 interpret ReadCommands = do
   UserProfile {userTimezone} <- gets currentProfile
-  ts <- gets traces
+  ts <- gets events
   pure $ foldr (commandViewBuilder userTimezone) [] ts
 
 eventTimestampDesc ::
@@ -198,8 +193,7 @@ eventTimestampDesc e e' = desc $ (compare `on` eventTimestamp) e e'
     desc GT = LT
 
 runDB :: (DB db) => Action a -> db a
-runDB (WriteFlow f) = writeFlow f
-runDB (WriteTrace t) = writeTrace t
+runDB (WriteEvent f) = writeEvent f
 runDB (ReadEvents p) = readProfileOrDefault >>= \u -> readEvents u p
 runDB (ReadFlow r) = readProfileOrDefault >>= \u -> readFlow u r
 runDB (ReadNotes rge) = readProfileOrDefault >>= \u -> readNotes u rge
@@ -240,7 +234,7 @@ runAndCheck (SomeAction act) = do
 canReadFlowsAndTracesWritten ::
   (DB db, HasCallStack) => (forall x. db x -> IO x) -> Actions -> Property
 canReadFlowsAndTracesWritten nt (Actions actions) = monadicIO $ do
-  let start = Model startTime defaultProfile mempty mempty
+  let start = Model startTime defaultProfile mempty
       monitorErrors Nothing = pure ()
       monitorErrors (Just s) = monitor (counterexample s)
   res <- run $ nt $ initLogStorage >> evalStateT (validateActions actions) start

@@ -28,7 +28,7 @@ data Pagination = Page {pageNumber :: Natural, pageSize :: Natural}
   deriving (Eq, Show)
 
 data EventsQueryResult = EventsQueryResult
-  { events :: [Event],
+  { resultEvents :: [Event],
     eventsCount :: Natural,
     startIndex :: Natural,
     endIndex :: Natural,
@@ -51,11 +51,8 @@ class (Monad m) => DB m where
   -- | Initialises the connection, engine or whatever that underlies the DB operations.
   initLogStorage :: m ()
 
-  -- | Write a new `Trace` to the DB
-  writeTrace :: Event -> m ()
-
-  -- | Write a new `Flow` to the DB
-  writeFlow :: Event -> m ()
+  -- | Write a new `Event` to the DB
+  writeEvent :: Event -> m ()
 
   -- | Update the latest's flow start time by given time difference.
   updateLatestFlow :: NominalDiffTime -> m Event

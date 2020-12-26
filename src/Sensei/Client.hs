@@ -24,8 +24,7 @@ import Servant.Client.Core
 killC :: ClientMonad ()
 killC = clientIn (Proxy @KillServer) Proxy
 
-traceC :: Event -> ClientMonad ()
-flowC :: Text -> FlowType -> Event -> ClientMonad ()
+postEventC :: Event -> ClientMonad ()
 getFlowC :: Text -> Reference -> ClientMonad (Maybe Event)
 updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
@@ -39,8 +38,7 @@ getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
-traceC
-  :<|> ( flowC :<|> getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
+( getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
            :<|> queryFlowDaySummaryC
            :<|> notesDayC
            :<|> commandsDayC
@@ -48,7 +46,7 @@ traceC
            :<|> queryFlowC
          )
   :<|> searchNotesC
-  :<|> getLogC
+  :<|> (postEventC :<|> getLogC)
   :<|> (getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn senseiAPI Proxy
 
