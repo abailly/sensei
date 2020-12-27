@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -18,6 +20,7 @@ module Sensei.DB
   )
 where
 
+import Control.Exception.Safe
 import Data.Text (Text)
 import Data.Time
 import Sensei.API
@@ -38,8 +41,12 @@ data EventsQueryResult = EventsQueryResult
 
 -- | Interface to the underlying database.
 -- This interface provide high-level functions to retrieve
--- and store various pieces of data for the `Server`-side operations.
-class (Monad m) => DB m where
+-- and store various pieces of data for the `Server`-side operations. It is expected
+-- to throw exceptions of type `DBError m`.
+class (Exception (DBError m), MonadCatch m) => DB m where
+
+  type DBError m :: *
+
   -- | Stores the current timestamp
   -- This is only used for development or testing purpose
   setCurrentTime :: UserProfile -> UTCTime -> m ()

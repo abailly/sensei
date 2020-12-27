@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | Implementation of flows DB using <https://www.sqlite.org/index.html SQLite>
 -- embedded DB.
@@ -29,11 +30,12 @@
 module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB) where
 
 import Control.Exception (throwIO)
-import Control.Exception.Safe (IOException, try)
+import Control.Exception.Safe (MonadCatch, throwM, Exception, IOException, MonadThrow, try)
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as A
+import Data.Bifunctor (Bifunctor (first))
 import qualified Data.ByteString.Lazy as LBS
 import Data.Int (Int64)
 import Data.Text (Text, pack, unpack)
@@ -41,9 +43,11 @@ import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 import qualified Data.Time as Time
 import Data.Time.LocalTime
-import Database.SQLite.Simple
+import Database.SQLite.Simple hiding (execute, execute_, query, query_)
+import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
-import Preface.Utils (toText, decodeUtf8')
+import GHC.Stack (HasCallStack)
+import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.File (readProfileFile, writeProfileFile)
@@ -53,9 +57,8 @@ import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
-import Data.Bifunctor (Bifunctor(first))
-import GHC.Stack (HasCallStack)
-import Control.Exception.Safe (catch)
+import Control.Exception.Safe (catches)
+import Control.Exception.Safe (Handler(Handler))
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -69,16 +72,17 @@ data SQLiteConfig = SQLiteConfig
 
 -- | Simple monad stack to run SQLite actions within the context of a `SQLiteConfig`.
 newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
-  deriving (Functor, Applicative, Monad, MonadReader SQLiteConfig, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadReader SQLiteConfig, MonadThrow, MonadCatch, MonadIO)
 
 -- | Runs a DB action using given DB file and configuration directory.
 runDB ::
   HasCallStack =>
-  FilePath -> FilePath -> SQLiteDB a -> IO a
+  FilePath ->
+  FilePath ->
+  SQLiteDB a ->
+  IO a
 runDB dbFile configDir act =
-  (unSQLite act `runReaderT` SQLiteConfig dbFile configDir)
-  `catch`
-  \ (ex :: ResultError) -> error (show ex)
+  unSQLite act `runReaderT` SQLiteConfig dbFile configDir
 
 getDataFile :: FilePath -> IO FilePath
 getDataFile configDir = do
@@ -103,7 +107,9 @@ getDataFile configDir = do
 --  file-based event log.
 migrateFileDB ::
   HasCallStack =>
-  FilePath -> FilePath -> IO (Either Text FilePath)
+  FilePath ->
+  FilePath ->
+  IO (Either Text FilePath)
 migrateFileDB dbFile configDir = do
   let oldLog = dbFile <.> "old"
   renameFile dbFile oldLog
@@ -125,9 +131,9 @@ instance ToRow Event where
      in [ts, SQLInteger (fromIntegral currentVersion), toField (typ :: Text), payload]
 
 typeOf :: Event -> Text
-typeOf EventTrace{} = "__TRACE__"
-typeOf (EventFlow Flow{_flowType}) = toText _flowType
-typeOf EventNote{} = "Note"
+typeOf EventTrace {} = "__TRACE__"
+typeOf (EventFlow Flow {_flowType}) = toText _flowType
+typeOf EventNote {} = "Note"
 
 instance FromRow Event where
   fromRow = do
@@ -137,33 +143,33 @@ instance FromRow Event where
     if ver >= 5
       then either error id . eitherDecode . encodeUtf8 <$> field
       else case ty of
-             "__TRACE__" -> decodeTracev4 <$> field
-             "Note" -> decodeNotev4 <$> field
-             _ -> decodeFlowv4 ty <$> field
-      where
-        decodeTracev4 txt =
-          let val = eitherDecode $ encodeUtf8 txt
-          in case val of
-            Left err -> error err
-            Right j -> case A.parse parseEventFromv4 j of
-                         A.Success t -> t
-                         A.Error f -> error f
-        decodeNotev4 txt =
-          let val = eitherDecode $ encodeUtf8 txt
-          in case val of
-            Left err -> error err
-            Right j -> case A.parse parseNoteFromv4 j of
-                         A.Success t -> EventNote t
-                         A.Error f -> error f
-        decodeFlowv4 ty txt =
-          let val = eitherDecode $ encodeUtf8 txt
-              maybetype = parseFlowType ty
-          in case (val, maybetype) of
-               (Left err, _) -> error err
-               (_, Nothing) -> error $ "failed to decode flow type " <> unpack ty
-               (Right j, Just ftype) -> case A.parse parseFlowFromv4 j of
-                                          A.Success t -> EventFlow t { _flowType = ftype }
-                                          A.Error f -> error f
+        "__TRACE__" -> decodeTracev4 <$> field
+        "Note" -> decodeNotev4 <$> field
+        _ -> decodeFlowv4 ty <$> field
+    where
+      decodeTracev4 txt =
+        let val = eitherDecode $ encodeUtf8 txt
+         in case val of
+              Left err -> error err
+              Right j -> case A.parse parseEventFromv4 j of
+                A.Success t -> t
+                A.Error f -> error f
+      decodeNotev4 txt =
+        let val = eitherDecode $ encodeUtf8 txt
+         in case val of
+              Left err -> error err
+              Right j -> case A.parse parseNoteFromv4 j of
+                A.Success t -> EventNote t
+                A.Error f -> error f
+      decodeFlowv4 ty txt =
+        let val = eitherDecode $ encodeUtf8 txt
+            maybetype = parseFlowType ty
+         in case (val, maybetype) of
+              (Left err, _) -> error err
+              (_, Nothing) -> error $ "failed to decode flow type " <> unpack ty
+              (Right j, Just ftype) -> case A.parse parseFlowFromv4 j of
+                A.Success t -> EventFlow t {_flowType = ftype}
+                A.Error f -> error f
 
 data IdFlow = IdFlow {identifier :: Int64, event :: Event}
 
@@ -177,7 +183,32 @@ instance ToField Reference where
 
 -- * DB Implementation
 
+-- ** Error Handling
+
+data SQLiteDBError = SQLiteDBError Query Text
+  deriving (Eq, Show)
+
+instance Exception SQLiteDBError
+
+-- |Repack errors thrown by `SQLite` engine into a `SQLiteDBError`.
+handleErrors :: MonadCatch m => Query -> m a -> m a
+handleErrors q m =
+  m `catches` [ Handler $ \(e :: FormatError) -> throwM $ SQLiteDBError q (pack $ show e),
+                Handler $ \(e :: ResultError) -> throwM $ SQLiteDBError q (pack $ show e),
+                Handler $ \(e :: SQLError) -> throwM $ SQLiteDBError q (pack $ show e)
+              ]
+
+execute :: ToRow q => Connection -> Query -> q -> IO ()
+execute cnx q args = handleErrors q $ SQLite.execute cnx q args
+
+query :: (ToRow q, FromRow r) => Connection -> Query -> q -> IO [r]
+query cnx q args = handleErrors q $ SQLite.query cnx q args
+
+query_ :: (FromRow r) => Connection -> Query -> IO [r]
+query_ cnx q = handleErrors q $ SQLite.query_ cnx q
+
 instance DB SQLiteDB where
+  type DBError SQLiteDB = SQLiteDBError
   initLogStorage = initSQLiteDB
   setCurrentTime u ts = SQLiteDB $ asks storagePath >>= liftIO . setCurrentTimeSQL u ts
   getCurrentTime u = SQLiteDB $ asks storagePath >>= liftIO . getCurrentTimeSQL u
@@ -201,6 +232,22 @@ initSQLiteDB = do
   unless sqliteFileExists $ liftIO $ openFile sqliteFile WriteMode >>= hClose
   liftIO $ migrateSQLiteDB sqliteFile
 
+migrateSQLiteDB :: FilePath -> IO ()
+migrateSQLiteDB sqliteFile =
+  withConnection sqliteFile $ \cnx -> do
+    migResult <-
+      runMigrations
+        cnx
+        [ InitialMigration,
+          createLog,
+          createConfig,
+          createNotesSearch,
+          populateSearch
+        ]
+    case migResult of
+      MigrationSuccessful -> pure ()
+      MigrationFailed err -> throwM $ SQLiteDBError "" err
+
 setCurrentTimeSQL :: UserProfile -> UTCTime -> FilePath -> IO ()
 setCurrentTimeSQL UserProfile {userName} newTime sqliteFile =
   withConnection sqliteFile $ \cnx -> do
@@ -219,7 +266,8 @@ getCurrentTimeSQL UserProfile {userName} sqliteFile =
 
 writeAll ::
   HasCallStack =>
-  [Event] -> SQLiteDB ()
+  [Event] ->
+  SQLiteDB ()
 writeAll events = SQLiteDB $ do
   file <- asks storagePath
   liftIO $
@@ -227,23 +275,31 @@ writeAll events = SQLiteDB $ do
 
 updateNotesIndex ::
   HasCallStack =>
-  Int -> Event -> Connection -> IO ()
-updateNotesIndex rid (EventNote NoteFlow{..}) cnx =
-      let q = "insert into notes_search (id, note) values (?, ?)"
-      in execute cnx q [toField rid, SQLText $ _noteContent]
+  Int ->
+  Event ->
+  Connection ->
+  IO ()
+updateNotesIndex rid (EventNote NoteFlow {..}) cnx =
+  let q = "insert into notes_search (id, note) values (?, ?)"
+   in execute cnx q [toField rid, SQLText $ _noteContent]
 updateNotesIndex _ _ _ = pure ()
 
 writeEventSQL ::
   HasCallStack =>
-  Event -> FilePath -> IO ()
+  Event ->
+  FilePath ->
+  IO ()
 writeEventSQL e sqliteFile =
-  withConnection sqliteFile $ \ cnx -> do
-  rid <- insert e cnx
-  updateNotesIndex rid e cnx
+  withConnection sqliteFile $ \cnx -> do
+    rid <- insert e cnx
+    updateNotesIndex rid e cnx
 
 insert ::
   HasCallStack =>
-  ToRow q => q -> Connection -> IO Int
+  ToRow q =>
+  q ->
+  Connection ->
+  IO Int
 insert event cnx = do
   let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
   execute cnx q event
@@ -252,7 +308,9 @@ insert event cnx = do
 
 updateLatestFlowSQL ::
   HasCallStack =>
-  NominalDiffTime -> FilePath -> IO Event
+  NominalDiffTime ->
+  FilePath ->
+  IO Event
 updateLatestFlowSQL diff sqliteFile =
   withConnection sqliteFile $ \cnx ->
     withTransaction cnx $ do
@@ -270,7 +328,10 @@ updateLatestFlowSQL diff sqliteFile =
 
 readFlowSQL ::
   HasCallStack =>
-  UserProfile -> Reference -> FilePath -> IO (Maybe Event)
+  UserProfile ->
+  Reference ->
+  FilePath ->
+  IO (Maybe Event)
 readFlowSQL _ ref sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1 offset ?"
@@ -282,7 +343,10 @@ readFlowSQL _ ref sqliteFile =
 
 readEventsSQL ::
   HasCallStack =>
-  UserProfile -> Pagination -> FilePath -> IO EventsQueryResult
+  UserProfile ->
+  Pagination ->
+  FilePath ->
+  IO EventsQueryResult
 readEventsSQL _ Page {pageNumber, pageSize} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
@@ -297,7 +361,10 @@ readEventsSQL _ Page {pageNumber, pageSize} sqliteFile =
 
 readNotesSQL ::
   HasCallStack =>
-  UserProfile -> TimeRange -> FilePath -> IO [(LocalTime, Text)]
+  UserProfile ->
+  TimeRange ->
+  FilePath ->
+  IO [(LocalTime, Text)]
 readNotesSQL UserProfile {..} TimeRange {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
@@ -306,7 +373,10 @@ readNotesSQL UserProfile {..} TimeRange {..} sqliteFile =
 
 searchNotesSQL ::
   HasCallStack =>
-  UserProfile -> Text -> FilePath -> IO [(LocalTime, Text)]
+  UserProfile ->
+  Text ->
+  FilePath ->
+  IO [(LocalTime, Text)]
 searchNotesSQL UserProfile {..} text sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, note from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
@@ -315,7 +385,9 @@ searchNotesSQL UserProfile {..} text sqliteFile =
 
 readViewsSQL ::
   HasCallStack =>
-  UserProfile -> FilePath -> IO [FlowView]
+  UserProfile ->
+  FilePath ->
+  IO [FlowView]
 readViewsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
@@ -324,7 +396,9 @@ readViewsSQL UserProfile {..} sqliteFile =
 
 readCommandsSQL ::
   HasCallStack =>
-  UserProfile -> FilePath -> IO [CommandView]
+  UserProfile ->
+  FilePath ->
+  IO [CommandView]
 readCommandsSQL UserProfile {..} sqliteFile =
   withConnection sqliteFile $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' order by timestamp"
