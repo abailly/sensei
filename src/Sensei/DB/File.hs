@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -34,13 +35,15 @@ data FileDBPaths = FileDBPaths { storageFile :: FilePath,
 
 {-# DEPRECATED FileDB "This backend is deprecated in favor of Sensei.DB.SQLite" #-}
 newtype FileDB a = FileDB { unFileDB :: ReaderT FileDBPaths IO a }
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Monad, Exc.MonadThrow, Exc.MonadCatch, MonadIO)
 
 runDB :: FilePath -> FilePath -> FileDB a -> IO a
 runDB storage config =
   (`runReaderT` (FileDBPaths storage config)) . unFileDB
 
 instance DB FileDB where
+  type DBError FileDB = Exc.IOException
+
   initLogStorage = FileDB $ (asks storageFile >>= liftIO . initLogStorageFile)
   getCurrentTime = undefined
   setCurrentTime = undefined
