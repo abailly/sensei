@@ -5,6 +5,7 @@
 module Sensei.TestHelper
   ( app,
     withoutStorage,
+    withFailingStorage,
     withEnv,
     withTempFile,
     withApp,
@@ -28,7 +29,7 @@ where
 
 import Control.Concurrent.MVar
 import Control.Exception.Safe (bracket, finally)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
@@ -48,10 +49,10 @@ import Test.Hspec (ActionWith, Spec, SpecWith, around)
 import Test.Hspec.Wai as W (WaiSession, request, shouldRespondWith)
 import Test.Hspec.Wai.Matcher as W
 
-data AppBuilder = AppBuilder {withStorage :: Bool, withEnv :: Env}
+data AppBuilder = AppBuilder {withStorage :: Bool, withFailingStorage :: Bool, withEnv :: Env}
 
 app :: AppBuilder
-app = AppBuilder True Dev
+app = AppBuilder True False Dev
 
 withoutStorage :: AppBuilder -> AppBuilder
 withoutStorage builder = builder {withStorage = False}
@@ -70,6 +71,7 @@ buildApp AppBuilder {..} act = do
   config <- mkTempDir
   signal <- newEmptyMVar
   application <- senseiApp Nothing signal file config
+  when withFailingStorage $ removePathForcibly file
   act ((), application)
     `finally` removePathForcibly config >> removePathForcibly file
   where

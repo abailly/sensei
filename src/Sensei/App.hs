@@ -12,8 +12,10 @@ module Sensei.App where
 
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
-import Control.Exception.Safe (try)
+import Control.Exception.Safe (throwM, try, catch)
 import Control.Monad.Except
+import Data.ByteString.Lazy(fromStrict)
+import Data.Text.Encoding(encodeUtf8)
 import Data.Swagger (Swagger)
 import Preface.Server
 import Sensei.API
@@ -81,7 +83,15 @@ senseiApp env signal output configDir = do
   runDB output configDir $ initLogStorage
   pure $
     serve fullAPI $
-      hoistServer fullAPI (Handler . ExceptT . try . runDB output configDir) $
+      hoistServer fullAPI runApp $
         pure senseiSwagger
           :<|> baseServer signal
           :<|> Tagged (userInterface env)
+  where
+    runApp :: SQLiteDB x -> Handler x
+    runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir)
+
+
+    handleDBError :: IO a -> IO a
+    handleDBError io =
+      io `catch` \ (SQLiteDBError _q txt) -> throwM $ err500 { errBody = fromStrict $ encodeUtf8 txt }
