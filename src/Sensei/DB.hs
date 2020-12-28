@@ -1,4 +1,7 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -26,9 +29,12 @@ import Data.Time
 import Sensei.API
 import Sensei.Time
 import Data.Maybe (fromJust)
+import GHC.Generics (Generic)
+import Data.Aeson (ToJSON, FromJSON)
 
 data Pagination = Page {pageNumber :: Natural, pageSize :: Natural}
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 data EventsQueryResult = EventsQueryResult
   { resultEvents :: [Event],

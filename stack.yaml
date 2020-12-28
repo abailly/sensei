@@ -5,6 +5,6 @@ ghc-options:
   "$locals": -fwrite-ide-info
 extra-deps:
 - git: https://github.com/pankzsoft/servant-server-base.git
-  commit: 15810befea35e0241d8fd01c0927e10a4eeeaa26
+  commit: 87abac3cdb86e4e384b6c1db5c6ba1bcf6fc3880
 - sqlite-simple-0.4.18.0@sha256:3ceea56375c0a3590c814e411a4eb86943f8d31b93b110ca159c90689b6b39e5,3002
 - direct-sqlite-2.3.26@sha256:04e835402f1508abca383182023e4e2b9b86297b8533afbd4e57d1a5652e0c23,3718

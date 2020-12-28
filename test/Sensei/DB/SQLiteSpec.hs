@@ -2,12 +2,13 @@
 
 module Sensei.DB.SQLiteSpec where
 
-import Data.Functor (void)
-import Data.Text (Text)
+import Data.Text (Text, unpack)
+import Control.Monad.Reader
 import Preface.Log
 import Sensei.API
 import Sensei.DB
 import qualified Sensei.DB.File as File
+import Sensei.DB.Log ()
 import Sensei.DB.Model (canReadFlowsAndTracesWritten)
 import qualified Sensei.DB.Model as Model
 import Sensei.DB.SQLite (SQLiteDBError (..), migrateFileDB, runDB)
@@ -38,6 +39,24 @@ spec =
 
         (runDB tempdb "." fakeLogger $ getCurrentTime defaultProfile)
           `shouldThrow` \SQLiteDBError {} -> True
+
+      it "logs all DB operations using given logger" $ \tempdb -> do
+        let time1 = UTCTime (toEnum 50000) 0
+        logger <- newLog "test"
+
+        res <-
+          runDB tempdb "." logger $
+          runReaderT
+            ( do
+                initLogStorage
+                writeProfile defaultProfile
+                prof <- either (error.unpack) id <$> readProfile
+                setCurrentTime prof time1
+                getCurrentTime prof
+            )
+            logger
+
+        res `shouldBe` time1
 
       it "gets latest current time when time is set explicitly" $ \tempdb -> do
         let time1 = UTCTime (toEnum 50000) 0
