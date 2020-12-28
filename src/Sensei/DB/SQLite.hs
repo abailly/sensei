@@ -27,7 +27,7 @@
 --                           value text not null);
 -- @@
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB) where
+module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB, SQLiteDBError(..)) where
 
 import Control.Exception (throwIO)
 import Control.Exception.Safe (MonadCatch, throwM, Exception, IOException, MonadThrow, try)

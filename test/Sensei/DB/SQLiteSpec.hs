@@ -8,9 +8,10 @@ import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.Model (canReadFlowsAndTracesWritten)
 import qualified Sensei.DB.Model as Model
-import Sensei.DB.SQLite (migrateFileDB, runDB)
+import Sensei.DB.SQLite (migrateFileDB, runDB, SQLiteDBError(..))
 import Sensei.TestHelper
 import Sensei.Time hiding (getCurrentTime)
+import System.Directory
 import System.FilePath ((<.>))
 import Test.Hspec
 import Test.QuickCheck
@@ -21,7 +22,7 @@ spec =
     describe "SQLite DB" $ do
       it "matches DB model" $ \tempdb -> property $ canReadFlowsAndTracesWritten (runDB tempdb ".")
 
-      it "gets IO-based current time when time is not set" $ \tempdb -> property $ do
+      it "gets IO-based current time when time is not set" $ \tempdb -> do
         res <- runDB tempdb "." $ do
           initLogStorage
           t1 <- getCurrentTime defaultProfile
@@ -30,7 +31,13 @@ spec =
 
         uncurry (<) res `shouldBe` True
 
-      it "gets latest current time when time is set explicitly" $ \tempdb -> property $ do
+      it "throws SQLiteDBError when querying uninitialised DB" $ \ tempdb -> do
+        removePathForcibly tempdb
+
+        (runDB tempdb "." $ getCurrentTime defaultProfile)
+          `shouldThrow` \SQLiteDBError{} -> True
+
+      it "gets latest current time when time is set explicitly" $ \tempdb -> do
         let time1 = UTCTime (toEnum 50000) 0
             time2 = UTCTime (toEnum 50000) 100
 
