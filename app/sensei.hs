@@ -10,6 +10,7 @@
 
 module Main where
 
+import Data.Maybe (fromMaybe)
 import Data.Text (pack)
 import qualified Data.Time as Time
 import Sensei.App
@@ -20,7 +21,6 @@ import System.Directory
 import System.Environment
 import System.Exit
 import System.IO
-import System.Posix.User
 import System.Process
   ( CreateProcess (std_err, std_in, std_out),
     StdStream (Inherit),
@@ -56,7 +56,7 @@ main = do
   prog <- getProgName
   progArgs <- getArgs
   st <- Time.getCurrentTime
-  curUser <- getLoginName
+  curUser <- fromMaybe "" <$> lookupEnv "USER"
 
   case prog of
     "ep" -> do
