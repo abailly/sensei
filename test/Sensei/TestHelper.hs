@@ -37,6 +37,7 @@ import Data.Functor (void)
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai.Test (SResponse)
+import Preface.Log
 import Sensei.App (senseiApp)
 import Sensei.Server.Config
 import Sensei.Version
@@ -70,7 +71,7 @@ buildApp AppBuilder {..} act = do
   unless withStorage $ removePathForcibly file
   config <- mkTempDir
   signal <- newEmptyMVar
-  application <- senseiApp Nothing signal file config
+  application <- senseiApp Nothing signal file config fakeLogger
   when withFailingStorage $ removePathForcibly file
   act ((), application)
     `finally` removePathForcibly config >> removePathForcibly file

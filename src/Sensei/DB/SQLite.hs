@@ -1,4 +1,7 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -27,10 +30,10 @@
 --                           value text not null);
 -- @@
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB, SQLiteDBError(..)) where
+module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB, SQLiteDBError (..)) where
 
 import Control.Exception (throwIO)
-import Control.Exception.Safe (MonadCatch, throwM, Exception, IOException, MonadThrow, try)
+import Control.Exception.Safe (Exception, Handler (Handler), IOException, MonadCatch, MonadThrow, catches, throwM, try)
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
@@ -47,6 +50,7 @@ import Database.SQLite.Simple hiding (execute, execute_, query, query_)
 import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
 import GHC.Stack (HasCallStack)
+import Preface.Log (fakeLogger, LoggerEnv(..))
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
 import Sensei.DB
@@ -57,8 +61,7 @@ import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
-import Control.Exception.Safe (catches)
-import Control.Exception.Safe (Handler(Handler))
+import GHC.Generics (Generic)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -67,22 +70,25 @@ data SQLiteConfig = SQLiteConfig
     -- | Directory where user-based configuration is stored. Note that
     --  we reuse the file-based configuration mechanism from `Sensei.DB.File`, it
     --  would probably be better to store everything into the SQLite DB file.
-    configDir :: FilePath
+    configDir :: FilePath,
+    -- | The `LoggerEnv` structure to use for logging this DB's actions
+    logger :: LoggerEnv IO
   }
 
 -- | Simple monad stack to run SQLite actions within the context of a `SQLiteConfig`.
 newtype SQLiteDB a = SQLiteDB {unSQLite :: ReaderT SQLiteConfig IO a}
-  deriving (Functor, Applicative, Monad, MonadReader SQLiteConfig, MonadThrow, MonadCatch, MonadIO)
+  deriving newtype (Functor, Applicative, Monad, MonadReader SQLiteConfig, MonadThrow, MonadCatch, MonadIO)
 
 -- | Runs a DB action using given DB file and configuration directory.
 runDB ::
   HasCallStack =>
   FilePath ->
   FilePath ->
+  LoggerEnv IO ->
   SQLiteDB a ->
   IO a
-runDB dbFile configDir act =
-  unSQLite act `runReaderT` SQLiteConfig dbFile configDir
+runDB dbFile configDir logger act =
+  unSQLite act `runReaderT` SQLiteConfig dbFile configDir logger
 
 getDataFile :: FilePath -> IO FilePath
 getDataFile configDir = do
@@ -116,7 +122,7 @@ migrateFileDB dbFile configDir = do
   evs <- try $ File.runDB oldLog configDir File.readAll
   case evs of
     Left (e :: IOException) -> pure $ Left (pack $ show e)
-    Right events -> runDB dbFile configDir $ do
+    Right events -> runDB dbFile configDir fakeLogger $ do
       initSQLiteDB
       writeAll events
       pure $ Right oldLog
@@ -190,10 +196,11 @@ data SQLiteDBError = SQLiteDBError Query Text
 
 instance Exception SQLiteDBError
 
--- |Repack errors thrown by `SQLite` engine into a `SQLiteDBError`.
+-- | Repack errors thrown by `SQLite` engine into a `SQLiteDBError`.
 handleErrors :: MonadCatch m => Query -> m a -> m a
 handleErrors q m =
-  m `catches` [ Handler $ \(e :: FormatError) -> throwM $ SQLiteDBError q (pack $ show e),
+  m
+    `catches` [ Handler $ \(e :: FormatError) -> throwM $ SQLiteDBError q (pack $ show e),
                 Handler $ \(e :: ResultError) -> throwM $ SQLiteDBError q (pack $ show e),
                 Handler $ \(e :: SQLError) -> throwM $ SQLiteDBError q (pack $ show e)
               ]
@@ -223,14 +230,21 @@ instance DB SQLiteDB where
   readCommands u = SQLiteDB $ asks storagePath >>= liftIO . readCommandsSQL u
   readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
 
+data Events = StoragePathCreated { dbPath :: FilePath }
+  | MigratingSQLiteDB { dbPath :: FilePath }
+  deriving (Eq, Show, Generic)
+  deriving anyclass (A.ToJSON, A.FromJSON)
+
 -- initializes the DB file
 -- if the file does not exist, it is created
 initSQLiteDB :: SQLiteDB ()
 initSQLiteDB = do
-  sqliteFile <- asks storagePath
-  sqliteFileExists <- liftIO $ doesFileExist sqliteFile
-  unless sqliteFileExists $ liftIO $ openFile sqliteFile WriteMode >>= hClose
-  liftIO $ migrateSQLiteDB sqliteFile
+  SQLiteConfig{storagePath,logger} <- ask
+  storagePathExists <- liftIO $ doesFileExist storagePath
+  unless storagePathExists $ liftIO $ do
+    openFile storagePath WriteMode >>= hClose
+    logInfo logger (StoragePathCreated storagePath)
+  liftIO $ withLog logger (MigratingSQLiteDB storagePath) $ migrateSQLiteDB storagePath
 
 migrateSQLiteDB :: FilePath -> IO ()
 migrateSQLiteDB sqliteFile =

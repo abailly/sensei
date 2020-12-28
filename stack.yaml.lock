@@ -10,11 +10,11 @@ packages:
     git: https://github.com/pankzsoft/servant-server-base.git
     pantry-tree:
       size: 1772
-      sha256: f552c123b2bcb273877cff2c14a8d258f0001fbb5805fd45168049e1b755db08
-    commit: c52529b0b1e89568b0134eb8bcaeb591bb737642
+      sha256: baaeab012dc9fc99aafa3f6ec9fd7e1340aef9bcaa819324893c0de684c0d72a
+    commit: c6f49f28217e9e83d3f65813fe63edda08856094
   original:
     git: https://github.com/pankzsoft/servant-server-base.git
-    commit: c52529b0b1e89568b0134eb8bcaeb591bb737642
+    commit: c6f49f28217e9e83d3f65813fe63edda08856094
 - completed:
     hackage: sqlite-simple-0.4.18.0@sha256:3ceea56375c0a3590c814e411a4eb86943f8d31b93b110ca159c90689b6b39e5,3002
     pantry-tree:

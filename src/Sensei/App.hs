@@ -18,6 +18,7 @@ import Data.ByteString.Lazy(fromStrict)
 import Data.Text.Encoding(encodeUtf8)
 import Data.Swagger (Swagger)
 import Preface.Server
+import Preface.Log
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.SQLite
@@ -78,9 +79,9 @@ baseServer signal =
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
-senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> IO Application
-senseiApp env signal output configDir = do
-  runDB output configDir $ initLogStorage
+senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> LoggerEnv IO -> IO Application
+senseiApp env signal output configDir logger = do
+  runDB output configDir logger $ initLogStorage
   pure $
     serve fullAPI $
       hoistServer fullAPI runApp $
@@ -89,7 +90,7 @@ senseiApp env signal output configDir = do
           :<|> Tagged (userInterface env)
   where
     runApp :: SQLiteDB x -> Handler x
-    runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir)
+    runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger)
 
 
     handleDBError :: IO a -> IO a
