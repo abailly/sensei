@@ -46,7 +46,7 @@ import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 import qualified Data.Time as Time
 import Data.Time.LocalTime
-import Database.SQLite.Simple hiding (execute, execute_, query, query_)
+import Database.SQLite.Simple hiding (execute, execute_, query, query_, withConnection)
 import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
 import GHC.Stack (HasCallStack)
@@ -197,43 +197,68 @@ data SQLiteDBError = SQLiteDBError Query Text
 instance Exception SQLiteDBError
 
 -- | Repack errors thrown by `SQLite` engine into a `SQLiteDBError`.
-handleErrors :: MonadCatch m => Query -> m a -> m a
-handleErrors q m =
+handleErrors :: LoggerEnv IO -> Query -> IO a -> IO a
+handleErrors logger q m =
   m
-    `catches` [ Handler $ \(e :: FormatError) -> throwM $ SQLiteDBError q (pack $ show e),
-                Handler $ \(e :: ResultError) -> throwM $ SQLiteDBError q (pack $ show e),
-                Handler $ \(e :: SQLError) -> throwM $ SQLiteDBError q (pack $ show e)
+    `catches` [ Handler $ \(e :: FormatError) -> handle e,
+                Handler $ \(e :: ResultError) -> handle e,
+                Handler $ \(e :: SQLError) -> handle e
               ]
+  where
+    handle :: Show e => e -> IO a
+    handle e = do
+      logError logger (ErrorRunningQuery q (pack $ show e))
+      throwM $ SQLiteDBError q (pack $ show e)
 
-execute :: ToRow q => Connection -> Query -> q -> IO ()
-execute cnx q args = handleErrors q $ SQLite.execute cnx q args
 
-query :: (ToRow q, FromRow r) => Connection -> Query -> q -> IO [r]
-query cnx q args = handleErrors q $ SQLite.query cnx q args
+execute :: (ToRow q) => Connection -> LoggerEnv IO -> Query -> q -> IO ()
+execute cnx logger q args =
+  withLog logger (ExecutingQuery q (Just $ pack $ show $ toRow args)) $
+    handleErrors logger q $ SQLite.execute cnx q args
 
-query_ :: (FromRow r) => Connection -> Query -> IO [r]
-query_ cnx q = handleErrors q $ SQLite.query_ cnx q
+query :: (ToRow q, FromRow r) => Connection -> LoggerEnv IO -> Query -> q -> IO [r]
+query cnx logger q args =
+  withLog logger (ExecutingQuery q (Just $ pack $ show $ toRow args)) $
+    handleErrors logger q $ SQLite.query cnx q args
+
+query_ :: (FromRow r) => Connection -> LoggerEnv IO -> Query -> IO [r]
+query_ cnx logger q =
+  withLog logger (ExecutingQuery q Nothing) $
+    handleErrors logger q $ SQLite.query_ cnx q
+
+withConnection :: (Connection -> IO a) -> SQLiteDB a
+withConnection act =
+  asks storagePath >>= liftIO . (`SQLite.withConnection` act)
 
 instance DB SQLiteDB where
   type DBError SQLiteDB = SQLiteDBError
   initLogStorage = initSQLiteDB
-  setCurrentTime u ts = SQLiteDB $ asks storagePath >>= liftIO . setCurrentTimeSQL u ts
-  getCurrentTime u = SQLiteDB $ asks storagePath >>= liftIO . getCurrentTimeSQL u
-  writeEvent t = SQLiteDB $ asks storagePath >>= liftIO . writeEventSQL t
-  updateLatestFlow ts = SQLiteDB $ asks storagePath >>= liftIO . updateLatestFlowSQL ts
+  setCurrentTime u ts = setCurrentTimeSQL u ts
+  getCurrentTime u = getCurrentTimeSQL u
+  writeEvent t = writeEventSQL t
+  updateLatestFlow ts = updateLatestFlowSQL ts
   writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
-  readFlow u r = SQLiteDB $ (asks storagePath >>= liftIO . readFlowSQL u r)
-  readEvents u p = SQLiteDB $ (asks storagePath >>= liftIO . readEventsSQL u p)
-  readNotes u rge = SQLiteDB $ asks storagePath >>= liftIO . readNotesSQL u rge
-  searchNotes u txt = SQLiteDB $ asks storagePath >>= liftIO . searchNotesSQL u txt
-  readViews u = SQLiteDB $ asks storagePath >>= liftIO . readViewsSQL u
-  readCommands u = SQLiteDB $ asks storagePath >>= liftIO . readCommandsSQL u
+  readFlow u r = readFlowSQL u r
+  readEvents u p = readEventsSQL u p
+  readNotes u rge = readNotesSQL u rge
+  searchNotes u txt = searchNotesSQL u txt
+  readViews u = readViewsSQL u
+  readCommands u = readCommandsSQL u
   readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
 
 data Events = StoragePathCreated { dbPath :: FilePath }
   | MigratingSQLiteDB { dbPath :: FilePath }
+  | ExecutingQuery { queryRun :: Query, queryArgs :: Maybe Text }
+  | ErrorRunningQuery { queryRun :: Query, errorText :: Text }
   deriving (Eq, Show, Generic)
   deriving anyclass (A.ToJSON, A.FromJSON)
+
+-- ** Orphan Instances
+instance A.ToJSON Query where
+  toJSON = A.String . fromQuery
+
+instance A.FromJSON Query where
+  parseJSON = A.withText "Query" $ pure . Query
 
 -- initializes the DB file
 -- if the file does not exist, it is created
@@ -248,7 +273,7 @@ initSQLiteDB = do
 
 migrateSQLiteDB :: FilePath -> IO ()
 migrateSQLiteDB sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+  SQLite.withConnection sqliteFile $ \cnx -> do
     migResult <-
       runMigrations
         cnx
@@ -262,18 +287,20 @@ migrateSQLiteDB sqliteFile =
       MigrationSuccessful -> pure ()
       MigrationFailed err -> throwM $ SQLiteDBError "" err
 
-setCurrentTimeSQL :: UserProfile -> UTCTime -> FilePath -> IO ()
-setCurrentTimeSQL UserProfile {userName} newTime sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
+setCurrentTimeSQL UserProfile {userName} newTime = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "insert into config_log(timestamp, version, user, key, value) values (?,?,?,?,?)"
     ts <- Time.getCurrentTime -- This is silly, isn't it?
-    execute cnx q [toField ts, toField (fromIntegral currentVersion :: Integer), toField userName, toField ("currentTime" :: Text), toField newTime]
+    execute cnx logger q [toField ts, toField (fromIntegral currentVersion :: Integer), toField userName, toField ("currentTime" :: Text), toField newTime]
 
-getCurrentTimeSQL :: UserProfile -> FilePath -> IO UTCTime
-getCurrentTimeSQL UserProfile {userName} sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+getCurrentTimeSQL :: UserProfile -> SQLiteDB UTCTime
+getCurrentTimeSQL UserProfile {userName} = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "select value from config_log where user = ? and key = 'currentTime' order by timestamp desc limit 1"
-    res <- query cnx q (Only userName)
+    res <- query cnx logger q (Only userName)
     case res of
       ([ts] : _) -> pure ts
       _ -> Time.getCurrentTime
@@ -282,60 +309,60 @@ writeAll ::
   HasCallStack =>
   [Event] ->
   SQLiteDB ()
-writeAll events = SQLiteDB $ do
-  file <- asks storagePath
-  liftIO $
-    withConnection file $ \cnx -> forM_ events (`insert` cnx)
+writeAll events = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> forM_ events (insert cnx logger)
 
 updateNotesIndex ::
   HasCallStack =>
   Int ->
   Event ->
   Connection ->
+  LoggerEnv IO ->
   IO ()
-updateNotesIndex rid (EventNote NoteFlow {..}) cnx =
+updateNotesIndex rid (EventNote NoteFlow {..}) cnx logger =
   let q = "insert into notes_search (id, note) values (?, ?)"
-   in execute cnx q [toField rid, SQLText $ _noteContent]
-updateNotesIndex _ _ _ = pure ()
+   in execute cnx logger q [toField rid, SQLText $ _noteContent]
+updateNotesIndex _ _ _ _ = pure ()
 
 writeEventSQL ::
   HasCallStack =>
-  Event ->
-  FilePath ->
-  IO ()
-writeEventSQL e sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
-    rid <- insert e cnx
-    updateNotesIndex rid e cnx
+  Event -> SQLiteDB ()
+writeEventSQL e = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
+    rid <- insert cnx logger e
+    updateNotesIndex rid e cnx logger
 
 insert ::
   HasCallStack =>
   ToRow q =>
-  q ->
   Connection ->
+  LoggerEnv IO ->
+  q ->
   IO Int
-insert event cnx = do
+insert cnx logger event = do
   let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
-  execute cnx q event
-  [[r]] <- query_ cnx "SELECT last_insert_rowid()"
+  execute cnx logger q event
+  [[r]] <- query_ cnx logger "SELECT last_insert_rowid()"
   pure r
 
 updateLatestFlowSQL ::
   HasCallStack =>
   NominalDiffTime ->
-  FilePath ->
-  IO Event
-updateLatestFlowSQL diff sqliteFile =
-  withConnection sqliteFile $ \cnx ->
+  SQLiteDB Event
+updateLatestFlowSQL diff = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx ->
     withTransaction cnx $ do
       let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1"
           u = "update event_log set timestamp = ?, flow_data = ? where id = ?"
-      res <- query_ cnx q
+      res <- query_ cnx logger q
       case res of
         (IdFlow {identifier, event = EventFlow f@Flow {_flowTimestamp}} : _) -> do
           let newTs = addUTCTime diff _flowTimestamp
               updatedFlow = EventFlow f {_flowTimestamp = newTs}
-          execute cnx u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
+          execute cnx logger u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
           pure updatedFlow
         (IdFlow {event} : _) -> pure event -- don't change other events
         [] -> error "no flows recorded"
@@ -344,12 +371,12 @@ readFlowSQL ::
   HasCallStack =>
   UserProfile ->
   Reference ->
-  FilePath ->
-  IO (Maybe Event)
-readFlowSQL _ ref sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+  SQLiteDB (Maybe Event)
+readFlowSQL _ ref = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1 offset ?"
-    res <- query cnx q (Only ref)
+    res <- query cnx logger q (Only ref)
     case res of
       [flow] -> pure $ Just flow
       [] -> pure Nothing
@@ -359,14 +386,14 @@ readEventsSQL ::
   HasCallStack =>
   UserProfile ->
   Pagination ->
-  FilePath ->
-  IO EventsQueryResult
-readEventsSQL _ Page {pageNumber, pageSize} sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+  SQLiteDB EventsQueryResult
+readEventsSQL _ Page {pageNumber, pageSize} = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
         count = "select count(*) from event_log"
-    resultEvents <- query cnx q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
-    [[numEvents]] <- query_ cnx count
+    resultEvents <- query cnx logger q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
+    [[numEvents]] <- query_ cnx logger count
     let totalEvents = fromInteger numEvents
         eventsCount = fromIntegral $ length resultEvents
         startIndex = min ((pageNumber - 1) * pageSize) totalEvents
@@ -377,44 +404,44 @@ readNotesSQL ::
   HasCallStack =>
   UserProfile ->
   TimeRange ->
-  FilePath ->
-  IO [(LocalTime, Text)]
-readNotesSQL UserProfile {..} TimeRange {..} sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+  SQLiteDB [(LocalTime, Text)]
+readNotesSQL UserProfile {..} TimeRange {..} = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
-    notesFlow <- query cnx q [rangeStart, rangeEnd]
+    notesFlow <- query cnx logger q [rangeStart, rangeEnd]
     pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
 
 searchNotesSQL ::
   HasCallStack =>
   UserProfile ->
   Text ->
-  FilePath ->
-  IO [(LocalTime, Text)]
-searchNotesSQL UserProfile {..} text sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+  SQLiteDB [(LocalTime, Text)]
+searchNotesSQL UserProfile {..} text = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "select timestamp, note from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
-    notesFlow <- query cnx q [text]
+    notesFlow <- query cnx logger q [text]
     pure $ fmap (first $ utcToLocalTime userTimezone) notesFlow
 
 readViewsSQL ::
   HasCallStack =>
   UserProfile ->
-  FilePath ->
-  IO [FlowView]
-readViewsSQL UserProfile {..} sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+  SQLiteDB [FlowView]
+readViewsSQL UserProfile {..} = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
-    flows <- query_ cnx q
+    flows <- query_ cnx logger q
     pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] flows
 
 readCommandsSQL ::
   HasCallStack =>
   UserProfile ->
-  FilePath ->
-  IO [CommandView]
-readCommandsSQL UserProfile {..} sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
+  SQLiteDB [CommandView]
+readCommandsSQL UserProfile {..} = do
+  SQLiteConfig{logger} <- ask
+  withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' order by timestamp"
-    traces <- query_ cnx q
+    traces <- query_ cnx logger q
     pure $ foldr (commandViewBuilder userTimezone) [] traces
