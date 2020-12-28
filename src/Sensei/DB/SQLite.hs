@@ -72,7 +72,7 @@ data SQLiteConfig = SQLiteConfig
     --  would probably be better to store everything into the SQLite DB file.
     configDir :: FilePath,
     -- | The `LoggerEnv` structure to use for logging this DB's actions
-    logger :: LoggerEnv IO
+    logger :: LoggerEnv
   }
 
 -- | Simple monad stack to run SQLite actions within the context of a `SQLiteConfig`.
@@ -84,7 +84,7 @@ runDB ::
   HasCallStack =>
   FilePath ->
   FilePath ->
-  LoggerEnv IO ->
+  LoggerEnv ->
   SQLiteDB a ->
   IO a
 runDB dbFile configDir logger act =
@@ -197,7 +197,7 @@ data SQLiteDBError = SQLiteDBError Query Text
 instance Exception SQLiteDBError
 
 -- | Repack errors thrown by `SQLite` engine into a `SQLiteDBError`.
-handleErrors :: LoggerEnv IO -> Query -> IO a -> IO a
+handleErrors :: LoggerEnv -> Query -> IO a -> IO a
 handleErrors logger q m =
   m
     `catches` [ Handler $ \(e :: FormatError) -> handle e,
@@ -211,17 +211,17 @@ handleErrors logger q m =
       throwM $ SQLiteDBError q (pack $ show e)
 
 
-execute :: (ToRow q) => Connection -> LoggerEnv IO -> Query -> q -> IO ()
+execute :: (ToRow q) => Connection -> LoggerEnv -> Query -> q -> IO ()
 execute cnx logger q args =
   withLog logger (ExecutingQuery q (Just $ pack $ show $ toRow args)) $
     handleErrors logger q $ SQLite.execute cnx q args
 
-query :: (ToRow q, FromRow r) => Connection -> LoggerEnv IO -> Query -> q -> IO [r]
+query :: (ToRow q, FromRow r) => Connection -> LoggerEnv -> Query -> q -> IO [r]
 query cnx logger q args =
   withLog logger (ExecutingQuery q (Just $ pack $ show $ toRow args)) $
     handleErrors logger q $ SQLite.query cnx q args
 
-query_ :: (FromRow r) => Connection -> LoggerEnv IO -> Query -> IO [r]
+query_ :: (FromRow r) => Connection -> LoggerEnv -> Query -> IO [r]
 query_ cnx logger q =
   withLog logger (ExecutingQuery q Nothing) $
     handleErrors logger q $ SQLite.query_ cnx q
@@ -318,7 +318,7 @@ updateNotesIndex ::
   Int ->
   Event ->
   Connection ->
-  LoggerEnv IO ->
+  LoggerEnv ->
   IO ()
 updateNotesIndex rid (EventNote NoteFlow {..}) cnx logger =
   let q = "insert into notes_search (id, note) values (?, ?)"
@@ -338,7 +338,7 @@ insert ::
   HasCallStack =>
   ToRow q =>
   Connection ->
-  LoggerEnv IO ->
+  LoggerEnv ->
   q ->
   IO Int
 insert cnx logger event = do

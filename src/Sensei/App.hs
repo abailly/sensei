@@ -22,6 +22,7 @@ import Preface.Log
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.SQLite
+import Sensei.DB.Log()
 import Sensei.IO
 import Sensei.Server
 import Sensei.Server.Config
@@ -31,6 +32,7 @@ import Sensei.Version
 import Servant
 import System.Environment (lookupEnv, setEnv)
 import System.Posix.Daemonize
+import Control.Monad.Reader (ReaderT(runReaderT))
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -79,7 +81,7 @@ baseServer signal =
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
-senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> LoggerEnv IO -> IO Application
+senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> LoggerEnv -> IO Application
 senseiApp env signal output configDir logger = do
   runDB output configDir logger $ initLogStorage
   pure $
@@ -89,9 +91,8 @@ senseiApp env signal output configDir logger = do
           :<|> baseServer signal
           :<|> Tagged (userInterface env)
   where
-    runApp :: SQLiteDB x -> Handler x
-    runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger)
-
+    runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
+    runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger)
 
     handleDBError :: IO a -> IO a
     handleDBError io =

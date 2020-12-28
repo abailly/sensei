@@ -21,7 +21,7 @@ import Data.Aeson hiding (Options)
 import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (first))
 import qualified Data.HashMap.Strict as H
-import Data.Text (Text)
+import Data.Text (unpack, Text)
 import qualified Data.Text as Text
 import Data.Text.ToText
 import Data.Time
@@ -268,6 +268,12 @@ data Reference
   | -- | Refers to the item located `offset` positions from the `Latest` entry
     Pos {offset :: Natural}
   deriving (Eq, Show)
+
+instance ToJSON Reference where
+  toJSON = String . toUrlPiece
+
+instance FromJSON Reference where
+  parseJSON = withText "Reference" $ either (fail.unpack) pure . parseUrlPiece
 
 instance ToHttpApiData Reference where
   toUrlPiece Latest = "latest"
