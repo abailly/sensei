@@ -67,7 +67,7 @@ function createTimelineContainer(day, data, notesData) {
   details.addEventListener('change', (e) => {
     if (e.target.checked) {
       // drawChart(chart, day, data, f => f.flowType);
-      drawTimeline(chart2, day, config.userProfile.userStartOfDay, config.userProfile.userEndOfDay, data);
+      drawTimeline(chart2, day, config.userProfile.userStartOfDay, config.userProfile.userEndOfDay, data, f => f.flowStart);
     } else {
       // drawChart(chart, day, data);
       drawTimeline(chart2, day, config.userProfile.userStartOfDay, config.userProfile.userEndOfDay, data);
