@@ -86,7 +86,7 @@ describe('CSS Timeline', () => {
         expect(container).toMatchSnapshot();
     });
 
-    test('expect timeline to be expand at selected date', () => {
+    xtest('expect timeline to be expand at selected date', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
