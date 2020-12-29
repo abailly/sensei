@@ -1,6 +1,6 @@
 import {dom} from './dom.js';
 import {formatISOTime} from "./date.js";
-import { config } from "./config";
+import {config} from "./config";
 
 import {describe, expect, test} from '@jest/globals';
 import {drawTimeline} from "./css-timeline";
@@ -47,27 +47,50 @@ const flowData = [
 ];
 
 describe('CSS Timeline', () => {
+
+    beforeEach(() => {
+        config.userProfile = {
+            userFlowTypes: {
+                "Other": "#33ffd4",
+                "Learning": "#ff8822",
+                "Flowing": "#00dd22",
+                "Troubleshooting": "#ee1111",
+                "Rework": "#4500dd",
+                "Meeting": "#fff203",
+                "Experimenting": "#0022dd"
+            }
+        };
+    });
+
     test('expect timeline to be drawn', () => {
-        config.userStartOfDay = '08:30:00';
-        config.userEndOfDay = '17:00:00';
+        config.userProfile.userStartOfDay = '08:30:00';
+        config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
         drawTimeline(container, '2020-12-17', flowData);
         expect(container).toMatchSnapshot();
     });
 
     test('expect timeline to be drawn with negative left margin when flow start before user start of day', () => {
-        config.userStartOfDay = '09:00:00';
-        config.userEndOfDay = '17:00:00';
+        config.userProfile.userStartOfDay = '09:00:00';
+        config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
         drawTimeline(container, '2020-12-17', flowData);
         expect(container).toMatchSnapshot();
     });
 
     test('expect timeline to be drawn with positive left margin when flow start after user start of day', () => {
-        config.userStartOfDay = '08:00:00';
-        config.userEndOfDay = '17:00:00';
+        config.userProfile.userStartOfDay = '08:00:00';
+        config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
         drawTimeline(container, '2020-12-17', '08:30:00', '17:00:00', flowData);
+        expect(container).toMatchSnapshot();
+    });
+
+    test('expect timeline to be expand at selected date', () => {
+        config.userProfile.userStartOfDay = '08:00:00';
+        config.userProfile.userEndOfDay = '17:00:00';
+        let container = document.createElement("div");
+        drawTimeline(container, '2020-12-17', flowData, () => '2020-12-17');
         expect(container).toMatchSnapshot();
     });
 });
