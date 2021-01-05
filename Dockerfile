@@ -15,6 +15,7 @@ VOLUME /home/user
 # Run sensei as user 'user' -> this means the server will run unprivileged
 # using id 500, in the /home/user directory
 USER user
+WORKDIR /home/user
 
 ENTRYPOINT ["/bin/sensei-exe" ]
 

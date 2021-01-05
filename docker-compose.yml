@@ -59,13 +59,31 @@ services:
         max-size: ${NGINX_LETSENCRYPT_LOG_MAX_SIZE:-2m}
         max-file: ${NGINX_LETSENCRYPT_LOG_MAX_FILE:-10}
 
+  auth:
+    image: pankzsoft/auth-server:0.1
+    restart: always
+    environment:
+      VIRTUAL_HOST: auth.local
+    ports:
+    - 3001:3001
+    volumes:
+    - auth-data:/home/user
+    logging:
+      driver: ${SENSEI_DRIVER:-json-file}
+      options:
+        max-size: ${SENSEI_MAX_SIZE:-2m}
+        max-file: ${SENSEI_MAX_FILE:-10}
+
   sensei:
     image: pankzsoft/sensei:3c89987222b0ef2a18cc9c60c43b41266c5517c9
+    restart: always
     container_name: "sensei"
     environment:
       VIRTUAL_HOST: sensei.app.pankzsoft.com
       LETSENCRYPT_HOST: sensei.app.pankzsoft.com
       LETSENCRYPT_EMAIL: arnaud@pankzsoft.com
+      SENSEI_SERVER_NAME: sensei.app.pankzsoft.com
+      SENSEI_SERVER_PORT: 8899
       ENVIRONMENT: prod
     ports:
       - 8899:8899
