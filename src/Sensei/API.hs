@@ -167,29 +167,31 @@ type PutUserProfile =
     :> Put '[JSON] NoContent
 
 type SenseiAPI =
-  "flows"
-    :> Tags "Flows"
-    :> ( GetFlow
-           :<|> PatchFlowTimeshift
-           :<|> GetGroupSummary
-           :<|> GetDailySummary
-           :<|> GetNotes
-           :<|> GetCommands
-           :<|> GetFlowsTimeline
-           :<|> GetGroupedTimelines
+  "api"
+    :> ( "flows"
+           :> Tags "Flows"
+           :> ( GetFlow
+                  :<|> PatchFlowTimeshift
+                  :<|> GetGroupSummary
+                  :<|> GetDailySummary
+                  :<|> GetNotes
+                  :<|> GetCommands
+                  :<|> GetFlowsTimeline
+                  :<|> GetGroupedTimelines
+              )
+           :<|> "notes"
+             :> Tags "Notes"
+             :> SearchNotes
+           :<|> "log"
+             :> Tags "Event Log"
+             :> ( PostEvent
+                    :<|> GetAllLog
+                )
+           :<|> "users"
+             :> Tags "User Profile"
+             :> (GetUserProfile :<|> PutUserProfile)
+           :<|> Tags "Metadata" :> DisplayVersions
        )
-    :<|> "notes"
-      :> Tags "Notes"
-      :> SearchNotes
-    :<|> "log"
-      :> Tags "Event Log"
-      :> ( PostEvent
-             :<|> GetAllLog
-         )
-    :<|> "users"
-      :> Tags "User Profile"
-      :> (GetUserProfile :<|> PutUserProfile)
-    :<|> Tags "Metadata" :> DisplayVersions
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
@@ -198,26 +200,26 @@ nextPageLink :: Text -> Maybe Natural -> Maybe Link.Link
 nextPageLink userName page = do
   p <- page <|> pure 1
   let next = show (succ p)
-  uri <- uriFromString $ "/log/" <> unpack userName <> "?page=" <> next
+  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> next
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
 previousPageLink :: Text -> Maybe Natural -> Maybe Link.Link
 previousPageLink userName page = do
   p <- page
   let prev = show (pred p)
-  uri <- uriFromString $ "/log/" <> unpack userName <> "?page=" <> prev
+  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> prev
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
 
 nextDayLink :: Text -> Maybe Day -> Maybe Link.Link
 nextDayLink userName day = do
   d <- day
   let next = showGregorian (succ d)
-  uri <- uriFromString $ "/flows/" <> unpack userName <> "/" <> next <> "/" <> "notes"
+  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> next <> "/" <> "notes"
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
 previousDayLink :: Text -> Maybe Day -> Maybe Link.Link
 previousDayLink userName day = do
   d <- day
   let prev = showGregorian (pred d)
-  uri <- uriFromString $ "/flows/" <> unpack userName <> "/" <> prev <> "/" <> "notes"
+  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> prev <> "/" <> "notes"
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]

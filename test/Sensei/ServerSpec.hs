@@ -13,7 +13,7 @@ spec =
   describe "Sensei Server" $ do
     withApp (withoutStorage app) $
       it "creates storage file if it does not exist" $ do
-        getJSON "/flows/arnaud"
+        getJSON "/api/flows/arnaud"
           `shouldRespondWith` 200
 
     withApp (app {withEnv = Prod}) $
@@ -32,5 +32,5 @@ spec =
 
     withApp (app {withFailingStorage = True}) $
       it "returns error 500 with details given DB fails to access storage file" $ do
-        getJSON "/flows/arnaud"
+        getJSON "/api/flows/arnaud"
           `shouldRespondWith` 500

@@ -74,11 +74,11 @@ spec = describe "Users Management" $ do
 
   withApp app $
     describe "Users API" $ do
-      it "GET /users/<user> returns defualt profile" $ do
-        getJSON "/users/arnaud"
+      it "GET /api/users/<user> returns defualt profile" $ do
+        getJSON "/api/users/arnaud"
           `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals defaultProfile)
 
-      it "PUT /users/<user> sets user profile" $ do
+      it "PUT /api/users/<user> sets user profile" $ do
         let profile =
               UserProfile
                 { userName = "robert",
@@ -88,7 +88,7 @@ spec = describe "Users Management" $ do
                   userFlowTypes = Nothing,
                   userCommands = Just (Map.fromList [("g", "/usr/bin/git")])
                 }
-        putJSON_ "/users/arnaud" profile
+        putJSON_ "/api/users/arnaud" profile
 
-        getJSON "/users/arnaud"
+        getJSON "/api/users/arnaud"
           `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals profile)

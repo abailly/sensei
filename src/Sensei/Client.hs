@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Sensei.Client where
 
@@ -39,16 +40,16 @@ getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
 ( getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
-           :<|> queryFlowDaySummaryC
-           :<|> notesDayC
-           :<|> commandsDayC
-           :<|> queryFlowDayC
-           :<|> queryFlowC
-         )
+    :<|> queryFlowDaySummaryC
+    :<|> notesDayC
+    :<|> commandsDayC
+    :<|> queryFlowDayC
+    :<|> queryFlowC
+  )
   :<|> searchNotesC
   :<|> (postEventC :<|> getLogC)
   :<|> (getUserProfileC :<|> setUserProfileC)
-  :<|> getVersionsC = clientIn senseiAPI Proxy
+  :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
 newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => m a}
 
