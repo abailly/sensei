@@ -14,6 +14,7 @@ import Control.Concurrent.Async
 import Control.Concurrent.MVar
 import Control.Exception.Safe (throwM, try, catch)
 import Control.Monad.Except
+import Data.Text(pack)
 import Data.ByteString.Lazy(fromStrict)
 import Data.Text.Encoding(encodeUtf8)
 import Data.Swagger (Swagger)
@@ -33,6 +34,7 @@ import Servant
 import System.Environment (lookupEnv, setEnv)
 import System.Posix.Daemonize
 import Control.Monad.Reader (ReaderT(runReaderT))
+import Data.Maybe (fromMaybe)
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -55,9 +57,19 @@ sensei :: FilePath -> IO ()
 sensei output = do
   signal <- newEmptyMVar
   configDir <- getConfigDirectory
+  serverName <- pack . fromMaybe "" <$> lookupEnv "SENSEI_SERVER_NAME"
+  serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-  server <- startAppServer "" [] 23456 (senseiApp env signal output configDir)
+  server <- startAppServer serverName [] serverPort (senseiApp env signal output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
+
+readPort :: Maybe String -> Int
+readPort Nothing = 23456
+readPort (Just portString) =
+  case reads portString of
+    (p,[]):_ -> p
+    _ -> error ("invalid environment variable SENSEI_SERVER_PORT "<> portString)
+
 
 baseServer ::
   (MonadIO m, DB m) =>
