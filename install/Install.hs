@@ -75,6 +75,7 @@ runShake pwd uid = shakeArgs options $ do
         "Dockerfile"
       ]
     need ["stack.yaml"]
+    need ["ui/dist/index.html"]
     cmd
       "docker"
       [ "run",
@@ -121,7 +122,7 @@ runShake pwd uid = shakeArgs options $ do
     checkEnvironment
     cmd_ "terraform" ["destroy", "-auto-approve", "-var-file=infra/terraform.tfvars", "infra"]
 
-  "ui" ~> do
+  "ui/dist/index.html" %> \ _ -> do
     needDirectoryFiles
       "ui"
       [ "src//*.js",

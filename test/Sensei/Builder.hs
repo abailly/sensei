@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Specific help functions and types to help build and manipulate
@@ -10,7 +10,7 @@ import Sensei.API
 import Sensei.TestHelper
 
 postEvent :: Event -> WaiSession () SResponse
-postEvent e =  postJSON ("/log") e
+postEvent = postJSON "/api/log"
 
 postEvent_ :: Event -> WaiSession () ()
 postEvent_ =  void . postEvent

@@ -2,7 +2,7 @@
 
 module Sensei.DB.SQLiteSpec where
 
-import Data.Text (Text, unpack)
+import Data.Text (Text)
 import Control.Monad.Reader
 import Preface.Log
 import Sensei.API
@@ -37,7 +37,7 @@ spec =
       it "throws SQLiteDBError when querying uninitialised DB" $ \tempdb -> do
         removePathForcibly tempdb
 
-        (runDB tempdb "." fakeLogger $ getCurrentTime defaultProfile)
+        runDB tempdb "." fakeLogger (getCurrentTime defaultProfile)
           `shouldThrow` \SQLiteDBError {} -> True
 
       it "logs all DB operations using given logger" $ \tempdb -> do
@@ -49,10 +49,8 @@ spec =
           runReaderT
             ( do
                 initLogStorage
-                writeProfile defaultProfile
-                prof <- either (error.unpack) id <$> readProfile
-                setCurrentTime prof time1
-                getCurrentTime prof
+                setCurrentTime defaultProfile time1
+                getCurrentTime defaultProfile
             )
             logger
 
@@ -78,7 +76,7 @@ spec =
                 <*> readNotes defaultProfile (TimeRange Model.startTime (addUTCTime 1000000 Model.startTime))
                 <*> readCommands defaultProfile
         actions <- generate $ resize 100 arbitrary
-        void $ File.runDB tempdb "." $ initLogStorage >> (Model.runActions actions)
+        void $ File.runDB tempdb "." $ initLogStorage >> Model.runActions actions
         expected <- File.runDB tempdb "." checks
 
         res <- migrateFileDB tempdb "."
@@ -88,7 +86,7 @@ spec =
         actual `shouldBe` expected
 
       it "indexes newly inserted note on the fly" $ \tempdb -> do
-        let noteTime = (UTCTime (toEnum 50000) 1000)
+        let noteTime = UTCTime (toEnum 50000) 1000
             content = "foo bar baz cat"
             note1 = NoteFlow "arnaud" noteTime "some/dir" content
         res <- runDB tempdb "." fakeLogger $ do
