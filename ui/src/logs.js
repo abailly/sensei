@@ -45,7 +45,7 @@ function formatLogEntry(entry) {
 */
 export default function logs(router, container, page) {
   clearElement(container);
-  get(`/log/${config.user}?page=${page}`, (logEntries, links) => {
+  get(`/api/log/${config.user}?page=${page}`, (logEntries, links) => {
     const logDiv = pagination('log', router, links);
     const logTable =
       <table class='tbl-log'>
