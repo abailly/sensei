@@ -53,7 +53,7 @@ export function drawNotes(container, notesData) {
 
 function list(router, container, page) {
   clearElement(container);
-  get(`/flows/${config.user}/${page}/notes`, (notesList, links) => {
+  get(`/api/flows/${config.user}/${page}/notes`, (notesList, links) => {
     const notesPage = pagination('notes', router, links);
     const notesDiv =
       <div id='notes-list'>
@@ -77,7 +77,7 @@ function search(router, container) {
 
     if (q.length > 0 && !debounce) {
       debounce = true;
-      get(`/notes/${config.user}?search=${encodeURI(q)}`, (searchResult) => {
+      get(`/api/notes/${config.user}?search=${encodeURI(q)}`, (searchResult) => {
         const resList = <div>
           {
             searchResult.map(formatNoteDiv)

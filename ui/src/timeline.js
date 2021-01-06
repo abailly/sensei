@@ -76,7 +76,7 @@ function createTimelineContainer(day, data, notesData) {
 
   notes.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(`/flows/${config.user}/${day}/notes`, (notesData) =>
+      get(`/api/flows/${config.user}/${day}/notes`, (notesData) =>
         drawNotes(notesDiv, notesData));
     } else {
       clearElement(notesDiv);
@@ -85,7 +85,7 @@ function createTimelineContainer(day, data, notesData) {
 
   commands.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(`/flows/${config.user}/${day}/commands`, (commandsData) =>
+      get(`/api/flows/${config.user}/${day}/commands`, (commandsData) =>
         drawCommands(commandsDiv, commandsData));
     } else {
       clearElement(commandsDiv);
@@ -121,13 +121,13 @@ function drawCharts(flowData) {
 }
 
 function fetchFlowData(selectedDate) {
-  get(`/flows/${config.user}/` + selectedDate, (flowData) => {
+  get(`/api/flows/${config.user}/` + selectedDate, (flowData) => {
     createTimelineContainer(selectedDate, flowData);
   });
 };
 
 function fetchAllFlowData() {
-  get(`/flows/${config.user}?group=Day`, drawCharts);
+  get(`/api/flows/${config.user}?group=Day`, drawCharts);
 };
 
 export default function timeline() {
