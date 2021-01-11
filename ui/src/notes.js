@@ -4,8 +4,10 @@ import { get } from './request';
 import { dom, clear, clearElement } from './dom';
 import { pagination } from './page';
 
+const showdownOptions = { simplifiedAutoLink: true, tables: true };
+
 function markdownNote(note) {
-  return new showdown.Converter({ simplifiedAutoLink: true })
+  return new showdown.Converter(showdownOptions)
     .makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent);
 }
 
@@ -22,7 +24,7 @@ function formatNoteDiv(note) {
   const content = <div class='note-content'>
   </div>;
 
-  content.innerHTML = new showdown.Converter({ simplifiedAutoLink: true }).makeHtml(note.noteContent);
+  content.innerHTML = new showdown.Converter(showdownOptions).makeHtml(note.noteContent);
   noteDiv.appendChild(content);
   return noteDiv;
 }
