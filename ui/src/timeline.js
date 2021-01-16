@@ -6,7 +6,6 @@ import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
 import { colorOf } from './color.js';
-import {LocalDate, LocalDateTime} from "@js-joda/core";
 
 /**
    Draw a timeline chart in given element with given data
