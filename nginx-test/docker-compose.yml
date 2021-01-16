@@ -1,0 +1,36 @@
+version: '3'
+services:
+  nginx-web:
+    image: nginx
+    container_name: nginx
+    restart: always
+    ports:
+      - 8888:8888
+    volumes:
+      - ./:/etc/nginx/conf.d
+  auth:
+    image: pankzsoft/hsauth:latest
+    container_name: auth
+    restart: always
+    environment:
+      AUTH_SERVER_ADMIN_PASSWORD: password
+      AUTH_SERVER_JWK: ${AUTH_SERVER_JWK}
+    ports:
+    - 3001:3001
+    volumes:
+    - auth-data:/home/user
+  sensei:
+    image: pankzsoft/sensei:latest
+    restart: always
+    container_name: sensei
+    environment:
+      SENSEI_SERVER_NAME: "sensei:8899"
+      SENSEI_SERVER_PORT: 8899
+      ENVIRONMENT: prod
+    ports:
+      - 8899:8899
+    volumes:
+      - sensei-data:/home/user
+volumes:
+  sensei-data: {}
+  auth-data: {}

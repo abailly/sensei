@@ -7,7 +7,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (pack)
 import Data.Time (UTCTime, diffUTCTime)
-import Sensei.Client (ClientMonad, getUserProfileC, traceC)
+import Sensei.Client (ClientMonad, getUserProfileC, postEventC)
 import Sensei.Flow
 import Sensei.User
 import System.Exit (ExitCode (..))
@@ -50,7 +50,7 @@ tryWrapProg io@WrapperIO {..} curUser prog args currentDir = do
     Just realPath -> do
       isFile <- fileExists realPath
       if isFile
-        then Right <$> wrapProg io realPath args currentDir
+        then Right <$> wrapProg io curUser realPath args currentDir
         else pure $ Left (NonExistentAlias prog realPath)
     Nothing -> pure $ Left (UnMappedAlias prog)
 
@@ -58,14 +58,15 @@ wrapProg ::
   (Monad m) =>
   WrapperIO m ->
   String ->
+  String ->
   [String] ->
   FilePath ->
   m ExitCode
-wrapProg WrapperIO {..} realProg progArgs currentDir = do
+wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   st <- getCurrentTime
   ex <- runProcess realProg progArgs
   en <- getCurrentTime
-  send (traceC $ Trace en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st) currentVersion)
+  send (postEventC $ EventTrace $ Trace (pack curUser) en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st))
   pure ex
 
 toInt :: ExitCode -> Int

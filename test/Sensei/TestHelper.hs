@@ -5,6 +5,7 @@
 module Sensei.TestHelper
   ( app,
     withoutStorage,
+    withFailingStorage,
     withEnv,
     withTempFile,
     withApp,
@@ -19,14 +20,16 @@ module Sensei.TestHelper
     patchJSON,
 
     -- * Assertion helpers
-    bodyContains, jsonBodyEquals,
+    bodyContains,
+    jsonBodyEquals,
     module W,
+    SResponse,
   )
 where
 
 import Control.Concurrent.MVar
 import Control.Exception.Safe (bracket, finally)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
@@ -34,6 +37,7 @@ import Data.Functor (void)
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai.Test (SResponse)
+import Preface.Log
 import Sensei.App (senseiApp)
 import Sensei.Server.Config
 import Sensei.Version
@@ -46,10 +50,10 @@ import Test.Hspec (ActionWith, Spec, SpecWith, around)
 import Test.Hspec.Wai as W (WaiSession, request, shouldRespondWith)
 import Test.Hspec.Wai.Matcher as W
 
-data AppBuilder = AppBuilder {withStorage :: Bool, withEnv :: Env}
+data AppBuilder = AppBuilder {withStorage :: Bool, withFailingStorage :: Bool, withEnv :: Env}
 
 app :: AppBuilder
-app = AppBuilder True Dev
+app = AppBuilder True False Dev
 
 withoutStorage :: AppBuilder -> AppBuilder
 withoutStorage builder = builder {withStorage = False}
@@ -67,7 +71,8 @@ buildApp AppBuilder {..} act = do
   unless withStorage $ removePathForcibly file
   config <- mkTempDir
   signal <- newEmptyMVar
-  application <- senseiApp Nothing signal file config
+  application <- senseiApp Nothing signal file config fakeLogger
+  when withFailingStorage $ removePathForcibly file
   act ((), application)
     `finally` removePathForcibly config >> removePathForcibly file
   where
@@ -97,8 +102,14 @@ getJSON :: ByteString -> WaiSession () SResponse
 getJSON path = request "GET" path [("Accept", "application/json"), ("X-API-Version", toHeader senseiVersion)] mempty
 
 jsonBodyEquals ::
-  A.ToJSON a => a -> MatchBody
-jsonBodyEquals = bodyEquals . A.encode
+  (Eq a, Show a, A.FromJSON a) => a -> MatchBody
+jsonBodyEquals expected = MatchBody $ \_ body ->
+  case A.eitherDecode body of
+    Right actual ->
+      if actual /= expected
+        then Just ("expected " <> show expected <> ", got " <> show actual)
+        else Nothing
+    Left err -> Just err
 
 bodyContains :: ByteString -> MatchBody
 bodyContains fragment =

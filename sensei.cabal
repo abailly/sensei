@@ -1,21 +1,21 @@
 name:                sensei
-version:             0.18.0
-synopsis:            Short description of your package
-homepage:            https://github.com/githubuser/sensei#readme
+version:             0.21.0
+synopsis:            A tool to collect information about one's coding process
+homepage:            https://github.com/abailly/sensei#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2017 Author name here
+author:              Arnaud Bailly
+maintainer:          arnaud@pankzsoft.com
+copyright:           2020 Arnaud Bailly
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
-cabal-version:       >=1.10
+cabal-version:       >=2.0
 
 -- To avoid duplicated efforts in documentation and dealing with the
 -- complications of embedding Haddock markup inside cabal files, it is
 -- common to point users to the README.md file.
-description:         Please see the README on Github at <https://github.com/githubuser/sensei#readme>
+description:         Please see the README on Github at <https://github.com/abailly/sensei#readme>
 
 library
   hs-source-dirs:      src
@@ -32,6 +32,7 @@ library
                      , Sensei.Utils
                      , Sensei.DB
                      , Sensei.DB.File
+                     , Sensei.DB.Log
                      , Sensei.DB.SQLite
   other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
@@ -76,6 +77,7 @@ library
                      , text
                      , time
                      , unix
+                     , unordered-containers
                      , wai
                      , wai-app-static
                      , wai-cors
@@ -104,6 +106,7 @@ test-suite sensei-test
   main-is:             Spec.hs
   other-modules:       Sensei.CLISpec
                      , Sensei.ColorSpec
+                     , Sensei.FlowSpec
                      , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
                      , Sensei.LogSpec

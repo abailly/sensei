@@ -1,0 +1,23 @@
+{
+    "builders": [
+        {
+            "type": "googlecompute",
+            "source_image": "ubuntu-1804-bionic-v20200129a",
+            "account_file": "pankzsoft-terraform-admin.json",
+            "project_id": "pankzsoft-terraform-admin",
+            "ssh_username": "curry",
+            "image_family": "pankzsoft",
+            "image_name": "compute-{{timestamp}}",
+            "zone": "europe-west4-a"
+        }
+    ],
+    "provisioners": [{
+    "type": "shell",
+        "inline": [
+            "sleep 30"
+        ]
+    },{
+        "type": "shell",
+        "script": "build-env.sh"
+    }]
+}

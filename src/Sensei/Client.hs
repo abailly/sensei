@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Sensei.Client where
 
@@ -24,10 +25,9 @@ import Servant.Client.Core
 killC :: ClientMonad ()
 killC = clientIn (Proxy @KillServer) Proxy
 
-traceC :: Trace -> ClientMonad ()
-flowC :: Text -> FlowType -> FlowState -> ClientMonad ()
-getFlowC :: Text -> Reference -> ClientMonad (Maybe Flow)
-updateFlowC :: Text -> TimeDifference -> ClientMonad FlowState
+postEventC :: Event -> ClientMonad ()
+getFlowC :: Text -> Reference -> ClientMonad (Maybe Event)
+updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
@@ -39,18 +39,17 @@ getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
-traceC
-  :<|> ( flowC :<|> getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
-           :<|> queryFlowDaySummaryC
-           :<|> notesDayC
-           :<|> commandsDayC
-           :<|> queryFlowDayC
-           :<|> queryFlowC
-         )
+( getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
+    :<|> queryFlowDaySummaryC
+    :<|> notesDayC
+    :<|> commandsDayC
+    :<|> queryFlowDayC
+    :<|> queryFlowC
+  )
   :<|> searchNotesC
-  :<|> getLogC
+  :<|> (postEventC :<|> getLogC)
   :<|> (getUserProfileC :<|> setUserProfileC)
-  :<|> getVersionsC = clientIn senseiAPI Proxy
+  :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
 newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => m a}
 

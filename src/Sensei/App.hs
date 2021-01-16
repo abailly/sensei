@@ -12,13 +12,18 @@ module Sensei.App where
 
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
-import Control.Exception.Safe (try)
+import Control.Exception.Safe (throwM, try, catch)
 import Control.Monad.Except
+import Data.Text(pack)
+import Data.ByteString.Lazy(fromStrict)
+import Data.Text.Encoding(encodeUtf8)
 import Data.Swagger (Swagger)
 import Preface.Server
+import Preface.Log
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.SQLite
+import Sensei.DB.Log()
 import Sensei.IO
 import Sensei.Server
 import Sensei.Server.Config
@@ -28,6 +33,8 @@ import Sensei.Version
 import Servant
 import System.Environment (lookupEnv, setEnv)
 import System.Posix.Daemonize
+import Control.Monad.Reader (ReaderT(runReaderT))
+import Data.Maybe (fromMaybe)
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -50,9 +57,19 @@ sensei :: FilePath -> IO ()
 sensei output = do
   signal <- newEmptyMVar
   configDir <- getConfigDirectory
+  serverName <- pack . fromMaybe "" <$> lookupEnv "SENSEI_SERVER_NAME"
+  serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-  server <- startAppServer "" [] 23456 (senseiApp env signal output configDir)
+  server <- startAppServer serverName [] serverPort (senseiApp env signal output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
+
+readPort :: Maybe String -> Int
+readPort Nothing = 23456
+readPort (Just portString) =
+  case reads portString of
+    (p,[]):_ -> p
+    _ -> error ("invalid environment variable SENSEI_SERVER_PORT "<> portString)
+
 
 baseServer ::
   (MonadIO m, DB m) =>
@@ -62,9 +79,7 @@ baseServer signal =
   killS signal
     :<|> setCurrentTimeS
     :<|> getCurrentTimeS
-    :<|> traceS
-    :<|> ( flowS
-             :<|> getFlowS
+    :<|> ( getFlowS
              :<|> updateFlowStartTimeS
              :<|> queryFlowSummaryS
              :<|> queryFlowDaySummaryS
@@ -74,16 +89,23 @@ baseServer signal =
              :<|> queryFlowS
          )
     :<|> searchNoteS
-    :<|> getLogS
+    :<|> (postEventS :<|> getLogS)
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
-senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> IO Application
-senseiApp env signal output configDir = do
-  runDB output configDir $ initLogStorage
+senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> LoggerEnv -> IO Application
+senseiApp env signal output configDir logger = do
+  runDB output configDir logger $ initLogStorage
   pure $
     serve fullAPI $
-      hoistServer fullAPI (Handler . ExceptT . try . runDB output configDir) $
+      hoistServer fullAPI runApp $
         pure senseiSwagger
           :<|> baseServer signal
           :<|> Tagged (userInterface env)
+  where
+    runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
+    runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger)
+
+    handleDBError :: IO a -> IO a
+    handleDBError io =
+      io `catch` \ (SQLiteDBError _q txt) -> throwM $ err500 { errBody = fromStrict $ encodeUtf8 txt }

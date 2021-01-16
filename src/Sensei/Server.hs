@@ -36,18 +36,12 @@ getCurrentTimeS usr = do
   usrProfile <- getUserProfileS usr
   Timestamp <$> getCurrentTime usrProfile
 
-traceS ::
-  (DB m) => Trace -> m ()
-traceS trace =
-  writeTrace trace
-
-flowS ::
-  (DB m) => Text -> FlowType -> FlowState -> m ()
-flowS _ flowTyp flow =
-  writeFlow (Flow flowTyp flow currentVersion)
+postEventS ::
+  (DB m) => Event -> m ()
+postEventS = writeEvent
 
 updateFlowStartTimeS ::
-  (DB m) => Text -> TimeDifference -> m FlowState
+  (DB m) => Text -> TimeDifference -> m Event
 updateFlowStartTimeS _ timediff =
   updateLatestFlow (toNominalDiffTime timediff)
 
@@ -122,7 +116,7 @@ queryFlowSummaryS usr = do
       )
 
 getFlowS ::
-  (DB m) => Text -> Reference -> m (Maybe Flow)
+  (DB m) => Text -> Reference -> m (Maybe Event)
 getFlowS usr ref = do
   profile <- getUserProfileS usr
   readFlow profile ref
@@ -150,7 +144,7 @@ getLogS userName page = do
         case catMaybes [nextHeader, previousHeader] of
           [] -> noHeader
           ls -> addHeader $ writeLinkHeader ls
-  pure $ links events
+  pure $ links resultEvents
 
 getUserProfileS ::
   (DB m) => Text -> m UserProfile

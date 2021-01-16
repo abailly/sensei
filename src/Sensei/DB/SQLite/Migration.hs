@@ -132,16 +132,3 @@ applyMigration m@Migration {..} cnx = do
 runMigrations :: Connection -> [Migration] -> IO MigrationResult
 runMigrations cnx =
   foldM (runMigration cnx) MigrationSuccessful
-
-migrateSQLiteDB :: FilePath -> IO ()
-migrateSQLiteDB sqliteFile =
-  withConnection sqliteFile $ \cnx -> do
-    migResult <- runMigrations cnx [InitialMigration, createLog, createConfig, createNotesSearch, populateSearch]
-    case migResult of
-      MigrationSuccessful -> pure ()
-      MigrationFailed err -> throwIO $ SQLiteDBError err
-
-data SQLiteDBError = SQLiteDBError Text
-  deriving (Eq, Show)
-
-instance Exception SQLiteDBError

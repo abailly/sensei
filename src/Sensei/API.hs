@@ -29,7 +29,7 @@ module Sensei.API
     module Sensei.User,
     module Sensei.Utils,
     GroupViews (..),
-    Trace (..),
+    Event (..),
     Group (..),
     UserProfile (..),
   )
@@ -81,17 +81,9 @@ type DisplayVersions =
     :> "versions"
     :> Get '[JSON] Versions
 
-type PostRecordTrace =
-  Summary "Record execution 'trace' of a single command execution."
-    :> "trace"
-    :> ReqBody '[JSON] Trace
-    :> Post '[JSON] ()
-
-type PostRecordFlow =
-  Summary "Record start of some type of Flow."
-    :> Capture "user" Text
-    :> Capture "flowType" FlowType
-    :> ReqBody '[JSON] FlowState
+type PostEvent =
+  Summary "Record a new `Event` in the log."
+    :> ReqBody '[JSON] Event
     :> Post '[JSON] ()
 
 type PatchFlowTimeshift =
@@ -104,7 +96,7 @@ type PatchFlowTimeshift =
     :> "latest"
     :> "timestamp"
     :> ReqBody '[JSON] TimeDifference
-    :> Patch '[JSON] FlowState
+    :> Patch '[JSON] Event
 
 type GetGroupSummary =
   Summary "Retrieve grouped summary of flows by type."
@@ -143,7 +135,7 @@ type GetFlow =
   Summary "Query flows"
     :> Capture "user" Text
     :> Capture "ref" Reference
-    :> Get '[JSON] (Maybe Flow)
+    :> Get '[JSON] (Maybe Event)
 
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."
@@ -175,29 +167,31 @@ type PutUserProfile =
     :> Put '[JSON] NoContent
 
 type SenseiAPI =
-  Tags "Flows" :> PostRecordTrace
-    :<|> "flows"
-      :> Tags "Flows"
-      :> ( PostRecordFlow
-             :<|> GetFlow
-             :<|> PatchFlowTimeshift
-             :<|> GetGroupSummary
-             :<|> GetDailySummary
-             :<|> GetNotes
-             :<|> GetCommands
-             :<|> GetFlowsTimeline
-             :<|> GetGroupedTimelines
-         )
-    :<|> "notes"
-      :> Tags "Notes"
-      :> SearchNotes
-    :<|> "log"
-      :> Tags "Event Log"
-      :> GetAllLog
-    :<|> "users"
-      :> Tags "User Profile"
-      :> (GetUserProfile :<|> PutUserProfile)
-    :<|> Tags "Metadata" :> DisplayVersions
+  "api"
+    :> ( "flows"
+           :> Tags "Flows"
+           :> ( GetFlow
+                  :<|> PatchFlowTimeshift
+                  :<|> GetGroupSummary
+                  :<|> GetDailySummary
+                  :<|> GetNotes
+                  :<|> GetCommands
+                  :<|> GetFlowsTimeline
+                  :<|> GetGroupedTimelines
+              )
+           :<|> "notes"
+             :> Tags "Notes"
+             :> SearchNotes
+           :<|> "log"
+             :> Tags "Event Log"
+             :> ( PostEvent
+                    :<|> GetAllLog
+                )
+           :<|> "users"
+             :> Tags "User Profile"
+             :> (GetUserProfile :<|> PutUserProfile)
+           :<|> Tags "Metadata" :> DisplayVersions
+       )
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
@@ -206,26 +200,26 @@ nextPageLink :: Text -> Maybe Natural -> Maybe Link.Link
 nextPageLink userName page = do
   p <- page <|> pure 1
   let next = show (succ p)
-  uri <- uriFromString $ "/logs/" <> unpack userName <> "?page=" <> next
+  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> next
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
 previousPageLink :: Text -> Maybe Natural -> Maybe Link.Link
 previousPageLink userName page = do
   p <- page
   let prev = show (pred p)
-  uri <- uriFromString $ "/logs/" <> unpack userName <> "?page=" <> prev
+  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> prev
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
 
 nextDayLink :: Text -> Maybe Day -> Maybe Link.Link
 nextDayLink userName day = do
   d <- day
   let next = showGregorian (succ d)
-  uri <- uriFromString $ "/flows/" <> unpack userName <> "/" <> next <> "/" <> "notes"
+  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> next <> "/" <> "notes"
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
 previousDayLink :: Text -> Maybe Day -> Maybe Link.Link
 previousDayLink userName day = do
   d <- day
   let prev = showGregorian (pred d)
-  uri <- uriFromString $ "/flows/" <> unpack userName <> "/" <> prev <> "/" <> "notes"
+  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> prev <> "/" <> "notes"
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]

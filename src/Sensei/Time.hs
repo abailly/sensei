@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -13,6 +15,7 @@ where
 
 import Data.Aeson
 import Data.Time
+import GHC.Generics (Generic)
 
 newtype Timestamp = Timestamp {timestamp :: UTCTime}
   deriving (Eq, Show)
@@ -29,7 +32,7 @@ data TimeRange = TimeRange
   { rangeStart :: UTCTime,
     rangeEnd :: UTCTime
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 inRange :: TimeRange -> UTCTime -> Bool
 inRange TimeRange {..} t =

@@ -1,23 +1,32 @@
-{-# LANGUAGE NamedFieldPuns #-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Specific help functions and types to help build and manipulate
 --  Sensei's types and API
 module Sensei.Builder where
 
-import Data.Text.Encoding (encodeUtf8)
+import Data.Functor (void)
 import Sensei.API
 import Sensei.TestHelper
-import Servant
+
+postEvent :: Event -> WaiSession () SResponse
+postEvent = postJSON "/api/log"
+
+postEvent_ :: Event -> WaiSession () ()
+postEvent_ =  void . postEvent
+
+postFlow :: Flow -> WaiSession () SResponse
+postFlow = postEvent . EventFlow
 
 postEvent_ :: Event -> WaiSession () ()
 postEvent_ (T t) = postTrace_ t
 postEvent_ (F f) = postFlow_ f
 
 postFlow_ :: Flow -> WaiSession () ()
-postFlow_ Flow {_flowType, _flowState} =
-  postJSON_ ("/flows/arnaud/" <> encodeUtf8 (toUrlPiece _flowType)) _flowState
+postFlow_ = postEvent_ . EventFlow
+
+postNote_ :: NoteFlow -> WaiSession () ()
+postNote_ = postEvent_ . EventNote
 
 postTrace_ :: Trace -> WaiSession () ()
-postTrace_ trace =
-  postJSON_ "/trace" trace
+postTrace_ = postEvent_ . EventTrace

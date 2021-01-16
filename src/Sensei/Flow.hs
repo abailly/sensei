@@ -1,15 +1,10 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Flows represent the various recorded events that are relevant to capture
 -- from a user's daily activity.
@@ -17,14 +12,16 @@
 -- Currently records the following types of flows:
 --
 -- * `Trace`: common command-line programs execution recording
--- * `Flow`: either notes or start time of a specific (expected) type of activity
+-- * `Flow`: start time of a specific (expected) type of activity
+-- * `FlowNote`: notes
 module Sensei.Flow where
 
 import Control.Applicative
 import Data.Aeson hiding (Options)
 import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (first))
-import Data.Text (Text)
+import qualified Data.HashMap.Strict as H
+import Data.Text (unpack, Text)
 import qualified Data.Text as Text
 import Data.Text.ToText
 import Data.Time
@@ -33,52 +30,149 @@ import Numeric.Natural
 import Servant
 
 -- | Current version of data storage format.
--- This version /must/ be incremented on each change to the structure of `Flow` and
+-- This version /must/ be incremented on each change to the structure of `Event` and
 -- other stored data structures which
 -- impacts their serialized representation. Of course, deserialisation
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 4
+currentVersion = 5
 
--- | Common type grouping all kind of events that are stored in the DB
--- TODO: This type is in an early stage and only used currently when migrating
--- database, refactor when exposing the full log to the user. In particular
--- the `Flow` and `Trace` types should be unified.
+-- | Common type grouping all kind of core events that are stored in the DB
 data Event
-  = F Flow
-  | T Trace
-  deriving (Eq, Show)
-
-instance ToJSON Event where
-  toJSON (F flow) = toJSON flow
-  toJSON (T trace) = toJSON trace
+  = EventFlow Flow
+  | EventTrace Trace
+  | EventNote NoteFlow
+  deriving (Eq, Show, Generic)
 
 instance FromJSON Event where
-  parseJSON v = T <$> parseJSON v <|> F <$> parseJSON v
+  parseJSON =
+    withObject "Event" $ \obj -> do
+      v :: Natural <- obj .: "version" <|> obj .: "_version"
+      case v of
+        4 -> parseEventFromv4 obj
+        _ -> do
+          t <- obj .: "tag"
+          case t of
+            "Note" -> EventNote <$> parseJSON (Object obj)
+            "Trace" -> EventTrace <$> parseJSON (Object obj)
+            "Flow" -> EventFlow <$> parseJSON (Object obj)
+            o -> fail ("cannot parse Event with tag " <> o)
 
-eventTimestamp ::
-  Event -> UTCTime
-eventTimestamp (F Flow{_flowState}) = _flowStart _flowState
-eventTimestamp (T Trace{timestamp}) = timestamp
+parseEventFromv4 :: Object -> Parser Event
+parseEventFromv4 obj =
+  parseTrace <|> parseFlow
+  where
+    parseFlow = do
+      ty <- obj .: "_flowType"
+      st <- obj .: "_flowState"
+      case ty of
+        Note -> EventNote <$> parseNoteFromv4 st
+        _ -> do
+          fl <- parseFlowFromv4 st
+          pure $ EventFlow fl { _flowType = ty }
+    parseTrace = do
+      ts <- obj .: "timestamp"
+      el <- obj .: "elapsed"
+      ar <- obj .: "args"
+      pr <- obj .: "process"
+      dr <- obj .: "directory"
+      ex <- obj .: "exit_code"
+      pure $ EventTrace $ Trace "" ts dr pr ar ex el
 
--- | Execution "trace" of a program
-data Trace = Trace
-  { timestamp :: UTCTime,
-    directory :: FilePath,
-    process :: Text,
-    args :: [Text],
-    exit_code :: Int,
-    elapsed :: NominalDiffTime,
-    _version :: Natural
-  }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+parseNoteFromv4 :: Value -> Parser NoteFlow
+parseNoteFromv4 =
+  withObject "NoteFlow" $ \state -> do
+    NoteFlow
+      <$> state .: "_flowUser"
+      <*> state .: "_flowStart"
+      <*> state .: "_flowDir"
+      <*> state .: "_flowNote"
+
+parseFlowFromv4 :: Value -> Parser Flow
+parseFlowFromv4 =
+  withObject "Flow" $ \state -> do
+    Flow <$> pure Other
+      <*> state .: "_flowUser"
+      <*> state .: "_flowStart"
+      <*> state .: "_flowDir"
+
+instance ToJSON Event where
+  toJSON (EventFlow f) =
+    let Object obj = toJSON f
+     in Object $
+          H.insert "tag" "Flow" $
+            H.insert "version" (toJSON currentVersion) obj
+  toJSON (EventTrace t) =
+    let Object obj = toJSON t
+     in Object $
+          H.insert "tag" "Trace" $
+            H.insert "version" (toJSON currentVersion) obj
+  toJSON (EventNote n) =
+    let Object obj = toJSON n
+     in Object $
+          H.insert "tag" "Note" $
+            H.insert "version" (toJSON currentVersion) obj
+
+isTrace :: Event -> Bool
+isTrace EventTrace{} = True
+isTrace _ = False
 
 data Flow = Flow
   { _flowType :: FlowType,
-    _flowState :: FlowState,
-    _version :: Natural
+    _flowUser :: Text,
+    _flowTimestamp :: UTCTime,
+    _flowDir :: Text
   }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+  deriving (Eq, Show, Generic)
+
+instance FromJSON Flow where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
+
+instance ToJSON Flow where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
+
+data Trace = Trace
+  { _traceUser :: Text,
+    _traceTimestamp :: UTCTime,
+    _traceDirectory :: FilePath,
+    _traceProcess :: Text,
+    _traceArgs :: [Text],
+    _traceExitCode :: Int,
+    _traceElapsed :: NominalDiffTime
+  }
+  deriving (Eq, Show, Generic)
+
+instance FromJSON Trace where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
+
+instance ToJSON Trace where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
+
+data NoteFlow = NoteFlow
+  { _noteUser :: Text,
+    _noteTimestamp :: UTCTime,
+    _noteDir :: Text,
+    _noteContent :: Text
+  }
+  deriving (Eq, Show, Generic)
+
+instance FromJSON NoteFlow where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
+
+instance ToJSON NoteFlow where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
+
+eventTimestamp ::
+  Event -> UTCTime
+eventTimestamp (EventFlow f) = _flowTimestamp f
+eventTimestamp (EventTrace t) = _traceTimestamp t
+eventTimestamp (EventNote n) = _noteTimestamp n
+
+eventUser ::
+  Event -> Text
+eventUser (EventFlow f) = _flowUser f
+eventUser (EventTrace t) = _traceUser t
+eventUser (EventNote n) = _noteUser n
 
 data FlowType
   = FlowType Text
@@ -139,20 +233,6 @@ defaultFlowTypes =
           "Learning"
         ]
 
-data FlowState
-  = FlowState
-      { _flowUser :: Text,
-        _flowStart :: UTCTime,
-        _flowDir :: Text
-      }
-  | FlowNote
-      { _flowUser :: Text,
-        _flowStart :: UTCTime,
-        _flowDir :: Text,
-        _flowNote :: Text
-      }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
-
 -- | Supported rendering formats for notes
 data NoteFormat
   = -- | Timestamp of note is on its own line, followed by note as it is typed
@@ -181,13 +261,19 @@ instance FromHttpApiData NoteFormat where
   parseUrlPiece "section" = pure Section
   parseUrlPiece txt = Left $ "Unknown format: " <> txt
 
--- |Reference to an item in the log
-data Reference =
-  Latest
-  -- ^Refers to the latest entry in the log
-  | Pos { offset :: Natural }
-  -- ^Refers to the item located `offset` positions from the `Latest` entry
+-- | Reference to an item in the log
+data Reference
+  = -- | Refers to the latest entry in the log
+    Latest
+  | -- | Refers to the item located `offset` positions from the `Latest` entry
+    Pos {offset :: Natural}
   deriving (Eq, Show)
+
+instance ToJSON Reference where
+  toJSON = String . toUrlPiece
+
+instance FromJSON Reference where
+  parseJSON = withText "Reference" $ either (fail.unpack) pure . parseUrlPiece
 
 instance ToHttpApiData Reference where
   toUrlPiece Latest = "latest"

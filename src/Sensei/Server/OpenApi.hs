@@ -46,8 +46,6 @@ instance ToParamSchema FlowType where
       & type_ ?~ SwaggerString
       & enum_ ?~ ["End", "Note", "Other", "<any string>"]
 
-instance ToSchema FlowState
-
 instance ToSchema FlowView
 
 instance ToSchema NoteView
@@ -60,8 +58,6 @@ instance ToSchema FlowSummary
 
 instance ToParamSchema Group
 
-instance ToSchema Trace
-instance ToSchema Flow
 instance ToSchema Group
 
 instance ToParamSchema Reference where
@@ -76,13 +72,10 @@ instance ToSchema a => ToSchema (GroupViews a) where
 
 instance ToSchema Versions
 
-instance ToSchema Event where
-  declareNamedSchema _ =
-    return $
-      NamedSchema (Just "Event") $
-        mempty
-          & description ?~ "A generic type of events encapsulating both Flows and Traces"
-          & type_ ?~ SwaggerObject
+instance ToSchema Event
+instance ToSchema Flow
+instance ToSchema Trace
+instance ToSchema NoteFlow
 
 senseiSwagger :: Swagger
 senseiSwagger =

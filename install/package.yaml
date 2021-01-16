@@ -1,0 +1,18 @@
+name:                install
+version:             0.1.0.0
+github:              "abailly/shake-docker"
+license:             BSD3
+author:              "Arnaud Bailly"
+maintainer:          "arnaud@pankzsoft.com"
+copyright:           "2020 Arnaud Bailly"
+
+dependencies:
+- base >= 4.7 && < 5
+- directory
+- filepath
+- shake
+- shake-docker
+- unix
+
+library:
+  source-dirs: .
