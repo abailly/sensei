@@ -7,6 +7,7 @@ import { dom, clearElement } from './dom.js';
 import { config } from "./config";
 import { colorOf } from './color.js';
 import {drawTimeline} from "./css-timeline.js";
+import {LocalDate} from "@js-joda/core";
 
 /**
    Draw a timeline chart in given element with given data
@@ -113,7 +114,7 @@ function createTimelineContainer(day, data, notesData) {
 */
 function drawCharts(flowData) {
   flowData.forEach((f) => {
-    const day = formatISODate(new Date(f.groupTime));
+    const day = formatISODate(LocalDate.parse(f.groupTime));
     const data = f.subGroup.leafViews;
     createTimelineContainer(day, data);
   });

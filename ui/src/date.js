@@ -1,19 +1,9 @@
-function formatTo2Digits(value) {
-    if (value < 10) {
-        return  '0' + value;
-    }
-    return value;
-}
+import {DateTimeFormatter} from "@js-joda/core";
 
 export function formatISODate(date) {
-    const year = date.getFullYear();
-    let month = date.getMonth() + 1;
-    let dt = date.getDate();
-    return year + '-' + formatTo2Digits(month) + '-' + formatTo2Digits(dt);
+  return date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 }
 
-export function formatISOTime(date) {
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
-    return formatTo2Digits(hours) + ':' + formatTo2Digits(minutes);
+export function formatISODateTime(dateTime) {
+    return dateTime.format(DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm'))
 }
