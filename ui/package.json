@@ -9,6 +9,12 @@
     "build": "webpack",
     "start": "webpack-dev-server --mode development"
   },
+  "jest": {
+    "verbose": true,
+    "globals": {
+      "USER": "'arnaud'"
+    }
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
