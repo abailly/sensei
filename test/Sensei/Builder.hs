@@ -18,10 +18,6 @@ postEvent_ =  void . postEvent
 postFlow :: Flow -> WaiSession () SResponse
 postFlow = postEvent . EventFlow
 
-postEvent_ :: Event -> WaiSession () ()
-postEvent_ (T t) = postTrace_ t
-postEvent_ (F f) = postFlow_ f
-
 postFlow_ :: Flow -> WaiSession () ()
 postFlow_ = postEvent_ . EventFlow
 

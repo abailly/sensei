@@ -6,7 +6,7 @@ import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
 import { colorOf } from './color.js';
-import {LocalDate} from "@js-joda/core";
+import {LocalDate, LocalDateTime} from "@js-joda/core";
 
 /**
    Draw a timeline chart in given element with given data
@@ -90,7 +90,7 @@ function createTimelineContainer(day, data, notesData) {
 
   summary.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(`/flows/${config.user}/${day}/summary`, (summaryData) =>
+      get(`/api/flows/${config.user}/${day}/summary`, (summaryData) =>
         drawSummary(summaryDiv, summaryData));
     } else {
       clearElement(summaryDiv);
@@ -108,7 +108,7 @@ function createTimelineContainer(day, data, notesData) {
 */
 function drawCharts(flowData) {
   flowData.forEach((f) => {
-    const day = formatISODate(LocalDate.parse(f.groupTime));
+    const day = formatISODate(LocalDateTime.parse(f.groupTime));
     const data = f.subGroup.leafViews;
     createTimelineContainer(day, data);
   });
