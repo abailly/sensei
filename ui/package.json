@@ -9,6 +9,12 @@
     "build": "webpack",
     "start": "webpack-dev-server --mode development"
   },
+  "jest": {
+    "verbose": true,
+    "globals": {
+      "USER": "'arnaud'"
+    }
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -35,6 +41,9 @@
   "dependencies": {
     "navigo": "^7.1.2",
     "parse-link-header": "^1.0.1",
-    "showdown": "^1.9.1"
+    "showdown": "^1.9.1",
+    "@js-joda/core": "^3.2.0",
+    "@js-joda/locale_en": "^3.2.2",
+    "@js-joda/timezone": "^2.5.0"
   }
 }

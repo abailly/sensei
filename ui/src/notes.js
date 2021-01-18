@@ -3,6 +3,8 @@ import { config } from "./config";
 import { get } from './request';
 import { dom, clear, clearElement } from './dom';
 import { pagination } from './page';
+import {formatISODateTime} from "./date";
+import {LocalDateTime} from "@js-joda/core";
 
 const showdownOptions = { simplifiedAutoLink: true, tables: true };
 
@@ -19,7 +21,7 @@ function formatNote(note) {
 
 function formatNoteDiv(note) {
   const noteDiv = <div class='note-full'>
-    <h3>{new Date(note.noteStart).toLocaleTimeString()} </h3>
+    <h3>{formatISODateTime(LocalDateTime.parse(note.noteStart))} </h3>
   </div>;
   const content = <div class='note-content'>
   </div>;

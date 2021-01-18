@@ -5,6 +5,7 @@ import notes from './notes';
 import { setUserProfile } from './user.js';
 import { formatISODate } from './date.js';
 import Navigo from 'navigo';
+import {LocalDate} from "@js-joda/core";
 
 document.addEventListener('DOMContentLoaded', () => {
   google.charts.load('current', { 'packages': ['corechart', 'bar', 'timeline', 'calendar'] });
@@ -20,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
       charts();
     })
     .on('/notes', function() {
-      notes.list(router, document.getElementById('main'), formatISODate(new Date()));
+      notes.list(router, document.getElementById('main'), formatISODate(LocalDate.now()));
     })
     .on('/notes/:page', function(params) {
       notes.list(router, document.getElementById('main'), params.page);

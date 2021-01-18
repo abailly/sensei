@@ -5,3 +5,4 @@ TAGS
 /ui/dist/
 /.stack-work-build/
 *.hie
+.idea

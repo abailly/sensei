@@ -10,7 +10,7 @@ First create a JSON file containing the user's profile:
 $ cat > profile.json
 {
   "userStartOfDay": "08:00:00",
-  "userProfileVersion": 2,
+  "userProfileVersion": 4,
   "userEndOfDay": "18:30:00",
   "userName": "arnaud",
   "userTimezone": "+01:00",
@@ -46,7 +46,7 @@ The configuration is currently stored in a JSON file inside XDG configuration di
 $ cat ~/.config/sensei/config.json | jq .
 {
   "userStartOfDay": "08:00:00",
-  "userProfileVersion": 2,
+  "userProfileVersion": 4,
   ...
 }
 ```
@@ -57,8 +57,15 @@ This can also be retrieved from the command-line:
 $  ep -U
 {
   "userStartOfDay": "08:00:00",
-  "userProfileVersion": 2,
+  "userProfileVersion": 4,
   "userEndOfDay": "18:30:00",
   ...
 }
+```
+
+# Migration (prior to v 0.13.0)
+Before v 0.13.0, the data were handle into a plain json formated text file.
+In order to retrieve your flows and notes, you have to put your `.sensei.log` into the shared directory:
+```bash
+cp ~/.sensei.log ~/.local/share/sensei/sensei.log
 ```

@@ -1,14 +1,9 @@
+import {DateTimeFormatter} from "@js-joda/core";
+
 export function formatISODate(date) {
-  const year = date.getFullYear();
-  let month = date.getMonth() + 1;
-  let dt = date.getDate();
+  return date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+}
 
-  if (dt < 10) {
-    dt = '0' + dt;
-  }
-  if (month < 10) {
-    month = '0' + month;
-  }
-
-  return year + '-' + month + '-' + dt;
+export function formatISODateTime(dateTime) {
+    return dateTime.format(DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm'))
 }
