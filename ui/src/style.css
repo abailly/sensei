@@ -104,13 +104,16 @@ div#notes .note-full {
 }
 
 .timeline {
-    padding: 0 0 60px 0;
+    padding: 0 0 32px 0;
 }
 
+.timeline-time {
+    grid-column: 1/24;
+}
 
-.timelines-time {
+.timeline-time ul {
     position: absolute;
-    padding: 120px 0 0 100px;
+    padding: 8px 0 0 100px;
     margin: 0;
     white-space: nowrap;
     border-bottom: 1px solid #282828;
@@ -118,7 +121,7 @@ div#notes .note-full {
     font-size: 0;
 }
 
-.timelines-time li {
+.timeline-time ul li {
     position: relative;
     top: 6px;
     display: inline-block;
@@ -129,48 +132,94 @@ div#notes .note-full {
     text-indent: -12px;
 }
 
-.timelines-time li:last-child {
+.timeline-time ul li:last-child {
     width: 100px;
 }
 
-.timeline-events {
-    position: absolute;
+.timeline-flows {
+    grid-column: 1/24;
+    grid-row: 1;
+}
+
+.timeline-flows ul {
+    /*position: absolute;*/
     padding: 0 0 0 100px;
     list-style: none;
     white-space: nowrap;
     font-size: 0;
 }
 
-.timeline-events h2,
-.timeline-events h3,
-.timeline-events h4 {
+.timeline-flows ul h2,
+.timeline-flows ul h3,
+.timeline-flows ul h4 {
     margin: 0 0 1px 0;
     font-weight: normal;
     font-size: 11px;
 }
 
-.timeline-events h2 {
+.timeline-flows ul h2 {
     color: #777;
     text-transform: uppercase;
 }
 
-.timeline-events h3 {
+.timeline-flows ul h3 {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden
 }
 
-.timeline-events h4 {
+.timeline-flows ul h4 {
     color: #fff;
     font-style: italic;
 }
 
-.timeline-events li {
+.timeline-flows li {
     position: relative;
     display: inline-block;
 }
 
-.timeline-events .timeline-event {
+.timeline-events{
+    grid-column: 2/24;
+}
+
+.timeline-events ul{
+    position: absolute;
+    padding: 0 0 0 0;
+    list-style: none;
+    white-space: nowrap;
+    font-size: 0;
+}
+
+.timeline-events ul h2,
+.timeline-events ul h3,
+.timeline-events ul h4 {
+    margin: 0 0 1px 0;
+    font-weight: normal;
+    font-size: 11px;
+}
+
+.timeline-events ul h2 {
+    color: #777;
+    text-transform: uppercase;
+}
+
+.timeline-events ul h3 {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden
+}
+
+.timeline-events ul h4 {
+    color: #fff;
+    font-style: italic;
+}
+
+.timeline-events ul li {
+    position: relative;
+    display: inline-block;
+}
+
+.timeline-events ul .timeline-event {
     position: absolute;
     left: 0;
     height: 8px;
@@ -178,23 +227,28 @@ div#notes .note-full {
     width: 100%;
 }
 
+.timeline-event {
+    opacity: 0.6;
+}
+
 div [id^='timeline-container-'] {
-    height: 80px;
     padding-bottom: 16px;
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    /*flex-direction: row;*/
+    grid-template-columns: repeat(24, 100px);
 }
 
 .timeline-header {
-    display: flex;
-    align-content: center;
-    align-items: center;
-    justify-content: center;
+    grid-column: 1/1;
+    /*display: flex;*/
+    /*align-content: center;*/
+    /*justify-content: center;*/
+    /*flex-direction: column;*/
 }
 
-.timeline-header h2,
-.timeline-header h3,
-.timeline-header h4 {
+.timeline-header>div h2,
+.timeline-header>div h3,
+.timeline-header>div h4 {
     margin: 0 0 1px 0;
     font-weight: normal;
     font-size: 14px;

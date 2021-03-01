@@ -82,15 +82,15 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
-        drawTimeline(container, '2020-12-17', '08:30:00', '17:00:00', flowData);
+        drawTimeline(container, '2020-12-17', flowData);
         expect(container).toMatchSnapshot();
     });
 
-    xtest('expect timeline to be expand at selected date', () => {
+    test('expect timeline to be expand at selected date', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
-        drawTimeline(container, '2020-12-17', flowData, () => '2020-12-17');
+        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
         expect(container).toMatchSnapshot();
     });
 });
