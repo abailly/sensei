@@ -19,11 +19,20 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
 
     function flowLeftMargin(flow) {
         const flowTypeRow = flowMap.get(flow.flowType);
+
+        function isFirstFlow() {
+            return flowTypeRow.indexOf(flow) === 0;
+        }
+
+        function isAfterFirstFlow() {
+            return flowTypeRow.indexOf(flow) > 0;
+        }
+
         if (flowTypeRow !== undefined) {
-            if (flowTypeRow.indexOf(flow) === 0) {
+            if (isFirstFlow()) {
                 return (startTime.until(LocalDateTime.parse(flow.flowStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH;
             }
-            if (flowTypeRow.indexOf(flow) !== -1 && flowTypeRow.indexOf(flow) !== 0) {
+            if (isAfterFirstFlow()) {
                 const previousFlowEnd = LocalDateTime.parse(flowTypeRow[flowTypeRow.indexOf(flow) - 1].flowEnd);
                 return (previousFlowEnd.until(LocalDateTime.parse(flow.flowStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH;
             }
@@ -64,7 +73,7 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
         let flowEndDate = LocalDateTime.parse(flow.flowEnd);
         const flowWidth = Math.abs((flowStartDate.until(flowEndDate, ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH);
         const timelineFlow = <li
-            style={'width:' + flowWidth + 'px; margin-left:' + flowLeftMargin(flow) + 'px; padding-bottom: 8px;'}>
+            style={'width:' + flowWidth + 'px; margin-left:' + flowLeftMargin(flow) + 'px;'}>
             <div>
                 <h2>{flowStartDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
                 <h2>{flowEndDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
@@ -100,9 +109,7 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     toMap().forEach((flows, rowLabel) => {
         const timelineHeader = <div class='timeline-header'/>;
         timelineHeader.style.gridRow = index;
-        timelineHeader.appendChild(<div>
-            <h3>{rowLabel}</h3>
-        </div>);
+        timelineHeader.appendChild(<div><h3>{rowLabel}</h3></div>);
         const timelineEvents = <div class='timeline-events'/>;
         timelineEvents.style.gridRow = index;
         const timelineEvent = <ul/>;
