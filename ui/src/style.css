@@ -149,6 +149,10 @@ div#notes .note-full {
     font-size: 0;
 }
 
+.timeline-flows ul li {
+    padding-bottom: 8px;
+}
+
 .timeline-flows ul h2,
 .timeline-flows ul h3,
 .timeline-flows ul h4 {
