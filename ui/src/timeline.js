@@ -57,7 +57,13 @@ function createTimelineContainer(day, data, notesData) {
                 drawCssNotes(chart, day, notesData);
             });
         } else {
-            document.getElementById("timeline-container-" + day).removeChild(document.getElementById("notes-" + day));
+            document.getElementById("notes-" + day).remove();
+            const regExp = new RegExp('^note-' + day + '.*$');
+            Array.from(document.body.childNodes).forEach(node => {
+                if(node.id !== undefined && regExp.test(node.id)) {
+                    node.remove();
+                }
+            });
         }
     });
 
