@@ -11,11 +11,13 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     const endTime = LocalTime.parse(config.userProfile.userEndOfDay);
     const flowMap = new Map();
 
-    const timelineContainer = <div id={'timeline-container-' + day}/>;
-    const timelineTimeContainer = <div class='timeline-time'/>;
-    const timelineTime = <ul/>;
-    const timelineFlowsContainer = <div class='timeline-flows'/>;
-    const timelineFlows = <ul/>;
+    const timelineContainer = !container.firstChild ? <div id={'timeline-container-' + day}/> : container.firstChild;
+    const timelineFlowsContainer = !container.firstChild ?
+        <div id={'timeline-flows-' + day} class='timeline-flows'/> : container.firstChild.firstChild;
+    const timelineFlows = !container.firstChild ? <ul/> : container.firstChild.firstChild.firstChild;
+    const timelineTimeContainer = !container.firstChild ?
+        <div id={'timeline-time-' + day} class='timeline-time'/> : container.firstChild.lastChild;
+    const timelineTime = !container.firstChild ? <ul/> : container.firstChild.lastChild.lastChild;
 
     function flowLeftMargin(flow) {
         const flowTypeRow = flowMap.get(flow.flowType);
@@ -60,12 +62,14 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     }
 
     function drawTimelineHours() {
-        const nbHalfHours = (endTime.hour() - startTime.hour()) * 2
-        for (let i = 0; i < nbHalfHours; i++) {
-            const time = startTime.plusMinutes(i * THIRTY_MINUTES);
-            timelineTime.appendChild(drawTimelineHour(time));
+        if (!timelineTime.hasChildNodes()) {
+            const nbHalfHours = (endTime.hour() - startTime.hour()) * 2
+            for (let i = 0; i < nbHalfHours; i++) {
+                const time = startTime.plusMinutes(i * THIRTY_MINUTES);
+                timelineTime.appendChild(drawTimelineHour(time));
+            }
+            timelineTimeContainer.appendChild(timelineTime);
         }
-        timelineTimeContainer.appendChild(timelineTime);
     }
 
     function drawTimelineTimeFlows(flow) {
@@ -91,27 +95,41 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
             } else {
                 flowMap.set(rowLabel(flow), new Array(flow));
             }
-        })
+        });
         return flowMap;
     }
 
     function clearContainer() {
-        while (container.firstChild) {
-            container.removeChild(container.firstChild);
+
+        Array.from(timelineContainer.children)
+            .filter(node => isNotFlowAndTimeAndNote(node))
+            .forEach(node => {
+                timelineContainer.removeChild(node);
+            });
+
+        function isWithId(node, id) {
+            return node.getAttribute("id") === id;
+        }
+
+        function isNotFlowAndTimeAndNote(node) {
+            return !isWithId(node, 'timeline-flows-' + day)
+                && !isWithId(node, 'timeline-time-' + day)
+                && !isWithId(node, 'notes-' + day);
         }
     }
 
     clearContainer();
-    timelineFlowsContainer.appendChild(timelineFlows);
-    timelineContainer.appendChild(timelineFlowsContainer);
-    let index = 2;
+    if (!container.firstChild) {
+        timelineFlowsContainer.appendChild(timelineFlows);
+        timelineContainer.appendChild(timelineFlowsContainer);
+    }
 
     toMap().forEach((flows, rowLabel) => {
         const timelineHeader = <div class='timeline-header'/>;
-        timelineHeader.style.gridRow = index;
-        timelineHeader.appendChild(<div><h3>{rowLabel}</h3></div>);
+        timelineHeader.appendChild(<div>
+            <h3>{rowLabel}</h3>
+        </div>);
         const timelineEvents = <div class='timeline-events'/>;
-        timelineEvents.style.gridRow = index;
         const timelineEvent = <ul/>;
         flows.forEach(flow => {
             timelineEvent.appendChild(drawTimelineFlow(flow));
@@ -119,11 +137,11 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
         })
         timelineContainer.appendChild(timelineHeader);
         timelineContainer.appendChild(timelineEvents);
-        index++;
     })
 
     drawTimelineHours();
-    timelineTimeContainer.style.gridRow = index;
     timelineContainer.appendChild(timelineTimeContainer);
-    container.appendChild(timelineContainer);
+    if (!container.firstChild) {
+        container.appendChild(timelineContainer);
+    }
 }

@@ -4,6 +4,7 @@ import {config} from "./config";
 
 import {describe, expect, test} from '@jest/globals';
 import {drawTimeline} from "./css-timeline";
+import {drawCssNotes} from "./css-notes";
 
 const flowData = [
     {
@@ -46,6 +47,17 @@ const flowData = [
     }
 ];
 
+const notes = [{
+    "noteStart": "2020-11-16T09:30:00",
+    "noteContent": "# Note\r## Première note"
+}, {
+    "noteStart": "2020-11-16T10:55:00",
+    "noteContent": "# Note\r## Seconde note"
+}, {
+    "noteStart": "2020-11-16T12:20:00",
+    "noteContent": "# Note\r## Troisième note"
+}];
+
 describe('CSS Timeline', () => {
 
     beforeEach(() => {
@@ -66,7 +78,9 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:30:00';
         config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
+
         drawTimeline(container, '2020-12-17', flowData);
+
         expect(container).toMatchSnapshot();
     });
 
@@ -74,7 +88,9 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '09:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
+
         drawTimeline(container, '2020-12-17', flowData);
+
         expect(container).toMatchSnapshot();
     });
 
@@ -82,7 +98,9 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
+
         drawTimeline(container, '2020-12-17', flowData);
+
         expect(container).toMatchSnapshot();
     });
 
@@ -90,7 +108,34 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
         let container = document.createElement("div");
+
         drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+
         expect(container).toMatchSnapshot();
+    });
+
+    test('expect timeline not to clear notes', () => {
+        config.userProfile.userStartOfDay = '08:00:00';
+        config.userProfile.userEndOfDay = '17:00:00';
+        let container = document.createElement("div");
+
+        drawTimeline(container, '2020-12-17', flowData);
+        drawCssNotes(container, '2020-12-17', notes);
+        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+
+        expect(container).toMatchSnapshot();
+
+    });
+
+    test('expect timeline to have row label with flowtype after being drawn without', () => {
+        config.userProfile.userStartOfDay = '08:00:00';
+        config.userProfile.userEndOfDay = '17:00:00';
+        let container = document.createElement("div");
+
+        drawTimeline(container, '2020-12-17', flowData);
+        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+
+        expect(container).toMatchSnapshot();
+
     });
 });
