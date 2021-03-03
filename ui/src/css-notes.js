@@ -8,33 +8,16 @@ const HALF_HOUR_WIDTH = 100;
 
 export function drawCssNotes(container, day, notesData) {
     let previousTime = LocalTime.parse(config.userProfile.userStartOfDay);
+    const mainNode = document.getElementById("main");
+    const mainParentNode = mainNode.parentNode;
 
     const timelineContainer = container.firstChild;
-    const notesDiv = <div id={'notes-' + day} class="timeline-chart" />;
-    const noteList = <ul />;
+    const notesDiv = <div id={'notes-' + day} class="timeline-chart"/>;
+    const noteList = <ul/>;
 
-    function formatNote(note) {
-        return "<div class='note'>" +
-            new showdown.Converter({ simplifiedAutoLink: true }).makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent) +
-            "</div>";
-    }
-
-    function noteLeftMargin(note) {
-        let bulletGap = 8;
-        if(note !== notesData[0]) {
-            previousTime = LocalDateTime.parse(notesData[notesData.indexOf(note) - 1].noteStart);
-            bulletGap = 16;
-        }
-        return (previousTime.until(LocalDateTime.parse(note.noteStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH - bulletGap;
-    }
-
-    function drawTimelineFlow(note) {
-        // let flowStartDate = LocalDateTime.parse(note.noteStart);
-        return <li style={'width:16px; margin-left:' + noteLeftMargin(note) + 'px;'}>
-            <div class='timeline-event' style={'background: blue;'}></div>
-        </li>;
-
-    }
+    notesData.map(note => document.getElementById('note-' + note.noteStart))
+        .filter(node => node !== null)
+        .forEach(node => node.remove());
 
     notesData.forEach(note => {
         noteList.appendChild(drawTimelineFlow(note));
@@ -43,4 +26,83 @@ export function drawCssNotes(container, day, notesData) {
     notesDiv.appendChild(noteList);
     timelineContainer.insertBefore(notesDiv, timelineContainer.children[1]);
 
+    function drawTimelineFlow(note) {
+        const noteDisplay = <li style={'width:16px; margin-left:' + noteLeftMargin(note) + 'px;'}/>;
+        const dialog = <div id={'note-' + note.noteStart} class="c-dialog"/>;
+        const dialogBox = <div role="document" class="c-dialog__box"/>;
+        const closeButton = <div>Close</div>;
+        const dialogContent = <div id={'note-desc-' + note.noteStart}/>;
+        const button = <div type="button" class='timeline-event' style={'background: blue;'}/>;
+
+        noteDisplay.appendChild(button);
+        dialog.appendChild(dialogBox);
+        dialogBox.appendChild(closeButton);
+        dialogBox.appendChild(dialogContent);
+        dialogContent.insertAdjacentHTML("beforeend", formatNote(note));
+        mainParentNode.insertBefore(dialog, mainNode.nextSibling);
+
+        const setAttributesTo = (node, values) => {
+            values.forEach(value => node.setAttribute(value.type, value.value));
+        }
+
+        setAttributesTo(dialog, [
+            {type: "role", value: dialog},
+            {type: "aria-describedby", value: 'note-desc-' + note.noteStart},
+            {type: "aria-modal", value: 'true'},
+            {type: "aria-hidden", value: 'true'},
+            {type: "tabindex", value: '-1'}
+        ]);
+
+        setAttributesTo(closeButton, [
+            {type: "type", value: "button"},
+            {type: "aria-label", value: "Close"},
+            {type: "aria-dismiss", value: "dialog"},
+        ]);
+
+        setAttributesTo(button, [
+            {type: "type", value: "button"},
+            {type: "aria-haspopup", value: "dialog"},
+            {type: "aria-controls", value: 'note-' + note.noteStart}
+        ])
+
+        initializeModal(dialog, button, closeButton);
+
+        return noteDisplay;
+    }
+
+    function formatNote(note) {
+        return "<div class='note'>" +
+            new showdown.Converter({simplifiedAutoLink: true}).makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent) +
+            "</div>";
+    }
+
+    function noteLeftMargin(note) {
+        let bulletGap = 8;
+        if (note !== notesData[0]) {
+            previousTime = LocalDateTime.parse(notesData[notesData.indexOf(note) - 1].noteStart);
+            bulletGap = 16;
+        }
+        return (previousTime.until(LocalDateTime.parse(note.noteStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH - bulletGap;
+    }
+
+    function initializeModal(dialog, button, closeButton) {
+        const open = function () {
+            dialog.setAttribute('aria-hidden', false);
+            mainNode.setAttribute('aria-hidden', true);
+        };
+
+        const close = function () {
+            dialog.setAttribute('aria-hidden', true);
+            mainNode.setAttribute('aria-hidden', false);
+        };
+
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            open();
+        });
+
+        closeButton.addEventListener('click', (event) => {
+            close();
+        });
+    }
 }
