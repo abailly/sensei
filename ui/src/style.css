@@ -109,6 +109,7 @@ div#notes .note-full {
 
 .timeline-time {
     grid-column: 1/24;
+    grid-row: auto/auto;
 }
 
 .timeline-time ul {
@@ -138,11 +139,10 @@ div#notes .note-full {
 
 .timeline-flows {
     grid-column: 1/24;
-    grid-row: 1;
+    grid-row: auto/auto;
 }
 
 .timeline-flows ul {
-    /*position: absolute;*/
     padding: 0 0 0 100px;
     list-style: none;
     white-space: nowrap;
@@ -183,6 +183,7 @@ div#notes .note-full {
 }
 
 .timeline-events{
+    grid-row: auto / auto;
     grid-column: 2/24;
 }
 
@@ -238,16 +239,39 @@ div#notes .note-full {
 div [id^='timeline-container-'] {
     padding-bottom: 16px;
     display: grid;
-    /*flex-direction: row;*/
     grid-template-columns: repeat(24, 100px);
+}
+
+div [id^='notes-'] {
+    grid-row: auto / auto;
+    grid-column: 2/24;
+}
+
+div [id^='notes-'] ul {
+    padding: 0 0 4px 0;
+    list-style: none;
+    white-space: nowrap;
+    font-size: 0;
+    height: 16px;
+}
+
+div [id^='notes-'] ul li {
+    position: relative;
+    display: inline-block;
+    height: 16px;
+}
+
+div [id^='notes-'] ul li div {
+    height: 16px;
+    position: absolute;
+    left: 0;
+    border-radius: 8px;
+    width: 100%;
 }
 
 .timeline-header {
     grid-column: 1/1;
-    /*display: flex;*/
-    /*align-content: center;*/
-    /*justify-content: center;*/
-    /*flex-direction: column;*/
+    grid-row: auto/auto;
 }
 
 .timeline-header>div h2,
