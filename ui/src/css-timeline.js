@@ -73,18 +73,20 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     }
 
     function drawTimelineTimeFlows(flow) {
-        let flowStartDate = LocalDateTime.parse(flow.flowStart);
-        let flowEndDate = LocalDateTime.parse(flow.flowEnd);
-        const flowWidth = Math.abs((flowStartDate.until(flowEndDate, ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH);
-        const timelineFlow = <li
-            style={'width:' + flowWidth + 'px; margin-left:' + flowLeftMargin(flow) + 'px;'}>
-            <div>
-                <h2>{flowStartDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
-                <h2>{flowEndDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
-                <h3>{flow.flowType}</h3>
-            </div>
-        </li>;
-        timelineFlows.appendChild(timelineFlow);
+        if(!timelineFlows.childNodes || timelineFlows.childNodes.length !== flowData.length) {
+            let flowStartDate = LocalDateTime.parse(flow.flowStart);
+            let flowEndDate = LocalDateTime.parse(flow.flowEnd);
+            const flowWidth = Math.abs((flowStartDate.until(flowEndDate, ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH);
+            const timelineFlow = <li
+                style={'width:' + flowWidth + 'px; margin-left:' + flowLeftMargin(flow) + 'px;'}>
+                <div>
+                    <h2>{flowStartDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
+                    <h2>{flowEndDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
+                    <h3>{flow.flowType}</h3>
+                </div>
+            </li>;
+            timelineFlows.appendChild(timelineFlow);
+        }
     }
 
     function toMap() {
@@ -119,7 +121,7 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     }
 
     clearContainer();
-    if (!container.firstChild) {
+    if (!timelineFlowsContainer.firstChild) {
         timelineFlowsContainer.appendChild(timelineFlows);
         timelineContainer.appendChild(timelineFlowsContainer);
     }
