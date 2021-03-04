@@ -123,21 +123,16 @@ runShake pwd uid = shakeArgs options $ do
     cmd_ "terraform" ["destroy", "-auto-approve", "-var-file=infra/terraform.tfvars", "infra"]
 
   "ui/dist/index.html" %> \ _ -> do
-    need  ["ui/package-lock.json"]
     needDirectoryFiles
       "ui"
       [ "src//*.js",
         "src//*.html",
         "src//*.css",
+        "package.json",
         "webpack.config.js",
         ".babelrc"
       ]
     cmd (Cwd "ui") "npm" ["run", "build"]
-
-  "ui/package-lock.json" %> \ _ -> do
-    need [ "ui/package.json"]
-    cmd (Cwd "ui") "npm" ["i"]
-
 
 needDirectoryFiles dir patterns =
   need =<< getDirectoryFiles "" ((dir <>) <$> patterns)
