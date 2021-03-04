@@ -63,7 +63,6 @@ div#timelines {
 }
 
 .note {
-    max-width: 20em;
     padding: .5em;
 }
 
@@ -224,6 +223,19 @@ div#notes .note-full {
     display: inline-block;
 }
 
+.timeline-header {
+    grid-column: 1/1;
+    grid-row: auto/auto;
+}
+
+.timeline-header > div h2,
+.timeline-header > div h3,
+.timeline-header > div h4 {
+    margin: 0 0 1px 0;
+    font-weight: normal;
+    font-size: 14px;
+}
+
 .timeline-events ul .timeline-event {
     position: absolute;
     left: 0;
@@ -234,6 +246,11 @@ div#notes .note-full {
 
 .timeline-event {
     opacity: 0.6;
+}
+
+.timeline-note {
+    cursor: pointer;
+    background: #315273;
 }
 
 div [id^='timeline-container-'] {
@@ -269,19 +286,6 @@ div [id^='notes-'] ul li div {
     width: 100%;
 }
 
-.timeline-header {
-    grid-column: 1/1;
-    grid-row: auto/auto;
-}
-
-.timeline-header > div h2,
-.timeline-header > div h3,
-.timeline-header > div h4 {
-    margin: 0 0 1px 0;
-    font-weight: normal;
-    font-size: 14px;
-}
-
 .c-dialog {
     position: fixed;
     z-index: 100;
@@ -303,6 +307,17 @@ div [id^='notes-'] ul li div {
     margin: auto;
     padding: 2.4rem;
     background-color: white;
+    border-radius: 12px;
+}
+
+.c-dialog__box div[type="button"] {
+    cursor: pointer;
+    font-size: 18px;
+    text-align: end;
+    color: #777777;
+    text-shadow:
+            -0.0075em 0.0075em 0 #ddd,
+            0.005em 0.005em 0 #333;
 }
 
 .c-dialog[aria-hidden="true"] {

@@ -2,6 +2,7 @@ import {dom} from './dom.js';
 import {ChronoUnit, LocalDateTime, LocalTime} from "@js-joda/core";
 import {config} from "./config";
 import showdown from "showdown";
+import {formatISODateTime} from "./date";
 
 const THIRTY_MINUTES = 30;
 const HALF_HOUR_WIDTH = 100;
@@ -12,9 +13,13 @@ export function drawCssNotes(container, day, notesData) {
     const mainParentNode = mainNode.parentNode;
 
     const timelineContainer = container.firstChild;
+    const notesHeader = <div id={'title-notes-' + day} class="timeline-header">Notes</div>;
     const notesDiv = <div id={'notes-' + day} class="timeline-chart"/>;
     const noteList = <ul/>;
 
+    if(document.getElementById('title-notes-' + day)) {
+        document.getElementById('title-notes-' + day).remove();
+    }
     notesData.map(note => document.getElementById('note-' + note.noteStart))
         .filter(node => node !== null)
         .forEach(node => node.remove());
@@ -24,15 +29,16 @@ export function drawCssNotes(container, day, notesData) {
     });
 
     notesDiv.appendChild(noteList);
-    timelineContainer.insertBefore(notesDiv, timelineContainer.children[1]);
+    timelineContainer.insertBefore(notesHeader, timelineContainer.children[1]);
+    timelineContainer.insertBefore(notesDiv, timelineContainer.children[2]);
 
     function drawTimelineFlow(note) {
         const noteDisplay = <li style={'width:16px; margin-left:' + noteLeftMargin(note) + 'px;'}/>;
         const dialog = <div id={'note-' + note.noteStart} class="c-dialog"/>;
         const dialogBox = <div role="document" class="c-dialog__box"/>;
-        const closeButton = <div>Close</div>;
+        const closeButton = <div>X</div>;
         const dialogContent = <div id={'note-desc-' + note.noteStart}/>;
-        const button = <div type="button" class='timeline-event' style={'background: blue;'}/>;
+        const button = <div type="button"/>;
 
         noteDisplay.appendChild(button);
         dialog.appendChild(dialogBox);
@@ -62,7 +68,8 @@ export function drawCssNotes(container, day, notesData) {
         setAttributesTo(button, [
             {type: "type", value: "button"},
             {type: "aria-haspopup", value: "dialog"},
-            {type: "aria-controls", value: 'note-' + note.noteStart}
+            {type: "aria-controls", value: 'note-' + note.noteStart},
+            {type: "class", value: "timeline-event timeline-note"}
         ])
 
         initializeModal(dialog, button, closeButton);
@@ -72,7 +79,7 @@ export function drawCssNotes(container, day, notesData) {
 
     function formatNote(note) {
         return "<div class='note'>" +
-            new showdown.Converter({simplifiedAutoLink: true}).makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent) +
+            new showdown.Converter({simplifiedAutoLink: true}).makeHtml('#### ' + formatISODateTime(LocalDateTime.parse(note.noteStart)) + '\n\n' + note.noteContent) +
             "</div>";
     }
 
