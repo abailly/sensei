@@ -58,9 +58,10 @@ function createTimelineContainer(day, data, notesData) {
             });
         } else {
             document.getElementById("notes-" + day).remove();
+            document.getElementById('title-notes-' + day).remove();
             const regExp = new RegExp('^note-' + day + '.*$');
             Array.from(document.body.childNodes).forEach(node => {
-                if(node.id !== undefined && regExp.test(node.id)) {
+                if (node.id !== undefined && regExp.test(node.id)) {
                     node.remove();
                 }
             });
