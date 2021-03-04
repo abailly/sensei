@@ -1,0 +1,46 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Notes it should display note date like 2020-10-12 14:30 1`] = `
+<div>
+  <div
+    class="pagination"
+  >
+    <button
+      class="btn-prev"
+      disabled=""
+    >
+      &lt;&lt;
+    </button>
+    <button
+      class="btn-next"
+      disabled=""
+    >
+      &gt;&gt;
+    </button>
+  </div>
+  <div
+    id="notes-list"
+  >
+    <h2>
+      Notes for 
+      1
+       
+    </h2>
+    <div
+      class="note-full"
+    >
+      <h3>
+        2020-10-12 14:30
+         
+      </h3>
+      <div
+        class="note-content"
+      >
+        <p>
+          content
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+`;

@@ -1,5 +1,4 @@
 import {dom} from './dom.js';
-import {formatISOTime} from "./date.js";
 import {config} from "./config";
 
 import {describe, expect, test} from '@jest/globals';
@@ -60,6 +59,9 @@ const notes = [{
 
 describe('CSS Timeline', () => {
 
+    let mainContainer;
+    let container;
+
     beforeEach(() => {
         config.userProfile = {
             userFlowTypes: {
@@ -72,12 +74,15 @@ describe('CSS Timeline', () => {
                 "Experimenting": "#0022dd"
             }
         };
+        container = document.createElement("div");
+        mainContainer = <div id="main" />;
+        mainContainer.appendChild(container);
+        document.body.appendChild(mainContainer);
     });
 
     test('expect timeline to be drawn', () => {
         config.userProfile.userStartOfDay = '08:30:00';
         config.userProfile.userEndOfDay = '17:00:00';
-        let container = document.createElement("div");
 
         drawTimeline(container, '2020-12-17', flowData);
 
@@ -87,7 +92,6 @@ describe('CSS Timeline', () => {
     test('expect timeline to be drawn with negative left margin when flow start before user start of day', () => {
         config.userProfile.userStartOfDay = '09:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
-        let container = document.createElement("div");
 
         drawTimeline(container, '2020-12-17', flowData);
 
@@ -97,7 +101,6 @@ describe('CSS Timeline', () => {
     test('expect timeline to be drawn with positive left margin when flow start after user start of day', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
-        let container = document.createElement("div");
 
         drawTimeline(container, '2020-12-17', flowData);
 
@@ -107,7 +110,6 @@ describe('CSS Timeline', () => {
     test('expect timeline to be expand at selected date', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
-        let container = document.createElement("div");
 
         drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
 
@@ -117,7 +119,6 @@ describe('CSS Timeline', () => {
     test('expect timeline not to clear notes', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
-        let container = document.createElement("div");
 
         drawTimeline(container, '2020-12-17', flowData);
         drawCssNotes(container, '2020-12-17', notes);
@@ -130,7 +131,6 @@ describe('CSS Timeline', () => {
     test('expect timeline to have row label with flowtype after being drawn without', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
-        let container = document.createElement("div");
 
         drawTimeline(container, '2020-12-17', flowData);
         drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
