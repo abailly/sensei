@@ -1,14 +1,12 @@
 import {get} from './request.js';
 import {formatISODate} from './date.js';
-import {drawNotes} from './notes.js';
 import {drawCommands} from './commands.js';
 import {drawSummary} from './summary.js';
 import {dom, clearElement} from './dom.js';
 import {config} from "./config";
-import {colorOf} from './color.js';
 import {drawTimeline} from "./css-timeline.js";
 import {drawCssNotes} from "./css-notes.js";
-import {LocalDate, LocalDateTime} from "@js-joda/core";
+import {LocalDateTime} from "@js-joda/core";
 
 /**
  Create a new div container for a timeline

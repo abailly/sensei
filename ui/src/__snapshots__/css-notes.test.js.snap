@@ -9,13 +9,13 @@ exports[`CSS Timeline expect notes to be drawn 1`] = `
       <div>
         <div
           class="timeline-header"
-          id="title-notes-2020-12-17"
+          id="title-notes-2020-12-16"
         >
           Notes
         </div>
         <div
           class="timeline-chart"
-          id="notes-2020-12-17"
+          id="notes-2020-12-16"
         >
           <ul>
             <li
@@ -25,8 +25,13 @@ exports[`CSS Timeline expect notes to be drawn 1`] = `
                 aria-controls="note-2020-11-16T09:30:00"
                 aria-haspopup="dialog"
                 class="timeline-event timeline-note"
+                id="note-button-2020-11-16T09:30:00"
                 type="button"
-              />
+              >
+                <i
+                  class="fas fa-sticky-note"
+                />
+              </div>
             </li>
             <li
               style="width: 16px; margin-left: 267.33333333333337px;"
@@ -35,8 +40,13 @@ exports[`CSS Timeline expect notes to be drawn 1`] = `
                 aria-controls="note-2020-11-16T10:55:00"
                 aria-haspopup="dialog"
                 class="timeline-event timeline-note"
+                id="note-button-2020-11-16T10:55:00"
                 type="button"
-              />
+              >
+                <i
+                  class="fas fa-sticky-note"
+                />
+              </div>
             </li>
             <li
               style="width: 16px; margin-left: 267.33333333333337px;"
@@ -45,8 +55,13 @@ exports[`CSS Timeline expect notes to be drawn 1`] = `
                 aria-controls="note-2020-11-16T12:20:00"
                 aria-haspopup="dialog"
                 class="timeline-event timeline-note"
+                id="note-button-2020-11-16T12:20:00"
                 type="button"
-              />
+              >
+                <i
+                  class="fas fa-sticky-note"
+                />
+              </div>
             </li>
           </ul>
         </div>
@@ -208,51 +223,14 @@ exports[`CSS Timeline expect previous drawn notes to be removed 1`] = `
     <div>
       <div>
         <div
-          class="timeline-chart"
-          id="notes-2020-12-17"
-        >
-          <ul>
-            <li
-              style="width: 16px; margin-left: 192px;"
-            >
-              <div
-                aria-controls="note-2020-11-16T09:30:00"
-                aria-haspopup="dialog"
-                class="timeline-event timeline-note"
-                type="button"
-              />
-            </li>
-            <li
-              style="width: 16px; margin-left: 267.33333333333337px;"
-            >
-              <div
-                aria-controls="note-2020-11-16T10:55:00"
-                aria-haspopup="dialog"
-                class="timeline-event timeline-note"
-                type="button"
-              />
-            </li>
-            <li
-              style="width: 16px; margin-left: 267.33333333333337px;"
-            >
-              <div
-                aria-controls="note-2020-11-16T12:20:00"
-                aria-haspopup="dialog"
-                class="timeline-event timeline-note"
-                type="button"
-              />
-            </li>
-          </ul>
-        </div>
-        <div
           class="timeline-header"
-          id="title-notes-2020-12-17"
+          id="title-notes-2020-12-16"
         >
           Notes
         </div>
         <div
           class="timeline-chart"
-          id="notes-2020-12-17"
+          id="notes-2020-12-16"
         >
           <ul>
             <li
@@ -262,8 +240,13 @@ exports[`CSS Timeline expect previous drawn notes to be removed 1`] = `
                 aria-controls="note-2020-11-16T09:30:00"
                 aria-haspopup="dialog"
                 class="timeline-event timeline-note"
+                id="note-button-2020-11-16T09:30:00"
                 type="button"
-              />
+              >
+                <i
+                  class="fas fa-sticky-note"
+                />
+              </div>
             </li>
             <li
               style="width: 16px; margin-left: 267.33333333333337px;"
@@ -272,8 +255,13 @@ exports[`CSS Timeline expect previous drawn notes to be removed 1`] = `
                 aria-controls="note-2020-11-16T10:55:00"
                 aria-haspopup="dialog"
                 class="timeline-event timeline-note"
+                id="note-button-2020-11-16T10:55:00"
                 type="button"
-              />
+              >
+                <i
+                  class="fas fa-sticky-note"
+                />
+              </div>
             </li>
             <li
               style="width: 16px; margin-left: 267.33333333333337px;"
@@ -282,8 +270,13 @@ exports[`CSS Timeline expect previous drawn notes to be removed 1`] = `
                 aria-controls="note-2020-11-16T12:20:00"
                 aria-haspopup="dialog"
                 class="timeline-event timeline-note"
+                id="note-button-2020-11-16T12:20:00"
                 type="button"
-              />
+              >
+                <i
+                  class="fas fa-sticky-note"
+                />
+              </div>
             </li>
           </ul>
         </div>

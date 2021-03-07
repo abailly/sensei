@@ -159,8 +159,13 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
             aria-controls="note-2020-11-16T09:30:00"
             aria-haspopup="dialog"
             class="timeline-event timeline-note"
+            id="note-button-2020-11-16T09:30:00"
             type="button"
-          />
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
         </li>
         <li
           style="width: 16px; margin-left: 267.33333333333337px;"
@@ -169,8 +174,13 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
             aria-controls="note-2020-11-16T10:55:00"
             aria-haspopup="dialog"
             class="timeline-event timeline-note"
+            id="note-button-2020-11-16T10:55:00"
             type="button"
-          />
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
         </li>
         <li
           style="width: 16px; margin-left: 267.33333333333337px;"
@@ -179,8 +189,13 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
             aria-controls="note-2020-11-16T12:20:00"
             aria-haspopup="dialog"
             class="timeline-event timeline-note"
+            id="note-button-2020-11-16T12:20:00"
             type="button"
-          />
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
         </li>
       </ul>
     </div>

@@ -37,7 +37,7 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:30:00';
         config.userProfile.userEndOfDay = '17:00:00';
 
-        drawCssNotes(container, '2020-12-17', notes);
+        drawCssNotes(container, '2020-12-16', notes);
 
         expect(document.body).toMatchSnapshot();
     });
@@ -46,8 +46,8 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:30:00';
         config.userProfile.userEndOfDay = '17:00:00';
 
-        drawCssNotes(container, '2020-12-17', notes);
-        drawCssNotes(container, '2020-12-17', notes);
+        drawCssNotes(container, '2020-12-16', notes);
+        drawCssNotes(container, '2020-12-16', notes);
 
         expect(document.body).toMatchSnapshot();
     });

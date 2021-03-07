@@ -17,28 +17,38 @@ export function drawCssNotes(container, day, notesData) {
     const notesDiv = <div id={'notes-' + day} class="timeline-chart"/>;
     const noteList = <ul/>;
 
-    if(document.getElementById('title-notes-' + day)) {
-        document.getElementById('title-notes-' + day).remove();
-    }
-    notesData.map(note => document.getElementById('note-' + note.noteStart))
-        .filter(node => node !== null)
-        .forEach(node => node.remove());
 
-    notesData.forEach(note => {
-        noteList.appendChild(drawTimelineFlow(note));
-    });
-
+    clearNotes();
+    drawNotes();
     notesDiv.appendChild(noteList);
     timelineContainer.insertBefore(notesHeader, timelineContainer.children[1]);
     timelineContainer.insertBefore(notesDiv, timelineContainer.children[2]);
 
-    function drawTimelineFlow(note) {
+    function clearNotes() {
+        if(document.getElementById('title-notes-' + day)) {
+            document.getElementById('title-notes-' + day).remove();
+        }
+        notesData.map(note => document.getElementById('note-' + note.noteStart))
+            .filter(node => node !== null)
+            .forEach(node => node.remove());
+        notesData.map(note => document.getElementById('notes-' + day))
+            .filter(node => node !== null)
+            .forEach(node => node.remove());
+    }
+
+    function drawNotes() {
+        notesData.forEach(note => {
+            noteList.appendChild(drawNote(note));
+        });
+    }
+
+    function drawNote(note) {
         const noteDisplay = <li style={'width:16px; margin-left:' + noteLeftMargin(note) + 'px;'}/>;
         const dialog = <div id={'note-' + note.noteStart} class="c-dialog"/>;
         const dialogBox = <div role="document" class="c-dialog__box"/>;
         const closeButton = <div>X</div>;
         const dialogContent = <div id={'note-desc-' + note.noteStart}/>;
-        const button = <div type="button"/>;
+        const button = <div type="button" id={'note-button-' + note.noteStart}><i /></div>;
 
         noteDisplay.appendChild(button);
         dialog.appendChild(dialogBox);
@@ -70,7 +80,9 @@ export function drawCssNotes(container, day, notesData) {
             {type: "aria-haspopup", value: "dialog"},
             {type: "aria-controls", value: 'note-' + note.noteStart},
             {type: "class", value: "timeline-event timeline-note"}
-        ])
+        ]);
+
+        setAttributesTo(button.firstChild, [{type: "class", value: "fas fa-sticky-note"}]);
 
         initializeModal(dialog, button, closeButton);
 

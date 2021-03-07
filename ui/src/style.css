@@ -250,7 +250,6 @@ div#notes .note-full {
 
 .timeline-note {
     cursor: pointer;
-    background: #315273;
 }
 
 div [id^='timeline-container-'] {
@@ -282,8 +281,19 @@ div [id^='notes-'] ul li div {
     height: 16px;
     position: absolute;
     left: 0;
-    border-radius: 8px;
     width: 100%;
+}
+
+
+div [id^='note-button-'] {
+    font-size: 12px;
+    vertical-align: middle;
+    text-align: center;
+}
+
+div [id^='note-button-'] i {
+    vertical-align: middle;
+    text-align: center;
 }
 
 .c-dialog {
