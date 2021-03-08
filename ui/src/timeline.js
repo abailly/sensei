@@ -4,9 +4,8 @@ import {drawCommands} from './commands.js';
 import {drawSummary} from './summary.js';
 import {dom, clearElement} from './dom.js';
 import {config} from "./config";
-import {drawTimeline} from "./css-timeline.js";
-import {drawCssNotes} from "./css-notes.js";
 import {LocalDateTime} from "@js-joda/core";
+import Timeline from "./timeline/Timeline";
 
 /**
  Create a new div container for a timeline
@@ -23,6 +22,8 @@ function createTimelineContainer(day, data, notesData) {
     const notes = <input type="checkbox" id={notesName}/>;
     const commands = <input type="checkbox" id={commandsName}/>;
     const summary = <input type="checkbox" id={summaryName}/>;
+
+    let timeline = undefined;
 
     const container =
         <div id={day} class='timeline'>
@@ -43,26 +44,20 @@ function createTimelineContainer(day, data, notesData) {
 
     details.addEventListener('change', (e) => {
         if (e.target.checked) {
-            drawTimeline(chart, day, data, f => f.flowType);
+            timeline.draw(f => f.flowType);
         } else {
-            drawTimeline(chart, day, data);
+            timeline.draw();
         }
     });
 
     notes.addEventListener('change', (e) => {
         if (e.target.checked) {
             get(`/api/flows/${config.user}/${day}/notes`, (notesData) => {
-                drawCssNotes(chart, day, notesData);
+                timeline.addNotes(notesData);
+                timeline.draw();
             });
         } else {
-            document.getElementById("notes-" + day).remove();
-            document.getElementById('title-notes-' + day).remove();
-            const regExp = new RegExp('^note-' + day + '.*$');
-            Array.from(document.body.childNodes).forEach(node => {
-                if (node.id !== undefined && regExp.test(node.id)) {
-                    node.remove();
-                }
-            });
+            timeline.clearNotes();
         }
     });
 
@@ -86,7 +81,8 @@ function createTimelineContainer(day, data, notesData) {
     });
 
     document.getElementById('timelines').appendChild(container);
-    drawTimeline(chart, day, data);
+    timeline = new Timeline(chart, day, data);
+    timeline.draw();
 }
 
 /**

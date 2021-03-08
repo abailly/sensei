@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`CSS Timeline expect timeline not to clear notes 1`] = `
+exports[`Timeline expect timeline not to clear notes 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
@@ -417,7 +417,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be drawn 1`] = `
+exports[`Timeline expect timeline to be drawn 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
@@ -716,7 +716,7 @@ exports[`CSS Timeline expect timeline to be drawn 1`] = `
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be drawn with negative left margin when flow start before user start of day 1`] = `
+exports[`Timeline expect timeline to be drawn with negative left margin when flow start before user start of day 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
@@ -1009,7 +1009,7 @@ exports[`CSS Timeline expect timeline to be drawn with negative left margin when
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be drawn with positive left margin when flow start after user start of day 1`] = `
+exports[`Timeline expect timeline to be drawn with positive left margin when flow start after user start of day 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
@@ -1308,7 +1308,7 @@ exports[`CSS Timeline expect timeline to be drawn with positive left margin when
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
+exports[`Timeline expect timeline to be expand at selected date 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
@@ -1667,7 +1667,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to have row label with flowtype after being drawn without 1`] = `
+exports[`Timeline expect timeline to have row label with flowtype after being drawn without 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
@@ -2026,7 +2026,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
 </div>
 `;
 
-exports[`CSS Timeline notes are cleared for good 1`] = `
+exports[`Timeline notes are cleared for good 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
@@ -2325,7 +2325,7 @@ exports[`CSS Timeline notes are cleared for good 1`] = `
 </div>
 `;
 
-exports[`CSS Timeline notes can be drawn after being cleared 1`] = `
+exports[`Timeline notes can be drawn after being cleared 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"

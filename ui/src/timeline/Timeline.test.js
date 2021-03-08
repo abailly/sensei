@@ -1,9 +1,7 @@
-import {dom} from './dom.js';
-import {config} from "./config";
-
+import {dom} from '../dom.js';
+import {config} from "../config";
 import {describe, expect, test} from '@jest/globals';
-import {drawTimeline} from "./css-timeline";
-import {drawCssNotes} from "./css-notes";
+import Timeline from "./Timeline";
 
 const flowData = [
     {
@@ -38,8 +36,7 @@ const flowData = [
         "flowStart": "2020-12-17T15:00:00",
         "flowType": "Rework",
         "flowEnd": "2020-12-17T17:00:00"
-    },
-    {
+    }, {
         "flowStart": "2020-12-17T17:00:00",
         "flowType": "Meeting",
         "flowEnd": "2020-12-17T17:00:00"
@@ -57,7 +54,7 @@ const notes = [{
     "noteContent": "# Note\r## Troisième note"
 }];
 
-describe('CSS Timeline', () => {
+describe('Timeline', () => {
 
     let mainContainer;
     let container;
@@ -75,7 +72,7 @@ describe('CSS Timeline', () => {
             }
         };
         container = document.createElement("div");
-        mainContainer = <div id="main" />;
+        mainContainer = <div id="main"/>;
         mainContainer.appendChild(container);
         document.body.appendChild(mainContainer);
     });
@@ -83,8 +80,9 @@ describe('CSS Timeline', () => {
     test('expect timeline to be drawn', () => {
         config.userProfile.userStartOfDay = '08:30:00';
         config.userProfile.userEndOfDay = '17:00:00';
+        const timeline = new Timeline(container, '2020-12-17', flowData);
 
-        drawTimeline(container, '2020-12-17', flowData);
+        timeline.draw();
 
         expect(container).toMatchSnapshot();
     });
@@ -92,8 +90,9 @@ describe('CSS Timeline', () => {
     test('expect timeline to be drawn with negative left margin when flow start before user start of day', () => {
         config.userProfile.userStartOfDay = '09:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
+        const timeline = new Timeline(container, '2020-12-17', flowData);
 
-        drawTimeline(container, '2020-12-17', flowData);
+        timeline.draw();
 
         expect(container).toMatchSnapshot();
     });
@@ -101,8 +100,9 @@ describe('CSS Timeline', () => {
     test('expect timeline to be drawn with positive left margin when flow start after user start of day', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
+        const timeline = new Timeline(container, '2020-12-17', flowData);
 
-        drawTimeline(container, '2020-12-17', flowData);
+        timeline.draw();
 
         expect(container).toMatchSnapshot();
     });
@@ -111,7 +111,8 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
 
-        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+        const timeline = new Timeline(container, '2020-12-17', flowData);
+        timeline.draw(f => f.flowType);
 
         expect(container).toMatchSnapshot();
     });
@@ -120,9 +121,10 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
 
-        drawTimeline(container, '2020-12-17', flowData);
-        drawCssNotes(container, '2020-12-17', notes);
-        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+        const timeline = new Timeline(container, '2020-12-17', flowData);
+        timeline.addNotes(notes);
+        timeline.draw();
+        timeline.draw(f => f.flowType);
 
         expect(container).toMatchSnapshot();
 
@@ -131,11 +133,39 @@ describe('CSS Timeline', () => {
     test('expect timeline to have row label with flowtype after being drawn without', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
+        const timeline = new Timeline(container, '2020-12-17', flowData);
 
-        drawTimeline(container, '2020-12-17', flowData);
-        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+        timeline.draw();
+        timeline.draw(f => f.flowType);
 
         expect(container).toMatchSnapshot();
 
+    });
+
+    test('notes can be drawn after being cleared', () => {
+        config.userProfile.userStartOfDay = '08:00:00';
+        config.userProfile.userEndOfDay = '17:00:00';
+
+        const timeline = new Timeline(container, '2020-12-17', flowData);
+        timeline.addNotes(notes);
+        timeline.draw();
+        timeline.clearNotes()
+        timeline.addNotes(notes);
+        timeline.draw();
+
+        expect(container).toMatchSnapshot();
+    });
+
+    test('notes are cleared for good', () => {
+        config.userProfile.userStartOfDay = '08:00:00';
+        config.userProfile.userEndOfDay = '17:00:00';
+
+        const timeline = new Timeline(container, '2020-12-17', flowData);
+        timeline.addNotes(notes);
+        timeline.draw();
+        timeline.clearNotes()
+        timeline.draw();
+
+        expect(container).toMatchSnapshot();
     });
 });
