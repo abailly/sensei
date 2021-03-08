@@ -127,8 +127,8 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     }
 
     toMap().forEach((flows, rowLabel) => {
-        const timelineHeader = <div class='timeline-header'/>;
-        timelineHeader.appendChild(<div>
+        const timelineTitle = <div class='timeline-title'/>;
+        timelineTitle.appendChild(<div>
             <h3>{rowLabel}</h3>
         </div>);
         const timelineEvents = <div class='timeline-events'/>;
@@ -137,7 +137,7 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
             timelineEvent.appendChild(drawTimelineFlow(flow));
             timelineEvents.appendChild(timelineEvent);
         })
-        timelineContainer.appendChild(timelineHeader);
+        timelineContainer.appendChild(timelineTitle);
         timelineContainer.appendChild(timelineEvents);
     })
 

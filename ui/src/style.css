@@ -223,14 +223,14 @@ div#notes .note-full {
     display: inline-block;
 }
 
-.timeline-header {
+.timeline-title {
     grid-column: 1/1;
     grid-row: auto/auto;
 }
 
-.timeline-header > div h2,
-.timeline-header > div h3,
-.timeline-header > div h4 {
+.timeline-title > div h2,
+.timeline-title > div h3,
+.timeline-title > div h4 {
     margin: 0 0 1px 0;
     font-weight: normal;
     font-size: 14px;

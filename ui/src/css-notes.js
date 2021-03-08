@@ -13,7 +13,7 @@ export function drawCssNotes(container, day, notesData) {
     const mainParentNode = mainNode.parentNode;
 
     const timelineContainer = container.firstChild;
-    const notesHeader = <div id={'title-notes-' + day} class="timeline-header">Notes</div>;
+    const notesTitle = <div id={'title-notes-' + day} class="timeline-title">Notes</div>;
     const notesDiv = <div id={'notes-' + day} class="timeline-chart"/>;
     const noteList = <ul/>;
 
@@ -21,7 +21,7 @@ export function drawCssNotes(container, day, notesData) {
     clearNotes();
     drawNotes();
     notesDiv.appendChild(noteList);
-    timelineContainer.insertBefore(notesHeader, timelineContainer.children[1]);
+    timelineContainer.insertBefore(notesTitle, timelineContainer.children[1]);
     timelineContainer.insertBefore(notesDiv, timelineContainer.children[2]);
 
     function clearNotes() {
