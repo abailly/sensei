@@ -6,8 +6,8 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -200,7 +200,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -223,7 +223,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -246,7 +246,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -301,7 +301,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -324,7 +324,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -417,8 +417,8 @@ exports[`CSS Timeline expect timeline to be drawn 1`] = `
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -559,7 +559,7 @@ exports[`CSS Timeline expect timeline to be drawn 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -716,8 +716,8 @@ exports[`CSS Timeline expect timeline to be drawn with negative left margin when
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -858,7 +858,7 @@ exports[`CSS Timeline expect timeline to be drawn with negative left margin when
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1009,8 +1009,8 @@ exports[`CSS Timeline expect timeline to be drawn with positive left margin when
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -1151,7 +1151,7 @@ exports[`CSS Timeline expect timeline to be drawn with positive left margin when
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1308,8 +1308,8 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -1450,7 +1450,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1473,7 +1473,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1496,7 +1496,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1551,7 +1551,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1574,7 +1574,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1667,8 +1667,8 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -1809,7 +1809,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1832,7 +1832,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1855,7 +1855,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1910,7 +1910,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1933,7 +1933,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>

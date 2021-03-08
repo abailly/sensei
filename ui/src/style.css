@@ -136,47 +136,47 @@ div#notes .note-full {
     width: 100px;
 }
 
-.timeline-flows {
+.timeline-header {
     grid-column: 1/24;
     grid-row: auto/auto;
 }
 
-.timeline-flows ul {
+.timeline-header ul {
     padding: 0 0 0 100px;
     list-style: none;
     white-space: nowrap;
     font-size: 0;
 }
 
-.timeline-flows ul li {
+.timeline-header ul li {
     padding-bottom: 8px;
 }
 
-.timeline-flows ul h2,
-.timeline-flows ul h3,
-.timeline-flows ul h4 {
+.timeline-header ul h2,
+.timeline-header ul h3,
+.timeline-header ul h4 {
     margin: 0 0 1px 0;
     font-weight: normal;
     font-size: 11px;
 }
 
-.timeline-flows ul h2 {
+.timeline-header ul h2 {
     color: #777;
     text-transform: uppercase;
 }
 
-.timeline-flows ul h3 {
+.timeline-header ul h3 {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden
 }
 
-.timeline-flows ul h4 {
+.timeline-header ul h4 {
     color: #fff;
     font-style: italic;
 }
 
-.timeline-flows li {
+.timeline-header li {
     position: relative;
     display: inline-block;
 }

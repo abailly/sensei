@@ -12,8 +12,8 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     const flowMap = new Map();
 
     const timelineContainer = !container.firstChild ? <div id={'timeline-container-' + day}/> : container.firstChild;
-    const timelineFlowsContainer = !container.firstChild ?
-        <div id={'timeline-flows-' + day} class='timeline-flows'/> : container.firstChild.firstChild;
+    const timelineHeaderContainer = !container.firstChild ?
+        <div id={'timeline-header-' + day} class='timeline-header'/> : container.firstChild.firstChild;
     const timelineFlows = !container.firstChild ? <ul/> : container.firstChild.firstChild.firstChild;
     const timelineTimeContainer = !container.firstChild ?
         <div id={'timeline-time-' + day} class='timeline-time'/> : container.firstChild.lastChild;
@@ -114,16 +114,16 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
         }
 
         function isNotFlowAndTimeAndNote(node) {
-            return !isWithId(node, 'timeline-flows-' + day)
+            return !isWithId(node, 'timeline-header-' + day)
                 && !isWithId(node, 'timeline-time-' + day)
                 && !isWithId(node, 'notes-' + day);
         }
     }
 
     clearContainer();
-    if (!timelineFlowsContainer.firstChild) {
-        timelineFlowsContainer.appendChild(timelineFlows);
-        timelineContainer.appendChild(timelineFlowsContainer);
+    if (!timelineHeaderContainer.firstChild) {
+        timelineHeaderContainer.appendChild(timelineFlows);
+        timelineContainer.appendChild(timelineHeaderContainer);
     }
 
     toMap().forEach((flows, rowLabel) => {

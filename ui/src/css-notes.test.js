@@ -15,7 +15,7 @@ const notes = [{
     "noteContent": "# Note\r## Troisième note"
 }];
 
-describe('CSS Timeline', () => {
+describe('CSS Notes', () => {
 
     let mainContainer;
     let container;
