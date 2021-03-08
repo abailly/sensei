@@ -296,7 +296,7 @@ div [id^='note-button-'] i {
     text-align: center;
 }
 
-div [id='note-desc-'] div, h4, p {
+div [id^='note-desc-'] div, h4 {
     padding-bottom: 8px;
     border-bottom: 1px solid #e9ecef;
 }
