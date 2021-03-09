@@ -122,8 +122,8 @@ describe('Timeline', () => {
         config.userProfile.userEndOfDay = '17:00:00';
 
         const timeline = new Timeline(container, '2020-12-17', flowData);
-        timeline.addNotes(notes);
         timeline.draw();
+        timeline.drawNotes(notes);
         timeline.draw(f => f.flowType);
 
         expect(container).toMatchSnapshot();
@@ -147,10 +147,10 @@ describe('Timeline', () => {
         config.userProfile.userEndOfDay = '17:00:00';
 
         const timeline = new Timeline(container, '2020-12-17', flowData);
-        timeline.addNotes(notes);
+        timeline.drawNotes(notes);
         timeline.draw();
         timeline.clearNotes()
-        timeline.addNotes(notes);
+        timeline.drawNotes(notes);
         timeline.draw();
 
         expect(container).toMatchSnapshot();
@@ -161,7 +161,7 @@ describe('Timeline', () => {
         config.userProfile.userEndOfDay = '17:00:00';
 
         const timeline = new Timeline(container, '2020-12-17', flowData);
-        timeline.addNotes(notes);
+        timeline.drawNotes(notes);
         timeline.draw();
         timeline.clearNotes()
         timeline.draw();

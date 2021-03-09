@@ -53,8 +53,7 @@ function createTimelineContainer(day, data, notesData) {
     notes.addEventListener('change', (e) => {
         if (e.target.checked) {
             get(`/api/flows/${config.user}/${day}/notes`, (notesData) => {
-                timeline.addNotes(notesData);
-                timeline.draw();
+                timeline.drawNotes(notesData);
             });
         } else {
             timeline.clearNotes();

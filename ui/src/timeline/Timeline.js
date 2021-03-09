@@ -28,8 +28,8 @@ export default function Timeline(container, day, flowData) {
         this.container.appendChild(this.timelineContainer);
     }
 
-    this.addNotes = function (notes) {
-        this.noteFlows.addNotes(notes);
+    this.drawNotes = function (notes) {
+        this.noteFlows.drawNotes(this.timelineContainer, notes);
     }
 
     this.clearNotes = function() {
@@ -193,8 +193,9 @@ function TimelineNotes(startTimeOfDay, day) {
     this.notesTitle= <div id={'title-notes-' + day} class="timeline-title">Notes</div>;
     this.notesDiv = <div id={'notes-' + day} class="timeline-chart"/>;
 
-    this.addNotes = function (notes) {
+    this.drawNotes = function (container, notes) {
         this.notes = notes.map((note, index, notes) => new TimelineNote(note, this.startTimeOfDay, index, notes));
+        this.draw(container);
     }
 
     this.draw = function (container) {
