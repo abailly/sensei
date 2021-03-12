@@ -86,13 +86,11 @@ function TimelineHeader(startTimeOfDay, endTimeOfDay, flowData) {
 }
 
 function HeaderFlow(startDate, endDate, flowType, startTimeOfDay, endTimeOfDay) {
-
     this.startDate = startDate;
     this.endDate = endDate;
     this.flowType = flowType;
     this.startTimeOfDay = startTimeOfDay;
     this.endTimeOfDay = endTimeOfDay;
-
 }
 
 function TimelineFlows(startTimeOfDay, endTimeOfDay, flowData) {
@@ -101,7 +99,6 @@ function TimelineFlows(startTimeOfDay, endTimeOfDay, flowData) {
     this.flowMap = new Map();
     this.hasBeenDrawn = false;
     this.containerChilds = [];
-
 
     this.initializeFlows = function (rowLabel) {
         this.flowMap = new Map();
@@ -151,7 +148,6 @@ function TimelineFlow(startTimeOfday, endTimeOfDay, flow, previousFlowEnd) {
         return (this.previousFlowEnd.until(LocalDateTime.parse(this.flow.flowStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH;
     }
 
-
     this.draw = function (container, index) {
         let flowStartDate = LocalDateTime.parse(this.flow.flowStart);
         let flowEndDate = LocalDateTime.parse(this.flow.flowEnd);
@@ -164,7 +160,6 @@ function TimelineFlow(startTimeOfday, endTimeOfDay, flow, previousFlowEnd) {
 }
 
 function TimelineFooter(startTimeOfDay, endTimeOfDay) {
-
     this.startTimeOfDay = startTimeOfDay;
     this.endTimeOfDay = endTimeOfDay;
     this.hasBeenDrawn = false;
@@ -186,7 +181,6 @@ function TimelineFooter(startTimeOfDay, endTimeOfDay) {
 }
 
 function TimelineNotes(startTimeOfDay, day) {
-
     this.startTimeOfDay = startTimeOfDay;
     this.notes = [];
     this.hasBeenDrawn = false;
@@ -230,12 +224,12 @@ function TimelineNote(note, startTimeOfDay, index, notes) {
     this.modalNotes = [];
 
     this.noteLeftMargin = function() {
-        let bulletGap = 8;
+        let stickyNoteGap = 8;
         if (this.previousNote !== undefined) {
             this.previousNoteTime = LocalDateTime.parse(this.previousNote.noteStart);
-            bulletGap = 16;
+            stickyNoteGap = 16;
         }
-        return (this.previousNoteTime.until(LocalDateTime.parse(this.note.noteStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH - bulletGap;
+        return (this.previousNoteTime.until(LocalDateTime.parse(this.note.noteStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH - stickyNoteGap;
     }
 
     this.noteDisplay = <li style={'width:16px; margin-left:' + this.noteLeftMargin() + 'px;'}/>;
