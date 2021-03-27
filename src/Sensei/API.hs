@@ -144,7 +144,9 @@ type GetFlowsTimeline =
     :> Get '[JSON] [FlowView]
 
 type GetGroupedTimelines =
-  Summary "Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...)."
+  Summary
+    "Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...). \
+    \ If no 'group' param is given, returns _all_ flows."
     :> Capture "user" Text
     :> QueryParams "group" Group
     :> Get '[JSON] [GroupViews FlowView]
