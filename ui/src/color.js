@@ -2,13 +2,13 @@ import { config } from "./config";
 
 const white = "#ffffff";
 
-export function colorOf(flowType) {
+export function colorOf(viewType) {
 
   if (config.userProfile) {
-    return config.userProfile.userFlowTypes[flowType] ?? white;
+    return config.userProfile.userFlowTypes[viewType] ?? white;
   }
 
-  switch (flowType) {
+  switch (viewType) {
     case 'Learning':
       return "#ff8822";
     case 'Experimenting':

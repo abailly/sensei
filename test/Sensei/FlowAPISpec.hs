@@ -3,6 +3,7 @@
 
 module Sensei.FlowAPISpec where
 
+import Data.Function ((&))
 import Data.Maybe (catMaybes)
 import Data.Text.Encoding (encodeUtf8)
 import Network.HTTP.Link (writeLinkHeader)
@@ -16,8 +17,7 @@ spec :: Spec
 spec = withApp app $
   describe "Flows API" $ do
     it "POST /api/log with Flow body register start of a flow event" $ do
-      let flow = anOtherFlow
-      postFlow flow
+      postFlow anOtherFlow
         `shouldRespondWith` 200
 
     it "GET /api/flows/<user> retrieves all Flows ungrouped" $ do
@@ -123,7 +123,7 @@ spec = withApp app $
       postFlow_ flow2
       postTrace_ trace
 
-      let expected = flow1 {_flowTimestamp = (UTCTime aDay 400)}
+      let expected = flow1 {_flowTimestamp = UTCTime aDay 400}
           timeshift :: TimeDifference = Minutes (-10)
 
       patchJSON "/api/flows/arnaud/latest/timestamp" timeshift
@@ -141,9 +141,8 @@ spec = withApp app $
 
     it "GET /api/flows/<user>/2 retrieves flow 2 steps back" $ do
       let flow1 = anOtherFlow
-          flow2 = Flow Other "arnaud" (UTCTime aDay 1000) "some/directory"
-          flow3 = Flow Other "arnaud" (UTCTime aDay 2000) "some/directory"
-
+          flow2 = anOtherFlow & later 1000 seconds
+          flow3 = anOtherFlow & later 2000 seconds
       postFlow_ flow1
       postFlow_ flow2
       postFlow_ flow3

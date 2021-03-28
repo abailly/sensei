@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- | Flows represent the various recorded events that are relevant to capture
 -- from a user's daily activity.
@@ -14,19 +15,51 @@
 -- * `Trace`: common command-line programs execution recording
 -- * `Flow`: start time of a specific (expected) type of activity
 -- * `FlowNote`: notes
-module Sensei.Flow where
+module Sensei.Flow
+  ( FlowType (..),
+    Flow (..),
+    NoteFlow (..),
+    NoteFormat (..),
+    Event (..),
+    Trace (..),
+    Reference (..),
+    parseNoteFormat,
+    defaultFlowTypes,
+    currentVersion,
+    eventUser,
+    eventTimestamp,
+    isTrace,
+    parseEventFromv4,
+    parseNoteFromv4,
+    parseFlowType,
+    parseFlowFromv4,
+    parseRef,
+    flowDir,
+    flowTimestamp,
+    flowType,
+    flowUser,
+    traceArgs,
+    traceDirectory,
+    traceExitCode,
+    traceElapsed,
+    traceProcess,
+    traceTimestamp,
+    traceUser,
+  )
+where
 
 import Control.Applicative
+import Control.Lens.TH (makeLenses)
 import Data.Aeson hiding (Options)
 import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (first))
 import qualified Data.HashMap.Strict as H
-import Data.Text (unpack, Text)
+import Data.Text (Text, unpack)
 import qualified Data.Text as Text
-import Data.Text.ToText
 import Data.Time
 import GHC.Generics
 import Numeric.Natural
+import Sensei.FlowType
 import Servant
 
 -- | Current version of data storage format.
@@ -36,6 +69,120 @@ import Servant
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
 currentVersion = 5
+
+data Flow = Flow
+  { _flowType :: FlowType,
+    _flowUser :: Text,
+    _flowTimestamp :: UTCTime,
+    _flowDir :: Text
+  }
+  deriving (Eq, Show, Generic)
+
+makeLenses ''Flow
+
+instance FromJSON Flow where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
+
+instance ToJSON Flow where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
+
+data Trace = Trace
+  { _traceUser :: Text,
+    _traceTimestamp :: UTCTime,
+    _traceDirectory :: FilePath,
+    _traceProcess :: Text,
+    _traceArgs :: [Text],
+    _traceExitCode :: Int,
+    _traceElapsed :: NominalDiffTime
+  }
+  deriving (Eq, Show, Generic)
+
+makeLenses ''Trace
+
+instance FromJSON Trace where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
+
+instance ToJSON Trace where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
+
+data NoteFlow = NoteFlow
+  { _noteUser :: Text,
+    _noteTimestamp :: UTCTime,
+    _noteDir :: Text,
+    _noteContent :: Text
+  }
+  deriving (Eq, Show, Generic)
+
+instance FromJSON NoteFlow where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
+
+instance ToJSON NoteFlow where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
+
+eventTimestamp ::
+  Event -> UTCTime
+eventTimestamp (EventFlow f) = _flowTimestamp f
+eventTimestamp (EventTrace t) = _traceTimestamp t
+eventTimestamp (EventNote n) = _noteTimestamp n
+
+eventUser ::
+  Event -> Text
+eventUser (EventFlow f) = _flowUser f
+eventUser (EventTrace t) = _traceUser t
+eventUser (EventNote n) = _noteUser n
+
+-- | Supported rendering formats for notes
+data NoteFormat
+  = -- | Timestamp of note is on its own line, followed by note as it is typed
+    Plain
+  | -- | Notes are formatted as a <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#tables Markdown table>
+    --  with the first column containing the timestamp and second containing the text.
+    --  EOLs are replaced with @<br/>@ so that underlying formatter can cope with newlines embedded in table cells. this
+    --  might or might not work depending on flavor of markdown
+    MarkdownTable
+  | -- | Notes are formatted with the time as a level 4 section header and
+    --  the notes within the section
+    Section
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+parseNoteFormat :: String -> Either String NoteFormat
+parseNoteFormat = first Text.unpack . parseUrlPiece . Text.pack
+
+instance ToHttpApiData NoteFormat where
+  toUrlPiece Plain = "plain"
+  toUrlPiece MarkdownTable = "table"
+  toUrlPiece Section = "section"
+
+instance FromHttpApiData NoteFormat where
+  parseUrlPiece "plain" = pure Plain
+  parseUrlPiece "table" = pure MarkdownTable
+  parseUrlPiece "section" = pure Section
+  parseUrlPiece txt = Left $ "Unknown format: " <> txt
+
+-- | Reference to an item in the log
+data Reference
+  = -- | Refers to the latest entry in the log
+    Latest
+  | -- | Refers to the item located `offset` positions from the `Latest` entry
+    Pos {offset :: Natural}
+  deriving (Eq, Show)
+
+instance ToJSON Reference where
+  toJSON = String . toUrlPiece
+
+instance FromJSON Reference where
+  parseJSON = withText "Reference" $ either (fail . unpack) pure . parseUrlPiece
+
+instance ToHttpApiData Reference where
+  toUrlPiece Latest = "latest"
+  toUrlPiece (Pos n) = Text.pack $ show n
+
+instance FromHttpApiData Reference where
+  parseUrlPiece "latest" = pure Latest
+  parseUrlPiece txt = Pos <$> parseUrlPiece txt
+
+parseRef :: String -> Either String Reference
+parseRef = first Text.unpack . parseUrlPiece . Text.pack
 
 -- | Common type grouping all kind of core events that are stored in the DB
 data Event
@@ -69,7 +216,7 @@ parseEventFromv4 obj =
         Note -> EventNote <$> parseNoteFromv4 st
         _ -> do
           fl <- parseFlowFromv4 st
-          pure $ EventFlow fl { _flowType = ty }
+          pure $ EventFlow fl {_flowType = ty}
     parseTrace = do
       ts <- obj .: "timestamp"
       el <- obj .: "elapsed"
@@ -114,174 +261,5 @@ instance ToJSON Event where
             H.insert "version" (toJSON currentVersion) obj
 
 isTrace :: Event -> Bool
-isTrace EventTrace{} = True
+isTrace EventTrace {} = True
 isTrace _ = False
-
-data Flow = Flow
-  { _flowType :: FlowType,
-    _flowUser :: Text,
-    _flowTimestamp :: UTCTime,
-    _flowDir :: Text
-  }
-  deriving (Eq, Show, Generic)
-
-instance FromJSON Flow where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
-
-instance ToJSON Flow where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
-
-data Trace = Trace
-  { _traceUser :: Text,
-    _traceTimestamp :: UTCTime,
-    _traceDirectory :: FilePath,
-    _traceProcess :: Text,
-    _traceArgs :: [Text],
-    _traceExitCode :: Int,
-    _traceElapsed :: NominalDiffTime
-  }
-  deriving (Eq, Show, Generic)
-
-instance FromJSON Trace where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
-
-instance ToJSON Trace where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
-
-data NoteFlow = NoteFlow
-  { _noteUser :: Text,
-    _noteTimestamp :: UTCTime,
-    _noteDir :: Text,
-    _noteContent :: Text
-  }
-  deriving (Eq, Show, Generic)
-
-instance FromJSON NoteFlow where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
-
-instance ToJSON NoteFlow where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
-
-eventTimestamp ::
-  Event -> UTCTime
-eventTimestamp (EventFlow f) = _flowTimestamp f
-eventTimestamp (EventTrace t) = _traceTimestamp t
-eventTimestamp (EventNote n) = _noteTimestamp n
-
-eventUser ::
-  Event -> Text
-eventUser (EventFlow f) = _flowUser f
-eventUser (EventTrace t) = _traceUser t
-eventUser (EventNote n) = _noteUser n
-
-data FlowType
-  = FlowType Text
-  | Note
-  | End
-  | Other
-  deriving (Eq, Show, Ord)
-
-instance ToJSONKey FlowType where
-  toJSONKey = toJSONKeyText toUrlPiece
-
-instance FromJSONKey FlowType where
-  fromJSONKey = FromJSONKeyTextParser parseFlowType
-
-instance ToJSON FlowType where
-  toJSON (FlowType f) = String f
-  toJSON Note = "Note"
-  toJSON End = "End"
-  toJSON Other = "Other"
-
-instance ToText FlowType where
-  toText (FlowType f) = f
-  toText Note = "Note"
-  toText End = "End"
-  toText Other = "Other"
-
-parseFlowType :: Applicative f => Text -> f FlowType
-parseFlowType t =
-  case t of
-    "Note" -> pure Note
-    "End" -> pure End
-    "Other" -> pure Other
-    other -> pure $ FlowType other
-
-instance FromJSON FlowType where
-  parseJSON = withText "FlowType" $ parseFlowType
-
-instance ToHttpApiData FlowType where
-  toUrlPiece (FlowType f) = f
-  toUrlPiece Note = "Note"
-  toUrlPiece End = "End"
-  toUrlPiece Other = "Other"
-
-instance FromHttpApiData FlowType where
-  parseUrlPiece = parseFlowType
-
--- | Default flow types when user does not define her own list
--- These are the flow types available for recording, on top of the
--- standard ones which are `Note`, `End` and `Other`
-defaultFlowTypes :: [FlowType]
-defaultFlowTypes =
-  FlowType
-    <$> [ "Experimenting",
-          "Troubleshooting",
-          "Flowing",
-          "Rework",
-          "Meeting",
-          "Learning"
-        ]
-
--- | Supported rendering formats for notes
-data NoteFormat
-  = -- | Timestamp of note is on its own line, followed by note as it is typed
-    Plain
-  | -- | Notes are formatted as a <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#tables Markdown table>
-    --  with the first column containing the timestamp and second containing the text.
-    --  EOLs are replaced with @<br/>@ so that underlying formatter can cope with newlines embedded in table cells. this
-    --  might or might not work depending on flavor of markdown
-    MarkdownTable
-  | -- | Notes are formatted with the time as a level 4 section header and
-    --  the notes within the section
-    Section
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
-
-parseNoteFormat :: String -> Either String NoteFormat
-parseNoteFormat = first Text.unpack . parseUrlPiece . Text.pack
-
-instance ToHttpApiData NoteFormat where
-  toUrlPiece Plain = "plain"
-  toUrlPiece MarkdownTable = "table"
-  toUrlPiece Section = "section"
-
-instance FromHttpApiData NoteFormat where
-  parseUrlPiece "plain" = pure Plain
-  parseUrlPiece "table" = pure MarkdownTable
-  parseUrlPiece "section" = pure Section
-  parseUrlPiece txt = Left $ "Unknown format: " <> txt
-
--- | Reference to an item in the log
-data Reference
-  = -- | Refers to the latest entry in the log
-    Latest
-  | -- | Refers to the item located `offset` positions from the `Latest` entry
-    Pos {offset :: Natural}
-  deriving (Eq, Show)
-
-instance ToJSON Reference where
-  toJSON = String . toUrlPiece
-
-instance FromJSON Reference where
-  parseJSON = withText "Reference" $ either (fail.unpack) pure . parseUrlPiece
-
-instance ToHttpApiData Reference where
-  toUrlPiece Latest = "latest"
-  toUrlPiece (Pos n) = Text.pack $ show n
-
-instance FromHttpApiData Reference where
-  parseUrlPiece "latest" = pure Latest
-  parseUrlPiece txt = Pos <$> parseUrlPiece txt
-
-parseRef :: String -> Either String Reference
-parseRef = first Text.unpack . parseUrlPiece . Text.pack

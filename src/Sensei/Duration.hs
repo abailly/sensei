@@ -3,12 +3,12 @@ module Sensei.Duration where
 import Control.Monad.Identity (Identity)
 import Data.Aeson
 import Data.Bifunctor
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.String (renderString)
 import Data.Time
 import Text.Parsec
-import Data.Text.Prettyprint.Doc
 import Text.Parsec.Language (haskellDef)
 import qualified Text.Parsec.Token as P
-import Data.Text.Prettyprint.Doc.Render.String (renderString)
 
 -- | A structured representation of a time difference.
 --  A `TimeDifference` is represented as fractional number of
@@ -34,8 +34,8 @@ toNominalDiffTime (Minutes m) = fromInteger $ m * 60
 toNominalDiffTime (Hours h) = fromInteger $ h * 3600
 
 instance Pretty TimeDifference where
-  pretty (Minutes m) = pretty m <> pretty "m"
-  pretty (Hours h) = pretty h <> pretty "h"
+  pretty (Minutes m) = pretty m <> pretty ("m" :: String)
+  pretty (Hours h) = pretty h <> pretty ("h" :: String)
 
 prettyPrint ::
   TimeDifference -> String
@@ -48,14 +48,14 @@ parse s =
 
 timeDifferenceParser :: Parsec String () TimeDifference
 timeDifferenceParser = try minutes <|> hours
- where
-   minutes = do
-     num <- integer <* char 'm'
-     pure $ Minutes num
+  where
+    minutes = do
+      num <- integer <* char 'm'
+      pure $ Minutes num
 
-   hours = do
-     num <- integer <* char 'h'
-     pure $ Hours num
+    hours = do
+      num <- integer <* char 'h'
+      pure $ Hours num
 
 lexer :: P.GenTokenParser String u Identity
 lexer = P.makeTokenParser haskellDef

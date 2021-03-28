@@ -45,7 +45,7 @@ function createTimelineContainer(day, data, notesData) {
 
     details.addEventListener('change', (e) => {
         if (e.target.checked) {
-            drawTimeline(chart, day, data, f => f.flowType);
+            drawTimeline(chart, day, data, f => f.viewType);
         } else {
             drawTimeline(chart, day, data);
         }

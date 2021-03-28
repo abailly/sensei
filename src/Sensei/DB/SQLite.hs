@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -49,8 +49,9 @@ import Data.Time.LocalTime
 import Database.SQLite.Simple hiding (execute, execute_, query, query_, withConnection)
 import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
+import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
-import Preface.Log (fakeLogger, LoggerEnv(..))
+import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
 import Sensei.DB
@@ -61,7 +62,6 @@ import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
-import GHC.Generics (Generic)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -210,7 +210,6 @@ handleErrors logger q m =
       logError logger (ErrorRunningQuery q (pack $ show e))
       throwM $ SQLiteDBError q (pack $ show e)
 
-
 execute :: (ToRow q) => Connection -> LoggerEnv -> Query -> q -> IO ()
 execute cnx logger q args =
   withLog logger (ExecutingQuery q (Just $ pack $ show $ toRow args)) $
@@ -246,14 +245,16 @@ instance DB SQLiteDB where
   readCommands u = readCommandsSQL u
   readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
 
-data Events = StoragePathCreated { dbPath :: FilePath }
-  | MigratingSQLiteDB { dbPath :: FilePath }
-  | ExecutingQuery { queryRun :: Query, queryArgs :: Maybe Text }
-  | ErrorRunningQuery { queryRun :: Query, errorText :: Text }
+data Events
+  = StoragePathCreated {dbPath :: FilePath}
+  | MigratingSQLiteDB {dbPath :: FilePath}
+  | ExecutingQuery {queryRun :: Query, queryArgs :: Maybe Text}
+  | ErrorRunningQuery {queryRun :: Query, errorText :: Text}
   deriving (Eq, Show, Generic)
   deriving anyclass (A.ToJSON, A.FromJSON)
 
 -- ** Orphan Instances
+
 instance A.ToJSON Query where
   toJSON = A.String . fromQuery
 
@@ -264,11 +265,12 @@ instance A.FromJSON Query where
 -- if the file does not exist, it is created
 initSQLiteDB :: SQLiteDB ()
 initSQLiteDB = do
-  SQLiteConfig{storagePath,logger} <- ask
+  SQLiteConfig {storagePath, logger} <- ask
   storagePathExists <- liftIO $ doesFileExist storagePath
-  unless storagePathExists $ liftIO $ do
-    openFile storagePath WriteMode >>= hClose
-    logInfo logger (StoragePathCreated storagePath)
+  unless storagePathExists $
+    liftIO $ do
+      openFile storagePath WriteMode >>= hClose
+      logInfo logger (StoragePathCreated storagePath)
   liftIO $ withLog logger (MigratingSQLiteDB storagePath) $ migrateSQLiteDB storagePath
 
 migrateSQLiteDB :: FilePath -> IO ()
@@ -289,7 +291,7 @@ migrateSQLiteDB sqliteFile =
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "insert into config_log(timestamp, version, user, key, value) values (?,?,?,?,?)"
     ts <- Time.getCurrentTime -- This is silly, isn't it?
@@ -297,7 +299,7 @@ setCurrentTimeSQL UserProfile {userName} newTime = do
 
 getCurrentTimeSQL :: UserProfile -> SQLiteDB UTCTime
 getCurrentTimeSQL UserProfile {userName} = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select value from config_log where user = ? and key = 'currentTime' order by timestamp desc limit 1"
     res <- query cnx logger q (Only userName)
@@ -310,7 +312,7 @@ writeAll ::
   [Event] ->
   SQLiteDB ()
 writeAll events = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> forM_ events (insert cnx logger)
 
 updateNotesIndex ::
@@ -327,9 +329,10 @@ updateNotesIndex _ _ _ _ = pure ()
 
 writeEventSQL ::
   HasCallStack =>
-  Event -> SQLiteDB ()
+  Event ->
+  SQLiteDB ()
 writeEventSQL e = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     rid <- insert cnx logger e
     updateNotesIndex rid e cnx logger
@@ -352,7 +355,7 @@ updateLatestFlowSQL ::
   NominalDiffTime ->
   SQLiteDB Event
 updateLatestFlowSQL diff = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx ->
     withTransaction cnx $ do
       let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1"
@@ -373,7 +376,7 @@ readFlowSQL ::
   Reference ->
   SQLiteDB (Maybe Event)
 readFlowSQL _ ref = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1 offset ?"
     res <- query cnx logger q (Only ref)
@@ -388,7 +391,7 @@ readEventsSQL ::
   Pagination ->
   SQLiteDB EventsQueryResult
 readEventsSQL _ Page {pageNumber, pageSize} = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
         count = "select count(*) from event_log"
@@ -406,7 +409,7 @@ readNotesSQL ::
   TimeRange ->
   SQLiteDB [(LocalTime, Text)]
 readNotesSQL UserProfile {..} TimeRange {..} = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
     notesFlow <- query cnx logger q [rangeStart, rangeEnd]
@@ -418,7 +421,7 @@ searchNotesSQL ::
   Text ->
   SQLiteDB [(LocalTime, Text)]
 searchNotesSQL UserProfile {..} text = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, note from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
     notesFlow <- query cnx logger q [text]
@@ -429,7 +432,7 @@ readViewsSQL ::
   UserProfile ->
   SQLiteDB [FlowView]
 readViewsSQL UserProfile {..} = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
     flows <- query_ cnx logger q
@@ -440,7 +443,7 @@ readCommandsSQL ::
   UserProfile ->
   SQLiteDB [CommandView]
 readCommandsSQL UserProfile {..} = do
-  SQLiteConfig{logger} <- ask
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' order by timestamp"
     traces <- query_ cnx logger q

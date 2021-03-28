@@ -20,22 +20,22 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
     const timelineTime = !container.firstChild ? <ul/> : container.firstChild.lastChild.lastChild;
 
     function flowLeftMargin(flow) {
-        const flowTypeRow = flowMap.get(flow.flowType);
+        const viewTypeRow = flowMap.get(flow.viewType);
 
         function isFirstFlow() {
-            return flowTypeRow.indexOf(flow) === 0;
+            return viewTypeRow.indexOf(flow) === 0;
         }
 
         function isAfterFirstFlow() {
-            return flowTypeRow.indexOf(flow) > 0;
+            return viewTypeRow.indexOf(flow) > 0;
         }
 
-        if (flowTypeRow !== undefined) {
+        if (viewTypeRow !== undefined) {
             if (isFirstFlow()) {
                 return (startTime.until(LocalDateTime.parse(flow.flowStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH;
             }
             if (isAfterFirstFlow()) {
-                const previousFlowEnd = LocalDateTime.parse(flowTypeRow[flowTypeRow.indexOf(flow) - 1].flowEnd);
+                const previousFlowEnd = LocalDateTime.parse(viewTypeRow[viewTypeRow.indexOf(flow) - 1].flowEnd);
                 return (previousFlowEnd.until(LocalDateTime.parse(flow.flowStart), ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH;
             }
         }
@@ -51,7 +51,7 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
         let flowEndDate = LocalDateTime.parse(flow.flowEnd);
         const flowWidth = Math.abs((flowStartDate.until(flowEndDate, ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH);
         return <li style={'width:' + flowWidth + 'px; margin-left:' + flowLeftMargin(flow) + 'px;'}>
-            <div class='timeline-event' style={'background: ' + colorOf(flow.flowType) + ';'}></div>
+            <div class='timeline-event' style={'background: ' + colorOf(flow.viewType) + ';'}></div>
         </li>;
 
     }
@@ -82,7 +82,7 @@ export function drawTimeline(container, day, flowData, rowLabel = (_ => day)) {
                 <div>
                     <h2>{flowStartDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
                     <h2>{flowEndDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
-                    <h3>{flow.flowType}</h3>
+                    <h3>{flow.viewType}</h3>
                 </div>
             </li>;
             timelineFlows.appendChild(timelineFlow);

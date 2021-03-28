@@ -2,10 +2,27 @@
 
 -- | Specific help functions and types to help build and manipulate
 --  Sensei's types and API
-module Sensei.Builder where
+module Sensei.Builder
+  ( postEvent,
+    postEvent_,
+    postFlow,
+    postFlow_,
+    postNote_,
+    postTrace_,
+    anOtherFlow,
+    aDay,
+    oneAM,
+    sixThirtyPM,
+    later,
+    -- reexported from time-lens
+    seconds,
+  )
+where
 
+import Control.Lens ((%~))
 import Data.Functor (void)
 import Data.Time (Day, TimeOfDay (TimeOfDay), UTCTime (UTCTime))
+import Data.Time.Lens (Lens, modL, seconds)
 import Sensei.API
 import Sensei.TestHelper
 
@@ -38,3 +55,6 @@ oneAM = TimeOfDay 1 0 0
 
 sixThirtyPM :: TimeOfDay
 sixThirtyPM = TimeOfDay 18 30 0
+
+later :: Num b => b -> Lens UTCTime b -> Flow -> Flow
+later dur unit = flowTimestamp %~ modL unit (+ dur)

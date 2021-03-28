@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -8,8 +7,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Sensei.FlowView where
 
@@ -69,7 +66,7 @@ commandOnDay day = sameDayThan day (localDay . commandStart)
 data FlowView = FlowView
   { flowStart :: LocalTime,
     flowEnd :: LocalTime,
-    flowType :: FlowType
+    viewType :: FlowType
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
@@ -135,9 +132,9 @@ normalizeLastView endOfDay (v : rest@(_ : _)) = v : normalizeLastView endOfDay r
 instance HasSummary FlowView FlowType where
   summarize views =
     views
-      |> List.sortBy (compare `on` flowType)
-      |> NE.groupBy ((==) `on` flowType)
-      |> fmap (\flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
+      |> List.sortBy (compare `on` viewType)
+      |> NE.groupBy ((==) `on` viewType)
+      |> fmap (\flows@(f :| _) -> (viewType f, sum $ fmap duration flows))
 
 duration :: FlowView -> NominalDiffTime
 duration FlowView {flowStart, flowEnd} = diffLocalTime flowEnd flowStart

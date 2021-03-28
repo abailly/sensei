@@ -8,40 +8,40 @@ import {drawCssNotes} from "./css-notes";
 const flowData = [
     {
         "flowStart": "2020-12-17T08:30:00",
-        "flowType": "Flowing",
+        "viewType": "Flowing",
         "flowEnd": "2020-12-17T09:00:00"
     }, {
         "flowStart": "2020-12-17T09:00:00",
-        "flowType": "Daily",
+        "viewType": "Daily",
         "flowEnd": "2020-12-17T09:30:00"
     }, {
         "flowStart": "2020-12-17T09:30:00",
-        "flowType": "Meeting",
+        "viewType": "Meeting",
         "flowEnd": "2020-12-17T10:15:00"
     }, {
         "flowStart": "2020-12-17T10:15:00",
-        "flowType": "Meeting",
+        "viewType": "Meeting",
         "flowEnd": "2020-12-17T12:00:00"
     }, {
         "flowStart": "2020-12-17T12:00:00",
-        "flowType": "Other",
+        "viewType": "Other",
         "flowEnd": "2020-12-17T13:40:00"
     }, {
         "flowStart": "2020-12-17T13:40:00",
-        "flowType": "Meeting",
+        "viewType": "Meeting",
         "flowEnd": "2020-12-17T14:00:00"
     }, {
         "flowStart": "2020-12-17T14:00:00",
-        "flowType": "Meeting",
+        "viewType": "Meeting",
         "flowEnd": "2020-12-17T15:00:00"
     }, {
         "flowStart": "2020-12-17T15:00:00",
-        "flowType": "Rework",
+        "viewType": "Rework",
         "flowEnd": "2020-12-17T17:00:00"
     },
     {
         "flowStart": "2020-12-17T17:00:00",
-        "flowType": "Meeting",
+        "viewType": "Meeting",
         "flowEnd": "2020-12-17T17:00:00"
     }
 ];
@@ -111,7 +111,7 @@ describe('CSS Timeline', () => {
         config.userProfile.userStartOfDay = '08:00:00';
         config.userProfile.userEndOfDay = '17:00:00';
 
-        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+        drawTimeline(container, '2020-12-17', flowData, f => f.viewType);
 
         expect(container).toMatchSnapshot();
     });
@@ -122,7 +122,7 @@ describe('CSS Timeline', () => {
 
         drawTimeline(container, '2020-12-17', flowData);
         drawCssNotes(container, '2020-12-17', notes);
-        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+        drawTimeline(container, '2020-12-17', flowData, f => f.viewType);
 
         expect(container).toMatchSnapshot();
 
@@ -133,7 +133,7 @@ describe('CSS Timeline', () => {
         config.userProfile.userEndOfDay = '17:00:00';
 
         drawTimeline(container, '2020-12-17', flowData);
-        drawTimeline(container, '2020-12-17', flowData, f => f.flowType);
+        drawTimeline(container, '2020-12-17', flowData, f => f.viewType);
 
         expect(container).toMatchSnapshot();
 
