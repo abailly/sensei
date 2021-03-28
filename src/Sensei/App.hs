@@ -12,18 +12,20 @@ module Sensei.App where
 
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
-import Control.Exception.Safe (throwM, try, catch)
+import Control.Exception.Safe (catch, throwM, try)
 import Control.Monad.Except
-import Data.Text(pack)
-import Data.ByteString.Lazy(fromStrict)
-import Data.Text.Encoding(encodeUtf8)
+import Control.Monad.Reader (ReaderT (runReaderT))
+import Data.ByteString.Lazy (fromStrict)
+import Data.Maybe (fromMaybe)
 import Data.Swagger (Swagger)
-import Preface.Server
+import Data.Text (pack)
+import Data.Text.Encoding (encodeUtf8)
 import Preface.Log
+import Preface.Server
 import Sensei.API
 import Sensei.DB
+import Sensei.DB.Log ()
 import Sensei.DB.SQLite
-import Sensei.DB.Log()
 import Sensei.IO
 import Sensei.Server
 import Sensei.Server.Config
@@ -33,8 +35,6 @@ import Sensei.Version
 import Servant
 import System.Environment (lookupEnv, setEnv)
 import System.Posix.Daemonize
-import Control.Monad.Reader (ReaderT(runReaderT))
-import Data.Maybe (fromMaybe)
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -67,9 +67,8 @@ readPort :: Maybe String -> Int
 readPort Nothing = 23456
 readPort (Just portString) =
   case reads portString of
-    (p,[]):_ -> p
-    _ -> error ("invalid environment variable SENSEI_SERVER_PORT "<> portString)
-
+    (p, []) : _ -> p
+    _ -> error ("invalid environment variable SENSEI_SERVER_PORT " <> portString)
 
 baseServer ::
   (MonadIO m, DB m) =>
@@ -81,8 +80,8 @@ baseServer signal =
     :<|> getCurrentTimeS
     :<|> ( getFlowS
              :<|> updateFlowStartTimeS
-             :<|> queryFlowSummaryS
-             :<|> queryFlowDaySummaryS
+             :<|> queryFlowAllSummaryS
+             :<|> queryFlowPeriodSummaryS
              :<|> notesDayS
              :<|> commandsDayS
              :<|> queryFlowDayS
@@ -108,4 +107,4 @@ senseiApp env signal output configDir logger = do
 
     handleDBError :: IO a -> IO a
     handleDBError io =
-      io `catch` \ (SQLiteDBError _q txt) -> throwM $ err500 { errBody = fromStrict $ encodeUtf8 txt }
+      io `catch` \(SQLiteDBError _q txt) -> throwM $ err500 {errBody = fromStrict $ encodeUtf8 txt}

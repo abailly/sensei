@@ -31,7 +31,7 @@ updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
-queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
+queryFlowPeriodSummaryC :: Text -> Maybe LocalTime -> Maybe LocalTime -> ClientMonad FlowSummary
 notesDayC :: Text -> Day -> ClientMonad (Headers '[Header "Link" Text] [NoteView])
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
@@ -40,7 +40,7 @@ getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
 ( getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
-    :<|> queryFlowDaySummaryC
+    :<|> queryFlowPeriodSummaryC
     :<|> notesDayC
     :<|> commandsDayC
     :<|> queryFlowDayC

@@ -1,13 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.API
@@ -104,11 +98,17 @@ type GetGroupSummary =
     :> "summary"
     :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
 
-type GetDailySummary =
-  Summary "Retrieve daily summary of time spend in flows by type."
+type GetFlowsSummary =
+  Summary
+    "Retrieve flows summary, eg. time spend in flows by type, for a given time period. \
+    \ The time period is given by query arguments `from` and `to`, with `from` being \
+    \ inclusive lower bound and `to` being exclusive upper bound. \
+    \ `from` must be a valid `LocalTime` relateive to the given user's defined `timezone`, \
+    \ _before_ `to`."
     :> Capture "user" Text
-    :> Capture "day" Day
     :> "summary"
+    :> QueryParam "from" LocalTime
+    :> QueryParam "to" LocalTime
     :> Get '[JSON] FlowSummary
 
 type GetNotes =
@@ -175,7 +175,7 @@ type SenseiAPI =
            :> ( GetFlow
                   :<|> PatchFlowTimeshift
                   :<|> GetGroupSummary
-                  :<|> GetDailySummary
+                  :<|> GetFlowsSummary
                   :<|> GetNotes
                   :<|> GetCommands
                   :<|> GetFlowsTimeline
@@ -199,29 +199,29 @@ senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
 
 nextPageLink :: Text -> Maybe Natural -> Maybe Link.Link
-nextPageLink userName page = do
+nextPageLink user page = do
   p <- page <|> pure 1
   let next = show (succ p)
-  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> next
+  uri <- uriFromString $ "/api/log/" <> unpack user <> "?page=" <> next
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
 previousPageLink :: Text -> Maybe Natural -> Maybe Link.Link
-previousPageLink userName page = do
+previousPageLink user page = do
   p <- page
   let prev = show (pred p)
-  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> prev
+  uri <- uriFromString $ "/api/log/" <> unpack user <> "?page=" <> prev
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
 
 nextDayLink :: Text -> Maybe Day -> Maybe Link.Link
-nextDayLink userName day = do
+nextDayLink user day = do
   d <- day
   let next = showGregorian (succ d)
-  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> next <> "/" <> "notes"
+  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/" <> next <> "/" <> "notes"
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
 previousDayLink :: Text -> Maybe Day -> Maybe Link.Link
-previousDayLink userName day = do
+previousDayLink user day = do
   d <- day
   let prev = showGregorian (pred d)
-  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> prev <> "/" <> "notes"
+  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/" <> prev <> "/" <> "notes"
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]

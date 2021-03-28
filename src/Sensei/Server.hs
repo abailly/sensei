@@ -82,26 +82,26 @@ queryFlowDayS usr day = do
   views <- readViews usrProfile
   pure $ filter (flowOnDay day) views
 
-queryFlowDaySummaryS ::
-  (DB m) => Text -> Day -> m FlowSummary
-queryFlowDaySummaryS usr day = do
-  usrProfile <- getUserProfileS usr
-  views <- readViews usrProfile
-  commands <- readCommands usrProfile
-  let summaryFlows =
-        views
-          |> filter (flowOnDay day)
-          |> summarize
-      summaryCommands =
-        commands
-          |> filter (commandOnDay day)
-          |> summarize
-      summaryPeriod = (day, day)
-  pure $ FlowSummary {..}
+queryFlowPeriodSummaryS ::
+  (DB m) => Text -> Maybe LocalTime -> Maybe LocalTime -> m FlowSummary
+queryFlowPeriodSummaryS _usr _from _to = undefined ---- do
+  -- usrProfile <- getUserProfileS usr
+  -- views <- readViews usrProfile
+  -- commands <- readCommands usrProfile
+  -- let summaryFlows =
+  --       views
+  --         |> filter (flowOnDay day)
+  --         |> summarize
+  --     summaryCommands =
+  --       commands
+  --         |> filter (commandOnDay day)
+  --         |> summarize
+  --     summaryPeriod = (day, day)
+  -- pure $ FlowSummary {..}
 
-queryFlowSummaryS ::
+queryFlowAllSummaryS ::
   (DB m) => Text -> m [GroupViews (FlowType, NominalDiffTime)]
-queryFlowSummaryS usr = do
+queryFlowAllSummaryS usr = do
   usrProfile@UserProfile {userStartOfDay, userEndOfDay} <- getUserProfileS usr
   views <- groupViews userStartOfDay userEndOfDay [Day] <$> readViews usrProfile
   pure $ views |> fmap summary

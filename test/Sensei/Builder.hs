@@ -16,13 +16,14 @@ module Sensei.Builder
     later,
     -- reexported from time-lens
     seconds,
+    month,
   )
 where
 
 import Control.Lens ((%~))
 import Data.Functor (void)
 import Data.Time (Day, TimeOfDay (TimeOfDay), UTCTime (UTCTime))
-import Data.Time.Lens (Lens, modL, seconds)
+import Data.Time.Lens (Lens, modL, month, seconds)
 import Sensei.API
 import Sensei.TestHelper
 
