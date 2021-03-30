@@ -23,12 +23,12 @@ function formatNoteEntry(entry) {
 }
 
 function formatFlowEntry(entry) {
-  const color = colorOf(entry.viewType);
+  const color = colorOf(entry.flowType);
   return <tr class='log-entry entry-flow' style={`background-color: ${color};`} >
     <td>{entry.flowTimestamp}</td>
     <td>Flow</td>
     <td>{entry.flowDir}</td>
-    <td>{entry.viewType}</td>
+    <td>{entry.flowType}</td>
   </tr>;
 }
 
