@@ -40,7 +40,6 @@ library
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , aeson-pretty
-                     , ad
                      , ansi-terminal
                      , async
                      , base
@@ -61,7 +60,6 @@ library
                      , optparse-applicative
                      , parsec
                      , prettyprinter
-                     , process
                      , random
                      , safe-exceptions
                      , servant
@@ -76,13 +74,9 @@ library
                      , template-haskell
                      , text
                      , time
-                     , unix
                      , unordered-containers
                      , wai
                      , wai-app-static
-                     , wai-cors
-                     , wai-extra
-                     , warp
   default-language:    Haskell2010
 
 executable sensei-exe
