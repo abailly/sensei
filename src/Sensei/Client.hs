@@ -65,7 +65,7 @@ instance Monad ClientMonad where
     ClientMonad $ a >>= unClient . f
 
 instance RunClient ClientMonad where
-  runRequest req = ClientMonad $ do
+  runRequestAcceptStatus st req = ClientMonad $ do
     let request =
           req
             { requestHeaders =
@@ -74,7 +74,7 @@ instance RunClient ClientMonad where
                   <| (mk "X-API-Version", toHeader senseiVersion)
                   <| requestHeaders req
             }
-    runRequest request
+    runRequestAcceptStatus st request
 
   throwClientError err = ClientMonad $ throwClientError err
 
@@ -90,7 +90,7 @@ send :: ClientMonad a -> IO a
 send act = do
   mgr <- newManager defaultManagerSettings
   let base = BaseUrl Http "127.0.0.1" 23456 ""
-      env = ClientEnv mgr base Nothing
+      env = mkClientEnv mgr base
   res <- runClientM (unClient act) env
   case res of
     -- server is not running, fork it
