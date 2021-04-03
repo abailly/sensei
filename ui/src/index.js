@@ -2,6 +2,7 @@ import style from './style.css';
 import charts from './charts';
 import logs from './logs';
 import notes from './notes';
+import summaries from './summaries';
 import { setUserProfile } from './user.js';
 import { formatISODate } from './date.js';
 import Navigo from 'navigo';
@@ -34,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .on('/log', function() {
       logs(router, document.getElementById('main'), 1);
+    })
+    .on('/summaries', function() {
+      summaries();
     })
     .on(function() {
       charts();

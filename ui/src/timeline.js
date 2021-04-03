@@ -1,5 +1,5 @@
 import {get} from './request.js';
-import {formatISODate} from './date.js';
+import {formatISODate, nextDay} from './date.js';
 import {drawNotes} from './notes.js';
 import {drawCommands} from './commands.js';
 import {drawSummary} from './summary.js';
