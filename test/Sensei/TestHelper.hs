@@ -109,7 +109,7 @@ jsonBodyEquals expected = MatchBody $ \_ body ->
       if actual /= expected
         then Just ("expected " <> show expected <> ", got " <> show actual)
         else Nothing
-    Left err -> Just err
+    Left err -> Just ("expected " <> show expected <> ", got " <> show body <> " with error " <> err)
 
 bodyContains :: ByteString -> MatchBody
 bodyContains fragment =

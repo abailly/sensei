@@ -80,7 +80,6 @@ baseServer signal =
     :<|> getCurrentTimeS
     :<|> ( getFlowS
              :<|> updateFlowStartTimeS
-             :<|> queryFlowAllSummaryS
              :<|> queryFlowPeriodSummaryS
              :<|> notesDayS
              :<|> commandsDayS

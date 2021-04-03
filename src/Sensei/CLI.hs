@@ -27,7 +27,7 @@ import System.IO
 import System.IO.Unsafe
 
 data Options
-  = QueryOptions {queryDay :: Maybe Day, summarize :: Bool, groups :: [Group]}
+  = QueryOptions {queryDay :: Day, summarize :: Bool, groups :: [Group]}
   | RecordOptions {recordType :: FlowType}
   | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
   | UserOptions {userAction :: UserAction}
@@ -65,12 +65,12 @@ optionsParserInfo flows =
 
 optionsParser :: Maybe [FlowType] -> Parser Options
 optionsParser flows =
-  QueryOptions <$> optional dayParser <*> summarizeParser <*> many groupParser
+  QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
     <|> RecordOptions <$> flowTypeParser flows
     <|> NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> searchParser)) <*> formatParser
     <|> UserOptions <$> (profileParser *> userActionParser)
 
-{-# INLINE today #-}
+{-# NOINLINE today #-}
 today :: Day
 today = unsafePerformIO $ localDay . zonedTimeToLocalTime <$> getZonedTime
 
@@ -207,14 +207,12 @@ display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
 
 ep :: Options -> Text -> UTCTime -> Text -> IO ()
-ep (QueryOptions Nothing False grps) usrName _ _ =
-  send (queryFlowC usrName grps) >>= display
-ep (QueryOptions Nothing True _) usrName _ _ =
-  send (queryFlowSummaryC usrName) >>= display
-ep (QueryOptions (Just day) False _) usrName _ _ =
+ep (QueryOptions day False []) usrName _ _ =
   send (queryFlowDayC usrName day) >>= display
-ep (QueryOptions (Just day) True _) usrName _ _ =
-  send (queryFlowPeriodSummaryC usrName (Just $ LocalTime day midnight) (Just $ LocalTime (succ day) midnight)) >>= display
+ep (QueryOptions day True []) usrName _ _ =
+  send (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day)) >>= display
+ep (QueryOptions _ _ grps) usrName _ _ =
+  send (queryFlowC usrName grps) >>= display
 ep (NotesOptions (QueryDay day) noteFormat) usrName _ _ =
   send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
 ep (NotesOptions (QuerySearch txt) noteFormat) usrName _ _ =

@@ -80,7 +80,7 @@ function createTimelineContainer(day, data, notesData) {
 
     summary.addEventListener('change', (e) => {
         if (e.target.checked) {
-            get(`/api/flows/${config.user}/${day}/summary`, (summaryData) =>
+            get(`/api/flows/${config.user}/summary?from=${day}&to=${nextDay(day)}`, (summaryData) =>
                 drawSummary(summaryDiv, summaryData));
         } else {
             clearElement(summaryDiv);

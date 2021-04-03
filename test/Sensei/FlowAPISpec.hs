@@ -6,6 +6,7 @@ module Sensei.FlowAPISpec where
 import Data.Function ((&))
 import Data.Maybe (catMaybes)
 import Data.Text.Encoding (encodeUtf8)
+import Data.Time.Lens (modL)
 import Network.HTTP.Link (writeLinkHeader)
 import Sensei.API
 import Sensei.Builder
@@ -93,28 +94,7 @@ spec = withApp app $
       getJSON "/api/flows/arnaud/1995-10-10/commands"
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
-    it "GET /api/flows/<user>/<day>/summary returns a summary of flows and traces for given day" $ do
-      let flow1 = anOtherFlow
-          flow2 = Flow (FlowType "Learning") "arnaud" (UTCTime aDay 1000) "some/directory"
-          cmd1 = Trace "arnaud" (UTCTime aDay 0) "some/directory" "foo" ["bar"] 0 10
-          cmd2 = Trace "arnaud" (UTCTime aDay 1000) "other/directory" "git" ["bar"] 0 100
-
-      postFlow_ flow1
-      postFlow_ flow2
-      postTrace_ cmd1
-      postTrace_ cmd2
-
-      let expected =
-            FlowSummary
-              { summaryPeriod = (toEnum 50000, toEnum 50000),
-                summaryFlows = [(FlowType "Learning", 0), (Other, 1000)],
-                summaryCommands = [("foo", 10), ("git", 100)]
-              }
-
-      getJSON "/api/flows/arnaud/1995-10-10/summary"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
-
-    it "GET /api/flows/<user>/<month>/summary returns a summary of flows and traces for given month" $ do
+    it "GET /api/flows/<user>/summary returns a summary of flows and traces for period of 1 month" $ do
       let flow1 = anOtherFlow
           flow2 = Flow (FlowType "Learning") "arnaud" (UTCTime aDay 1000) "some/directory"
           flow3 = flow2 & later 1 month
@@ -129,12 +109,14 @@ spec = withApp app $
 
       let expected =
             FlowSummary
-              { summaryPeriod = (toEnum 50000, toEnum 50000),
-                summaryFlows = [(FlowType "Learning", 0), (Other, 1000)],
+              { summaryPeriod = (startPeriod, endPeriod),
+                summaryFlows = [(FlowType "Learning", 62000), (Other, 1000)],
                 summaryCommands = [("foo", 10), ("git", 100)]
               }
+          startPeriod = LocalTime aDay midnight
+          endPeriod = startPeriod & modL month (+ 1)
 
-      getJSON "/api/flows/arnaud/1995-10/summary"
+      getJSON "/api/flows/arnaud/summary?from=1995-10-10&to=1995-11-10"
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
     it "PATCH /api/flows/<user>/latest/timestamp updates latest flow's timestamp" $ do

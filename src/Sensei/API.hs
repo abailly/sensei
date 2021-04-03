@@ -92,23 +92,16 @@ type PatchFlowTimeshift =
     :> ReqBody '[JSON] TimeDifference
     :> Patch '[JSON] Event
 
-type GetGroupSummary =
-  Summary "Retrieve grouped summary of flows by type."
-    :> Capture "user" Text
-    :> "summary"
-    :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
-
-type GetFlowsSummary =
+type GetPeriodSummary =
   Summary
     "Retrieve flows summary, eg. time spend in flows by type, for a given time period. \
     \ The time period is given by query arguments `from` and `to`, with `from` being \
     \ inclusive lower bound and `to` being exclusive upper bound. \
-    \ `from` must be a valid `LocalTime` relateive to the given user's defined `timezone`, \
-    \ _before_ `to`."
+    \ `from` must be a valid ISO8601 date _before_ `to`."
     :> Capture "user" Text
     :> "summary"
-    :> QueryParam "from" LocalTime
-    :> QueryParam "to" LocalTime
+    :> QueryParam "from" Day
+    :> QueryParam "to" Day
     :> Get '[JSON] FlowSummary
 
 type GetNotes =
@@ -174,8 +167,7 @@ type SenseiAPI =
            :> Tags "Flows"
            :> ( GetFlow
                   :<|> PatchFlowTimeshift
-                  :<|> GetGroupSummary
-                  :<|> GetFlowsSummary
+                  :<|> GetPeriodSummary
                   :<|> GetNotes
                   :<|> GetCommands
                   :<|> GetFlowsTimeline

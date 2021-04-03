@@ -73,47 +73,33 @@ commandsDayS ::
 commandsDayS usr day = do
   usrProfile <- getUserProfileS usr
   commands <- readCommands usrProfile
-  pure $ filter (commandOnDay day) commands
+  pure $ filter (commandInPeriod (Just $ LocalTime day midnight) (Just $ LocalTime (succ day) midnight))  commands
 
 queryFlowDayS ::
   (DB m) => Text -> Day -> m [FlowView]
 queryFlowDayS usr day = do
   usrProfile <- getUserProfileS usr
   views <- readViews usrProfile
-  pure $ filter (flowOnDay day) views
+  pure $ filter (flowInPeriod (Just $ LocalTime day midnight) (Just $ LocalTime (succ day) midnight)) views
 
 queryFlowPeriodSummaryS ::
-  (DB m) => Text -> Maybe LocalTime -> Maybe LocalTime -> m FlowSummary
-queryFlowPeriodSummaryS _usr _from _to = undefined ---- do
-  -- usrProfile <- getUserProfileS usr
-  -- views <- readViews usrProfile
-  -- commands <- readCommands usrProfile
-  -- let summaryFlows =
-  --       views
-  --         |> filter (flowOnDay day)
-  --         |> summarize
-  --     summaryCommands =
-  --       commands
-  --         |> filter (commandOnDay day)
-  --         |> summarize
-  --     summaryPeriod = (day, day)
-  -- pure $ FlowSummary {..}
-
-queryFlowAllSummaryS ::
-  (DB m) => Text -> m [GroupViews (FlowType, NominalDiffTime)]
-queryFlowAllSummaryS usr = do
-  usrProfile@UserProfile {userStartOfDay, userEndOfDay} <- getUserProfileS usr
-  views <- groupViews userStartOfDay userEndOfDay [Day] <$> readViews usrProfile
-  pure $ views |> fmap summary
-  where
-    summary :: GroupViews FlowView -> GroupViews (FlowType, NominalDiffTime)
-    summary grp =
-      ( case grp of
-          NoViews -> NoViews
-          (Leaf []) -> Leaf []
-          (Leaf vs) -> Leaf (summarize vs)
-          (GroupLevel g u gf) -> GroupLevel g u (summary gf)
-      )
+  (DB m) => Text -> Maybe Day -> Maybe Day -> m FlowSummary
+queryFlowPeriodSummaryS usr fromDay toDay = do
+  let fromTime = flip LocalTime midnight <$> fromDay
+      toTime = flip LocalTime midnight <$> toDay
+  usrProfile <- getUserProfileS usr
+  views <- readViews usrProfile
+  commands <- readCommands usrProfile
+  let summaryFlows =
+        views
+          |> filter (flowInPeriod fromTime toTime)
+          |> summarize
+      summaryCommands =
+        commands
+          |> filter (commandInPeriod fromTime toTime)
+          |> summarize
+      summaryPeriod = makePeriod fromTime toTime
+  pure $ FlowSummary {..}
 
 getFlowS ::
   (DB m) => Text -> Reference -> m (Maybe Event)

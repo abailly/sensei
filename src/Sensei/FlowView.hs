@@ -56,9 +56,10 @@ mkCommandView tz (EventTrace Trace {..}) =
       }
 mkCommandView _ _ = Nothing
 
-commandOnDay ::
-  Day -> CommandView -> Bool
-commandOnDay day = sameDayThan day (localDay . commandStart)
+commandInPeriod ::
+  Maybe LocalTime -> Maybe LocalTime -> CommandView -> Bool
+commandInPeriod (Just lb) (Just ub) = withinPeriod lb ub commandStart
+commandInPeriod _ _ = undefined
 
 -- | A single "flow" timeslice of a given type
 -- `FlowView`s times are expressed in the `LocalTime` of the users to which they
@@ -70,9 +71,10 @@ data FlowView = FlowView
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-flowOnDay ::
-  Day -> FlowView -> Bool
-flowOnDay day = sameDayThan day (localDay . flowStart)
+flowInPeriod ::
+  Maybe LocalTime -> Maybe LocalTime -> FlowView -> Bool
+flowInPeriod (Just lb) (Just ub) = withinPeriod lb ub flowStart
+flowInPeriod _ _ = undefined
 
 appendFlow :: TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
 appendFlow _ _ (EventFlow (Flow {_flowType = End})) [] = []
