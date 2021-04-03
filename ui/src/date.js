@@ -1,4 +1,4 @@
-import {LocalDate, DateTimeFormatter} from "@js-joda/core";
+import {LocalDate, DateTimeFormatter, TemporalAdjusters, DayOfWeek} from "@js-joda/core";
 
 export function formatISODate(date) {
   return date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -20,30 +20,30 @@ export function nextDay(day) {
   return formatISODateTime(result);
 }
 
-function lastDayOfMonth(date) {
-  var lastDay = 30;
-  switch(date.month()) {
-  case 0:  case 2:  case 4:  case 6:  case 7:
-  case 9: case 11:
-    lastDay = 31;
-  case 1:
-    if (date.year() % 4 == 0 && date.year() % 100 != 0) {
-      lastDay = 29;
-    } else {
-      lastDay = 28;
-    }
-  default:
-    lastDay = 30;
-  }
-  return LocalDate.of(date.year(),date.month(),lastDay);
-}
-
 /* Returns a 2-element list of strings representing the start and end of current month. 
 */
 export function currentMonthPeriod() {
   const date = LocalDate.now();
-  const startOfMonth = formatISODate(LocalDate.of(date.year(),date.month(),1));
-  const endOfMonth = formatISODate(lastDayOfMonth(date));
-  return ['2021-03-01', '2021-03-31'];
+  const startOfMonth = formatISODate(date.withDayOfMonth(1));
+  const endOfMonth = formatISODate(date.plusMonths(1).withDayOfMonth(1));
+  return [startOfMonth, endOfMonth];
+}
+
+/* Returns a 2-element list of strings representing the start and end of current week. 
+*/
+export function currentWeekPeriod() {
+  const date = LocalDate.now();
+  const startOfWeek = formatISODate(date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
+  const endOfWeek = formatISODate(date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)));
+  return [startOfWeek, endOfWeek];
+}
+
+/* Returns a 2-element list of strings representing the start and end of current year.
+*/
+export function currentYearPeriod() {
+  const date = LocalDate.now();
+  const startOfYear = formatISODate(date.withDayOfYear(1));
+  const endOfYear = formatISODate(date.plusYears(1).withDayOfYear(1));
+  return [startOfYear, endOfYear];
 }
 
