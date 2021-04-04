@@ -45,8 +45,13 @@ function drawSummaryChart(container, summaryTable) {
 }
 
 export function drawSummary(container, summaryData) {
+  const periodDiv = <div class='period'>
+    <em>From:</em><span class='date'>{summaryData.summaryPeriod[0]}</span>
+    <em>To:</em><span class='date'>{summaryData.summaryPeriod[1]}</span>
+  </div>;
   const fdiv = <div class='summaryChart'></div>;
   const cdiv = <div class='summaryChart'></div>;
+  container.appendChild(periodDiv);
   container.appendChild(fdiv);
   container.appendChild(cdiv);
 

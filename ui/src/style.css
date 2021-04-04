@@ -324,3 +324,12 @@ div [id^='notes-'] ul li div {
     visibility: hidden;
     opacity: 0;
 }
+
+div.period {
+    font-size: 80%;
+    margin: .8em 0 .5em 0;
+}
+
+span.date {
+    margin: 0 .5em 0 .5em;
+}
