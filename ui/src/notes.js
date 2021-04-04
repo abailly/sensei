@@ -3,8 +3,8 @@ import { config } from "./config";
 import { get } from './request';
 import { dom, clear, clearElement } from './dom';
 import { pagination } from './page';
-import {formatISODateTime} from "./date";
-import {LocalDateTime} from "@js-joda/core";
+import { formatISODateTime } from "./date";
+import { LocalDateTime } from "@js-joda/core";
 
 const showdownOptions = { simplifiedAutoLink: true, tables: true };
 
@@ -58,7 +58,7 @@ function list(router, container, page) {
   get(`/api/flows/${config.user}/${page}/notes`, (notesList, links) => {
     const notesPage = pagination('notes', router, links);
     const notesDiv =
-      <div id='notes-list'>
+      <div id='daily-notes'>
         <h2>Notes for {page} </h2>
         {
           notesList.map(formatNoteDiv)
