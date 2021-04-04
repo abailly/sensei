@@ -28,10 +28,8 @@ spec = withApp app $
       postFlow_ flow2
 
       let expectedGroups =
-            [ Leaf
-                [ FlowView (LocalTime aDay oneAM) (LocalTime aDay sixThirtyPM) Other,
-                  FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) oneAM) (FlowType "Meeting")
-                ]
+            [ Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay sixThirtyPM) Other,
+              Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) oneAM) (FlowType "Meeting")
             ]
 
       getJSON "/api/flows/arnaud"
@@ -39,19 +37,22 @@ spec = withApp app $
 
     it "GET /api/flows/<user>?group=Day retrieves all Flows grouped by Day" $ do
       let flow1 = anOtherFlow
+          flow3 = anOtherFlow & later 1000 seconds
           flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (succ aDay) 0) "some/directory"
       postFlow_ flow1
+      postFlow_ flow3
       postFlow_ flow2
 
       let expectedGroups =
             [ GroupLevel
                 Day
                 (LocalTime aDay oneAM)
-                (Leaf [FlowView (LocalTime aDay oneAM) (LocalTime aDay sixThirtyPM) Other]),
+                [Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay (TimeOfDay 1 16 40)) Other,
+                 Leaf $ FlowView (LocalTime aDay (TimeOfDay 1 16 40)) (LocalTime aDay sixThirtyPM) Other],
               GroupLevel
                 Day
                 (LocalTime (succ aDay) oneAM)
-                (Leaf [FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) sixThirtyPM) (FlowType "Meeting")])
+                [Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) sixThirtyPM) (FlowType "Meeting")]
             ]
 
       getJSON "/api/flows/arnaud?group=Day"
@@ -94,7 +95,7 @@ spec = withApp app $
       getJSON "/api/flows/arnaud/1995-10-10/commands"
         `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
-    it "GET /api/flows/<user>/summary returns a summary of flows and traces for period of 1 month" $ do
+    it "GET /api/flows/<user>/summary returns a summary of flows and traces for given period" $ do
       let flow1 = anOtherFlow
           flow2 = Flow (FlowType "Learning") "arnaud" (UTCTime aDay 1000) "some/directory"
           flow3 = flow2 & later 1 month

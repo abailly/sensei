@@ -98,7 +98,7 @@ fillFlowEnd endOfDay v st
         let end = LocalTime (localDay (flowStart v)) endOfDay
             oneHour = secondsToNominalDiffTime 3600
             plus1hour = addLocalTime oneHour (flowStart v)
-         in if end < (flowStart v)
+         in if end < flowStart v
               then v {flowEnd = plus1hour}
               else v {flowEnd = end}
   | otherwise = v
