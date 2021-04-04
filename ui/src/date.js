@@ -1,11 +1,11 @@
-import {LocalDate, DateTimeFormatter, TemporalAdjusters, DayOfWeek} from "@js-joda/core";
+import { LocalDate, DateTimeFormatter, TemporalAdjusters, DayOfWeek } from "@js-joda/core";
 
 export function formatISODate(date) {
   return date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 }
 
 export function formatISODateTime(dateTime) {
-    return dateTime.format(DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm'))
+  return dateTime.format(DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm'));
 }
 
 /* Compute next day given some ISO8601 formatted day.
@@ -14,10 +14,9 @@ string, adding the number of seconds corresponding to a day and reformatting the
 Date back.
 */
 export function nextDay(day) {
-  const date = new Date(day);
-  const result = new Date(date.getTime() + (24 * 3600 * 1000));
+  const result = day.plusDays(1);
 
-  return formatISODateTime(result);
+  return formatISODate(result);
 }
 
 /* Returns a 2-element list of strings representing the start and end of current month. 
