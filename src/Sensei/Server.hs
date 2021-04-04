@@ -73,7 +73,7 @@ commandsDayS ::
 commandsDayS usr day = do
   usrProfile <- getUserProfileS usr
   commands <- readCommands usrProfile
-  pure $ filter (commandInPeriod (Just $ LocalTime day midnight) (Just $ LocalTime (succ day) midnight))  commands
+  pure $ filter (commandInPeriod (Just $ LocalTime day midnight) (Just $ LocalTime (succ day) midnight)) commands
 
 queryFlowDayS ::
   (DB m) => Text -> Day -> m [FlowView]
@@ -88,18 +88,7 @@ queryFlowPeriodSummaryS usr fromDay toDay = do
   let fromTime = flip LocalTime midnight <$> fromDay
       toTime = flip LocalTime midnight <$> toDay
   usrProfile <- getUserProfileS usr
-  views <- readViews usrProfile
-  commands <- readCommands usrProfile
-  let summaryFlows =
-        views
-          |> filter (flowInPeriod fromTime toTime)
-          |> summarize
-      summaryCommands =
-        commands
-          |> filter (commandInPeriod fromTime toTime)
-          |> summarize
-      summaryPeriod = makePeriod fromTime toTime
-  pure $ FlowSummary {..}
+  makeSummary fromTime toTime <$> readViews usrProfile <*> readCommands usrProfile
 
 getFlowS ::
   (DB m) => Text -> Reference -> m (Maybe Event)

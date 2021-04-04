@@ -140,3 +140,16 @@ instance HasSummary FlowView FlowType where
 
 duration :: FlowView -> NominalDiffTime
 duration FlowView {flowStart, flowEnd} = diffLocalTime flowEnd flowStart
+
+makeSummary :: Maybe LocalTime -> Maybe LocalTime -> [FlowView] -> [CommandView] -> FlowSummary
+makeSummary fromTime toTime views commands =
+  let summaryFlows =
+        views
+          |> filter (flowInPeriod fromTime toTime)
+          |> summarize
+      summaryCommands =
+        commands
+          |> filter (commandInPeriod fromTime toTime)
+          |> summarize
+      summaryPeriod = makePeriod fromTime toTime
+   in FlowSummary {..}
