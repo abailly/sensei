@@ -3,14 +3,46 @@
 
 module Sensei.CLI.Terminal where
 
+import Control.Monad(void)
 import qualified Control.Exception.Safe as Exc
+import qualified Data.ByteString as BS
+import Data.Text.Encoding(decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import System.Console.ANSI
 import System.IO
+import System.Directory(removeFile)
+import System.Environment
+import System.Process
+  ( CreateProcess (std_err, std_in, std_out),
+    StdStream (Inherit),
+    createProcess,
+    proc,
+    waitForProcess,
+  )
+import System.Posix.Temp(mkstemp)
 
 captureNote :: IO Text.Text
-captureNote = do
+captureNote =
+  lookupEnv "EDITOR" >>= maybe captureInTerminal captureInEditor
+
+captureInEditor :: String -> IO Text.Text
+captureInEditor editor = do
+  (fp, hdl) <- mkstemp "capture."
+  hClose hdl
+  (_, _, _, h) <-
+    createProcess
+    (proc editor [fp])
+    { std_in = Inherit,
+      std_out = Inherit,
+      std_err = Inherit
+    }
+  void $ waitForProcess h
+  decodeUtf8 <$> BS.readFile fp <* removeFile fp
+  
+
+captureInTerminal :: IO Text.Text
+captureInTerminal = do
   setSGR
     [ SetConsoleIntensity NormalIntensity,
       SetColor Foreground Vivid White,

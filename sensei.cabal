@@ -34,7 +34,7 @@ library
                      , Sensei.DB.File
                      , Sensei.DB.Log
                      , Sensei.DB.SQLite
-  other-modules: Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
+  other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.IO, Sensei.Server.Tags
   ghc-options:         -Wall -Werror -fno-warn-orphans
@@ -60,6 +60,7 @@ library
                      , optparse-applicative
                      , parsec
                      , prettyprinter
+                     , process
                      , random
                      , safe-exceptions
                      , servant
@@ -74,6 +75,7 @@ library
                      , template-haskell
                      , text
                      , time
+                     , unix
                      , unordered-containers
                      , wai
                      , wai-app-static
