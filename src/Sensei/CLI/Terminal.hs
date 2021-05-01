@@ -39,7 +39,6 @@ captureInEditor editor = do
     }
   void $ waitForProcess h
   decodeUtf8 <$> BS.readFile fp <* removeFile fp
-  
 
 captureInTerminal :: IO Text.Text
 captureInTerminal = do

@@ -1,22 +1,14 @@
-import showdown from 'showdown';
 import { config } from "./config";
 import { get } from './request';
 import { dom, clear, clearElement } from './dom';
 import { pagination } from './page';
 import { formatISODateTime } from "./date";
 import { LocalDateTime } from "@js-joda/core";
+import markdown from "./markdown";
 
-const showdownOptions = { simplifiedAutoLink: true, tables: true };
 
-function markdownNote(note) {
-  return new showdown.Converter(showdownOptions)
-    .makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent);
-}
-
-function formatNote(note) {
-  return "<div class='note'>" +
-    new showdown.Converter({ simplifiedAutoLink: true }).makeHtml('#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' + note.noteContent) +
-    "</div>";
+export function formatNote(note) {
+  return "<div class='note'>" + markdown(note.noteContent, note.nodeStart) + "</div>";
 }
 
 function formatNoteDiv(note) {
@@ -26,7 +18,7 @@ function formatNoteDiv(note) {
   const content = <div class='note-content'>
   </div>;
 
-  content.innerHTML = new showdown.Converter(showdownOptions).makeHtml(note.noteContent);
+  content.innerHTML = markdown(note.noteContent);
   noteDiv.appendChild(content);
   return noteDiv;
 }

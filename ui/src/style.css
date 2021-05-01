@@ -329,3 +329,9 @@ div.period {
 span.date {
     margin: 0 .5em 0 .5em;
 }
+
+.note-content blockquote {
+    border-left: 0.5rem outset gray;
+    padding-left: 0.5rem;
+    text-style: italic;
+}
