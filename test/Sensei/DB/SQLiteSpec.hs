@@ -2,8 +2,8 @@
 
 module Sensei.DB.SQLiteSpec where
 
-import Data.Text (Text)
 import Control.Monad.Reader
+import Data.Text (Text)
 import Preface.Log
 import Sensei.API
 import Sensei.DB
@@ -46,13 +46,13 @@ spec =
 
         res <-
           runDB tempdb "." logger $
-          runReaderT
-            ( do
-                initLogStorage
-                setCurrentTime defaultProfile time1
-                getCurrentTime defaultProfile
-            )
-            logger
+            runReaderT
+              ( do
+                  initLogStorage
+                  setCurrentTime defaultProfile time1
+                  getCurrentTime defaultProfile
+              )
+              logger
 
         res `shouldBe` time1
 
