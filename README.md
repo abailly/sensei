@@ -1,5 +1,15 @@
 # sensei
 
+# Install
+
+## On local machine
+
+1. `stack install`
+2. `cd ui && npm install && npm build`
+3. Launch  with `sensei-exe`
+
+The dashboard is then available at [localhost:23456](http://localhost:23456).
+
 # User Profile
 
 User profile can be set using the command-line tool `ep`.
