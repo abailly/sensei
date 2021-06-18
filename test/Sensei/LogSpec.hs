@@ -1,27 +1,24 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.LogSpec where
 
-import Network.HTTP.Link
-import Network.URI.Extra()
+import Data.Text.Encoding (encodeUtf8)
 import Data.Time
-import Sensei.DB.Model
+import Network.HTTP.Link
+import Network.URI.Extra (URI)
 import Sensei.Builder
+import Sensei.DB.Model hiding (events)
 import Sensei.TestHelper
-import Data.Text.Encoding(encodeUtf8)
 import Test.Hspec
 import Test.Hspec.Wai
 import Test.QuickCheck
 
-
 spec :: Spec
 spec = withApp app $
   describe "Log API" $ do
-
     it "GET /api/log/<user> returns all events in reverse timestamp order" $ do
-      events <- liftIO $ generate (sequence $ map (generateEvent (UTCTime (toEnum 50000) 0)) [1 :: Integer ..20])
+      events <- liftIO $ generate (sequence $ map (generateEvent (UTCTime (toEnum 50000) 0)) [1 :: Integer .. 20])
       mapM_ postEvent_ events
 
       getJSON "/api/log/arnaud"
@@ -32,11 +29,11 @@ spec = withApp app $
       mapM_ postEvent_ events
 
       getJSON "/api/log/arnaud?page=2"
-        `shouldRespondWith` ResponseMatcher 200 ["Link" <:> encodeUtf8 (writeLinkHeader [ Link "/api/log/arnaud?page=1" [(Rel, "prev"), (Other "page", "1")]])] (jsonBodyEquals $ drop 50 $ reverse events)
+        `shouldRespondWith` ResponseMatcher 200 ["Link" <:> encodeUtf8 (writeLinkHeader [Link @URI "/api/log/arnaud?page=1" [(Rel, "prev"), (Other "page", "1")]])] (jsonBodyEquals $ drop 50 $ reverse events)
 
     it "GET /api/log/<user> returns 1 page and link to next page given there's more events" $ do
       events <- liftIO $ generate (sequence $ map (generateEvent (UTCTime (toEnum 50000) 0)) [1 :: Integer .. 100])
       mapM_ postEvent_ events
 
       getJSON "/api/log/arnaud"
-        `shouldRespondWith` ResponseMatcher 200 [ "Link" <:> encodeUtf8 (writeLinkHeader [ Link "/api/log/arnaud?page=2" [(Rel, "next"), (Other "page", "2")]])] (jsonBodyEquals $ take 50 $ reverse events)
+        `shouldRespondWith` ResponseMatcher 200 ["Link" <:> encodeUtf8 (writeLinkHeader [Link @URI "/api/log/arnaud?page=2" [(Rel, "next"), (Other "page", "2")]])] (jsonBodyEquals $ take 50 $ reverse events)

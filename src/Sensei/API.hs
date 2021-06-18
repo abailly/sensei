@@ -190,28 +190,28 @@ type SenseiAPI =
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
 
-nextPageLink :: Text -> Maybe Natural -> Maybe Link.Link
+nextPageLink :: Text -> Maybe Natural -> Maybe (Link.Link URI)
 nextPageLink user page = do
   p <- page <|> pure 1
   let next = show (succ p)
   uri <- uriFromString $ "/api/log/" <> unpack user <> "?page=" <> next
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
-previousPageLink :: Text -> Maybe Natural -> Maybe Link.Link
+previousPageLink :: Text -> Maybe Natural -> Maybe (Link.Link URI)
 previousPageLink user page = do
   p <- page
   let prev = show (pred p)
   uri <- uriFromString $ "/api/log/" <> unpack user <> "?page=" <> prev
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
 
-nextDayLink :: Text -> Maybe Day -> Maybe Link.Link
+nextDayLink :: Text -> Maybe Day -> Maybe (Link.Link URI)
 nextDayLink user day = do
   d <- day
   let next = showGregorian (succ d)
   uri <- uriFromString $ "/api/flows/" <> unpack user <> "/" <> next <> "/" <> "notes"
   pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
 
-previousDayLink :: Text -> Maybe Day -> Maybe Link.Link
+previousDayLink :: Text -> Maybe Day -> Maybe (Link.Link URI)
 previousDayLink user day = do
   d <- day
   let prev = showGregorian (pred d)

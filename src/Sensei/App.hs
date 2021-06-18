@@ -26,6 +26,7 @@ import Sensei.API
 import Sensei.DB
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite
+import Network.CORS(WithCORS(..))
 import Sensei.IO
 import Sensei.Server
 import Sensei.Server.Config
@@ -60,7 +61,7 @@ sensei output = do
   serverName <- pack . fromMaybe "" <$> lookupEnv "SENSEI_SERVER_NAME"
   serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-  server <- startAppServer serverName [] serverPort (senseiApp env signal output configDir)
+  server <- startAppServer serverName NoCORS serverPort (senseiApp env signal output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
 
 readPort :: Maybe String -> Int
