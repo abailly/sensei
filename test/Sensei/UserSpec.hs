@@ -75,8 +75,7 @@ spec = describe "Users Management" $ do
   withApp app $
     describe "Users API" $ do
       it "GET /api/users/<user> returns defualt profile" $ do
-        getJSON "/api/users/arnaud"
-          `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals defaultProfile)
+        getJSON "/api/users/arnaud" `shouldRespondJSONBody` defaultProfile
 
       it "PUT /api/users/<user> sets user profile" $ do
         let profile =
@@ -90,5 +89,4 @@ spec = describe "Users Management" $ do
                 }
         putJSON_ "/api/users/arnaud" profile
 
-        getJSON "/api/users/arnaud"
-          `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals profile)
+        getJSON "/api/users/arnaud" `shouldRespondJSONBody` profile

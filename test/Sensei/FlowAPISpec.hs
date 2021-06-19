@@ -32,8 +32,7 @@ spec = withApp app $
               Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) oneAM) (FlowType "Meeting")
             ]
 
-      getJSON "/api/flows/arnaud"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
+      getJSON "/api/flows/arnaud" `shouldRespondJSONBody` expectedGroups
 
     it "GET /api/flows/<user>?group=Day retrieves all Flows grouped by Day" $ do
       let flow1 = anOtherFlow
@@ -47,16 +46,16 @@ spec = withApp app $
             [ GroupLevel
                 Day
                 (LocalTime aDay oneAM)
-                [Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay (TimeOfDay 1 16 40)) Other,
-                 Leaf $ FlowView (LocalTime aDay (TimeOfDay 1 16 40)) (LocalTime aDay sixThirtyPM) Other],
+                [ Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay (TimeOfDay 1 16 40)) Other,
+                  Leaf $ FlowView (LocalTime aDay (TimeOfDay 1 16 40)) (LocalTime aDay sixThirtyPM) Other
+                ],
               GroupLevel
                 Day
                 (LocalTime (succ aDay) oneAM)
                 [Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) sixThirtyPM) (FlowType "Meeting")]
             ]
 
-      getJSON "/api/flows/arnaud?group=Day"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
+      getJSON "/api/flows/arnaud?group=Day" `shouldRespondJSONBody` expectedGroups
 
     it "GET /api/flows/<user>/<day>/notes retrieves Notes for given day with link headers" $ do
       let flow1 = anOtherFlow
@@ -93,7 +92,7 @@ spec = withApp app $
       postTrace_ cmd2
 
       getJSON "/api/flows/arnaud/1995-10-10/commands"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+        `shouldRespondJSONBody` expected
 
     it "GET /api/flows/<user>/summary returns a summary of flows and traces for given period" $ do
       let flow1 = anOtherFlow
@@ -118,7 +117,7 @@ spec = withApp app $
           endPeriod = startPeriod & modL month (+ 1)
 
       getJSON "/api/flows/arnaud/summary?from=1995-10-10&to=1995-11-10"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+        `shouldRespondJSONBody` expected
 
     it "PATCH /api/flows/<user>/latest/timestamp updates latest flow's timestamp" $ do
       let flow1 = anOtherFlow
@@ -132,8 +131,7 @@ spec = withApp app $
       let expected = flow1 {_flowTimestamp = UTCTime aDay 400}
           timeshift :: TimeDifference = Minutes (-10)
 
-      patchJSON "/api/flows/arnaud/latest/timestamp" timeshift
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+      patchJSON "/api/flows/arnaud/latest/timestamp" timeshift `shouldRespondJSONBody` expected
 
     it "GET /api/flows/<user>/latest retrieves latest flow" $ do
       let flow1 = anOtherFlow
@@ -142,8 +140,7 @@ spec = withApp app $
       postFlow_ flow1
       postFlow_ flow2
 
-      getJSON "/api/flows/arnaud/latest"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals flow2)
+      getJSON "/api/flows/arnaud/latest" `shouldRespondJSONBody` flow2
 
     it "GET /api/flows/<user>/2 retrieves flow 2 steps back" $ do
       let flow1 = anOtherFlow
@@ -153,5 +150,4 @@ spec = withApp app $
       postFlow_ flow2
       postFlow_ flow3
 
-      getJSON "/api/flows/arnaud/2"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals flow1)
+      getJSON "/api/flows/arnaud/2" `shouldRespondJSONBody` flow1

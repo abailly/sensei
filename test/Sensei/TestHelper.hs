@@ -24,6 +24,7 @@ module Sensei.TestHelper
     jsonBodyEquals,
     module W,
     SResponse,
+    shouldRespondJSONBody,
   )
 where
 
@@ -47,7 +48,7 @@ import System.FilePath ((<.>))
 import System.IO (hClose)
 import System.Posix.Temp (mkstemp)
 import Test.Hspec (ActionWith, Spec, SpecWith, around)
-import Test.Hspec.Wai as W (WaiSession, request, shouldRespondWith)
+import Test.Hspec.Wai as W (WaiExpectation, WaiSession, request, shouldRespondWith)
 import Test.Hspec.Wai.Matcher as W
 
 data AppBuilder = AppBuilder {withStorage :: Bool, withFailingStorage :: Bool, withEnv :: Env}
@@ -100,6 +101,14 @@ putJSON_ path payload = void $ putJSON path payload
 
 getJSON :: ByteString -> WaiSession () SResponse
 getJSON path = request "GET" path [("Accept", "application/json"), ("X-API-Version", toHeader senseiVersion)] mempty
+
+shouldRespondJSONBody ::
+  (Eq a, Show a, A.FromJSON a) =>
+  WaiSession st SResponse ->
+  a ->
+  WaiExpectation st
+shouldRespondJSONBody action expected =
+  action `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
 jsonBodyEquals ::
   (Eq a, Show a, A.FromJSON a) => a -> MatchBody
