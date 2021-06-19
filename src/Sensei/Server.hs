@@ -8,6 +8,7 @@
 module Sensei.Server where
 
 import Control.Concurrent.MVar
+import Control.Monad(join)
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
@@ -16,7 +17,7 @@ import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
-import Sensei.Server.Links (nextDayLink, previousDayLink, nextPageLink, previousPageLink, previousMonthLink, nextMonthLink)
+import Sensei.Server.Links (nextDayLink, periodLinks, nextPageLink, previousDayLink, previousPageLink)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant
@@ -88,13 +89,9 @@ queryFlowPeriodSummaryS ::
 queryFlowPeriodSummaryS usr fromDay toDay period = do
   let fromTime = flip LocalTime midnight <$> fromDay
       toTime = flip LocalTime midnight <$> toDay
-  usrProfile@UserProfile{userName} <- getUserProfileS usr
+  usrProfile@UserProfile {userName} <- getUserProfileS usr
   result <- makeSummary fromTime toTime <$> readViews usrProfile <*> readCommands usrProfile
-  let links = do
-        _p <- period
-        nextHeader <- nextMonthLink userName fromDay toDay
-        prevHeader <- previousMonthLink userName fromDay toDay
-        pure $ addHeader $ writeLinkHeader [prevHeader, nextHeader]
+  let links = addHeader . writeLinkHeader <$> (join $ periodLinks userName <$> fromDay <*> toDay <*> period)
   pure $ fromMaybe noHeader links $ result
 
 getFlowS ::

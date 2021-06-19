@@ -8,12 +8,10 @@ import Data.Function ((&))
 import Data.Maybe (catMaybes)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Lens (modL)
-import Network.HTTP.Link (Link (Link), writeLinkHeader)
-import Network.HTTP.Link.Types (LinkParam (Rel))
 import Network.URI.Extra (URI)
 import Sensei.API
 import Sensei.Builder
-import Sensei.Server.Links
+import Sensei.Server.Links hiding (Other)
 import Sensei.TestHelper
 import Sensei.Time
 import Test.Hspec

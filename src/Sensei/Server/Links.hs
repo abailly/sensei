@@ -1,13 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Sensei.Server.Links where
+module Sensei.Server.Links
+(nextPageLink, previousPageLink, nextDayLink, previousDayLink, periodLinks, module Link)
+where
 
 import Control.Applicative ((<|>))
 import Data.Text (Text, pack, unpack)
 import Data.Time
-import Data.Time.Lens (modL, month)
 import Network.HTTP.Link as Link
 import Network.URI.Extra (uriFromString)
+import Sensei.Group (Group, toPeriod)
 import Sensei.Utils
 import Servant
 
@@ -39,16 +41,24 @@ previousDayLink user day = do
   uri <- uriFromString $ "/api/flows/" <> unpack user <> "/" <> prev <> "/" <> "notes"
   pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
 
-nextMonthLink :: Text -> Maybe Day -> Maybe Day -> Maybe (Link.Link URI)
-nextMonthLink user from to = do
-  f <- showGregorian . modL month succ <$> from
-  t <- showGregorian . modL month succ <$> to
-  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/summary?from=" <> f <> "&to=" <> t <> "&period=Month"
+periodLinks :: Text -> Day -> Day -> Group -> Maybe [Link.Link URI]
+periodLinks userName fromDay toDay period = do
+  nextHeader <- nextMonthLink userName fromDay toDay period
+  prevHeader <- previousMonthLink userName fromDay toDay period
+  pure [prevHeader, nextHeader]
+
+nextMonthLink :: Text -> Day -> Day -> Group -> Maybe (Link.Link URI)
+nextMonthLink user from to period =  do
+  let rollOver = toPeriod period
+      f = showGregorian . rollOver succ $ from
+      t = showGregorian . rollOver succ $ to
+  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/summary?from=" <> f <> "&to=" <> t <> "&period=" <> show period
   pure $ Link uri [(Rel, "next")]
 
-previousMonthLink :: Text -> Maybe Day -> Maybe Day -> Maybe (Link.Link URI)
-previousMonthLink user from to = do
-  f <- showGregorian . modL month pred <$> from
-  t <- showGregorian . modL month pred <$> to
-  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/summary?from=" <> f <> "&to=" <> t <> "&period=Month"
+previousMonthLink :: Text -> Day -> Day -> Group -> Maybe (Link.Link URI)
+previousMonthLink user from to period = do
+  let rollOver = toPeriod period
+      f = showGregorian . rollOver pred $ from
+      t = showGregorian . rollOver pred $ to
+  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/summary?from=" <> f <> "&to=" <> t <> "&period=" <> show period
   pure $ Link uri [(Rel, "prev")]
