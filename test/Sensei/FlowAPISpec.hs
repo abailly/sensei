@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.FlowAPISpec where
 
@@ -7,9 +8,12 @@ import Data.Function ((&))
 import Data.Maybe (catMaybes)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Lens (modL)
-import Network.HTTP.Link (writeLinkHeader)
+import Network.HTTP.Link (Link (Link), writeLinkHeader)
+import Network.HTTP.Link.Types (LinkParam (Rel))
+import Network.URI.Extra (URI)
 import Sensei.API
 import Sensei.Builder
+import Sensei.Server.Links
 import Sensei.TestHelper
 import Sensei.Time
 import Test.Hspec
@@ -118,6 +122,35 @@ spec = withApp app $
 
       getJSON "/api/flows/arnaud/summary?from=1995-10-10&to=1995-11-10"
         `shouldRespondJSONBody` expected
+
+    it "GET /api/flows/<user>/summary returns link to next and previous period" $ do
+      let expected =
+            FlowSummary
+              { summaryPeriod = (startPeriod, endPeriod),
+                summaryFlows = [],
+                summaryCommands = []
+              }
+          startPeriod = LocalTime aDay midnight
+          endPeriod = startPeriod & modL month (+ 1)
+
+      getJSON "/api/flows/arnaud/summary?from=1995-10-10&to=1995-11-10&period=Month"
+        `shouldRespondWith` ResponseMatcher
+          200
+          [ "Link"
+              <:> encodeUtf8
+                ( writeLinkHeader
+                    [ Link
+                        @URI
+                        "/api/flows/arnaud/summary?from=1995-09-10&to=1995-10-10&period=Month"
+                        [(Rel, "prev")],
+                      Link
+                        @URI
+                        "/api/flows/arnaud/summary?from=1995-11-10&to=1995-12-10&period=Month"
+                        [(Rel, "next")]
+                    ]
+                )
+          ]
+          (jsonBodyEquals expected)
 
     it "PATCH /api/flows/<user>/latest/timestamp updates latest flow's timestamp" $ do
       let flow1 = anOtherFlow

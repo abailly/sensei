@@ -10,10 +10,6 @@ module Sensei.API
     SetCurrentTime,
     GetCurrentTime,
     senseiAPI,
-    nextPageLink,
-    previousPageLink,
-    nextDayLink,
-    previousDayLink,
     module Sensei.Color,
     module Sensei.Duration,
     module Sensei.Flow,
@@ -29,11 +25,8 @@ module Sensei.API
   )
 where
 
-import Control.Applicative ((<|>))
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text)
 import Data.Time
-import Network.HTTP.Link as Link
-import Network.URI.Extra (uriFromString)
 import Sensei.Color
 import Sensei.Duration
 import Sensei.Flow
@@ -102,7 +95,8 @@ type GetPeriodSummary =
     :> "summary"
     :> QueryParam "from" Day
     :> QueryParam "to" Day
-    :> Get '[JSON] FlowSummary
+    :> QueryParam "period" Group
+    :> Get '[JSON] (Headers '[Header "Link" Text] FlowSummary)
 
 type GetNotes =
   Summary "Retrieve timestamped notes for some day, or all notes if no day is given."
@@ -189,31 +183,3 @@ type SenseiAPI =
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
-
-nextPageLink :: Text -> Maybe Natural -> Maybe (Link.Link URI)
-nextPageLink user page = do
-  p <- page <|> pure 1
-  let next = show (succ p)
-  uri <- uriFromString $ "/api/log/" <> unpack user <> "?page=" <> next
-  pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
-
-previousPageLink :: Text -> Maybe Natural -> Maybe (Link.Link URI)
-previousPageLink user page = do
-  p <- page
-  let prev = show (pred p)
-  uri <- uriFromString $ "/api/log/" <> unpack user <> "?page=" <> prev
-  pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
-
-nextDayLink :: Text -> Maybe Day -> Maybe (Link.Link URI)
-nextDayLink user day = do
-  d <- day
-  let next = showGregorian (succ d)
-  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/" <> next <> "/" <> "notes"
-  pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
-
-previousDayLink :: Text -> Maybe Day -> Maybe (Link.Link URI)
-previousDayLink user day = do
-  d <- day
-  let prev = showGregorian (pred d)
-  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/" <> prev <> "/" <> "notes"
-  pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]

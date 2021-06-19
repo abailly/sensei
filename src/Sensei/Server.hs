@@ -16,6 +16,7 @@ import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
+import Sensei.Server.Links (nextDayLink, previousDayLink, nextPageLink, previousPageLink, previousMonthLink, nextMonthLink)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant
@@ -83,12 +84,18 @@ queryFlowDayS usr day = do
   pure $ filter (flowInPeriod (Just $ LocalTime day midnight) (Just $ LocalTime (succ day) midnight)) views
 
 queryFlowPeriodSummaryS ::
-  (DB m) => Text -> Maybe Day -> Maybe Day -> m FlowSummary
-queryFlowPeriodSummaryS usr fromDay toDay = do
+  (DB m) => Text -> Maybe Day -> Maybe Day -> Maybe Group -> m (Headers '[Header "Link" Text] FlowSummary)
+queryFlowPeriodSummaryS usr fromDay toDay period = do
   let fromTime = flip LocalTime midnight <$> fromDay
       toTime = flip LocalTime midnight <$> toDay
-  usrProfile <- getUserProfileS usr
-  makeSummary fromTime toTime <$> readViews usrProfile <*> readCommands usrProfile
+  usrProfile@UserProfile{userName} <- getUserProfileS usr
+  result <- makeSummary fromTime toTime <$> readViews usrProfile <*> readCommands usrProfile
+  let links = do
+        _p <- period
+        nextHeader <- nextMonthLink userName fromDay toDay
+        prevHeader <- previousMonthLink userName fromDay toDay
+        pure $ addHeader $ writeLinkHeader [prevHeader, nextHeader]
+  pure $ fromMaybe noHeader links $ result
 
 getFlowS ::
   (DB m) => Text -> Reference -> m (Maybe Event)

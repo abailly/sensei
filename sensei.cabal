@@ -75,6 +75,7 @@ library
                      , template-haskell
                      , text
                      , time
+                     , time-lens
                      , unix
                      , unordered-containers
                      , wai

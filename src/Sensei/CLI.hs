@@ -210,7 +210,7 @@ ep :: Options -> Text -> UTCTime -> Text -> IO ()
 ep (QueryOptions day False []) usrName _ _ =
   send (queryFlowDayC usrName day) >>= display
 ep (QueryOptions day True []) usrName _ _ =
-  send (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day)) >>= display
+  send (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day) Nothing) >>= display . getResponse
 ep (QueryOptions _ _ grps) usrName _ _ =
   send (queryFlowC usrName grps) >>= display
 ep (NotesOptions (QueryDay day) noteFormat) usrName _ _ =

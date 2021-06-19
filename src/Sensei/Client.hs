@@ -48,7 +48,7 @@ getFlowC :: Text -> Reference -> ClientMonad (Maybe Event)
 updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
-queryFlowPeriodSummaryC :: Text -> Maybe Day -> Maybe Day -> ClientMonad FlowSummary
+queryFlowPeriodSummaryC :: Text -> Maybe Day -> Maybe Day -> Maybe Group -> ClientMonad (Headers '[Header "Link" Text] FlowSummary)
 notesDayC :: Text -> Day -> ClientMonad (Headers '[Header "Link" Text] [NoteView])
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
