@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -7,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Sensei.DB
   ( DB (..),
@@ -24,13 +24,13 @@ module Sensei.DB
 where
 
 import Control.Exception.Safe
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Time
+import GHC.Generics (Generic)
 import Sensei.API
 import Sensei.Time
-import Data.Maybe (fromJust)
-import GHC.Generics (Generic)
-import Data.Aeson (ToJSON, FromJSON)
 
 data Pagination = Page {pageNumber :: Natural, pageSize :: Natural}
   deriving (Eq, Show, Generic)
@@ -50,7 +50,6 @@ data EventsQueryResult = EventsQueryResult
 -- and store various pieces of data for the `Server`-side operations. It is expected
 -- to throw exceptions of type `DBError m`.
 class (Exception (DBError m), MonadCatch m) => DB m where
-
   type DBError m :: *
 
   -- | Stores the current timestamp

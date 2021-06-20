@@ -40,6 +40,7 @@ import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as A
 import Data.Bifunctor (Bifunctor (first))
 import qualified Data.ByteString.Lazy as LBS
+import Data.Functor ((<&>))
 import Data.Int (Int64)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -92,8 +93,8 @@ runDB dbFile configDir logger act =
 
 getDataFile :: FilePath -> IO FilePath
 getDataFile configDir = do
-  oldLog <- getDataDirectory >>= pure . (</> "sensei.log")
-  newLog <- getDataDirectory >>= pure . (</> "sensei.sqlite")
+  oldLog <- getDataDirectory <&> (</> "sensei.log")
+  newLog <- getDataDirectory <&> (</> "sensei.sqlite")
   existOldLog <- doesFileExist oldLog
   if existOldLog
     then migrateOldLog oldLog newLog
@@ -236,14 +237,14 @@ instance DB SQLiteDB where
   getCurrentTime u = getCurrentTimeSQL u
   writeEvent t = writeEventSQL t
   updateLatestFlow ts = updateLatestFlowSQL ts
-  writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
+  writeProfile u = SQLiteDB (asks configDir >>= liftIO . writeProfileFile u)
   readFlow u r = readFlowSQL u r
   readEvents u p = readEventsSQL u p
   readNotes u rge = readNotesSQL u rge
   searchNotes u txt = searchNotesSQL u txt
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
-  readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
+  readProfile = SQLiteDB (asks configDir >>= liftIO . readProfileFile)
 
 data Events
   = StoragePathCreated {dbPath :: FilePath}
@@ -324,7 +325,7 @@ updateNotesIndex ::
   IO ()
 updateNotesIndex rid (EventNote NoteFlow {..}) cnx logger =
   let q = "insert into notes_search (id, note) values (?, ?)"
-   in execute cnx logger q [toField rid, SQLText $ _noteContent]
+   in execute cnx logger q [toField rid, SQLText _noteContent]
 updateNotesIndex _ _ _ _ = pure ()
 
 writeEventSQL ::

@@ -1,40 +1,46 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+
 -- | A "database" stored as a simple flat-file containing one line of JSON-formatted data per record.
 module Sensei.DB.File
-  ( FileDB(..), runDB,
+  ( FileDB (..),
+    runDB,
     getDataFile,
-    readProfileFile, writeProfileFile,
+    readProfileFile,
+    writeProfileFile,
+
     -- * Utility for migration
-    readAll
+    readAll,
   )
 where
 
-import Control.Monad.Reader
 import qualified Control.Exception.Safe as Exc
+import Control.Monad.Reader
 import Data.Aeson hiding (Options)
 import Data.Bifunctor
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text, pack)
 import Data.Time
+import Sensei.API
 import Sensei.DB
 import Sensei.IO
-import Sensei.API
 import System.Directory
 import System.FilePath ((</>))
 import System.IO
 
-data FileDBPaths = FileDBPaths { storageFile :: FilePath,
-                                 configDir :: FilePath
-                               }
+data FileDBPaths = FileDBPaths
+  { storageFile :: FilePath,
+    configDir :: FilePath
+  }
 
 {-# DEPRECATED FileDB "This backend is deprecated in favor of Sensei.DB.SQLite" #-}
-newtype FileDB a = FileDB { unFileDB :: ReaderT FileDBPaths IO a }
+
+newtype FileDB a = FileDB {unFileDB :: ReaderT FileDBPaths IO a}
   deriving (Functor, Applicative, Monad, Exc.MonadThrow, Exc.MonadCatch, MonadIO)
 
 runDB :: FilePath -> FilePath -> FileDB a -> IO a

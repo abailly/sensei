@@ -1,11 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
--- |`RunClient` instance suitable for use with WAI hspec wrapper
--- Provides
+
+-- | `RunClient` instance suitable for use with WAI hspec wrapper
+--  Provides
 module Sensei.WaiTestHelper where
 
 import Control.Monad.Reader
@@ -20,6 +22,7 @@ import qualified Network.HTTP.Types as H
 import Network.HTTP.Types.Version
 import qualified Network.Wai as Wai
 import Network.Wai.Test as Wai
+import Sensei.TestHelper (validAuthToken)
 import Servant.Client.Core
 import Test.Hspec
 import Test.Hspec.Wai hiding (request)
@@ -28,7 +31,7 @@ import Test.Hspec.Wai.Internal (WaiSession (..))
 fromClientRequest ::
   (MonadIO m) => Request -> m Wai.Request
 fromClientRequest inReq =
-  let acceptHeaders = fmap (\mt -> ("Accept", renderHeader mt)) $ toList (requestAccept inReq)
+  let acceptHeaders = (\mt -> ("Accept", renderHeader mt)) <$> toList (requestAccept inReq)
       headers = toList (requestHeaders inReq) <> acceptHeaders
       rawPath = LBS.toStrict (toLazyByteString $ requestPath inReq)
       bdy = case requestBody inReq of
@@ -40,7 +43,7 @@ fromClientRequest inReq =
             _ -> error "don't know how to handle body source"
       body chunks =
         atomicModifyIORef chunks $
-          \chunk -> case chunk of
+          \case
             [] -> ([], BS.empty)
             (c : cs) -> (cs, c)
       (segments, query) = H.decodePath rawPath
@@ -48,7 +51,10 @@ fromClientRequest inReq =
         Wai.defaultRequest
           { Wai.rawPathInfo = rawPath,
             Wai.requestMethod = requestMethod inReq,
-            Wai.requestHeaders = ("Content-type", "application/json") : headers,
+            Wai.requestHeaders =
+              ("Content-type", "application/json") :
+              ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken) :
+              headers,
             Wai.requestBody = b,
             Wai.httpVersion = requestHttpVersion inReq,
             Wai.pathInfo = segments,
@@ -75,5 +81,5 @@ isExpectedToBe ::
   (Eq a, Show a) => a -> a -> WaiSession st ()
 isExpectedToBe actual expected =
   if actual /= expected
-  then liftIO $ expectationFailure $ show actual <> " is not " <> show expected
-  else pure ()
+    then liftIO $ expectationFailure $ show actual <> " is not " <> show expected
+    else pure ()

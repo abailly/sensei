@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -22,14 +23,19 @@ import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
 import Preface.Log
 import Preface.Server
+import Crypto.JOSE(JWK)
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite
 import Network.CORS(WithCORS(..))
 import Sensei.IO
+import System.FilePath((</>))
 import Sensei.Server
 import Sensei.Server.Config
+import Sensei.Server.Auth.API(Protected)
+import Sensei.Server.Auth.Types(getKey,
+                                defaultJWTSettings, defaultCookieSettings, throwAll, JWTSettings, CookieSettings, AuthResult(..))
 import Sensei.Server.OpenApi
 import Sensei.Server.UI
 import Sensei.Version
@@ -39,7 +45,7 @@ import System.Posix.Daemonize
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
-    :<|> (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI))
+    :<|> Protected :> (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI))
     :<|> Raw
 
 fullAPI :: Proxy FullAPI
@@ -58,10 +64,11 @@ sensei :: FilePath -> IO ()
 sensei output = do
   signal <- newEmptyMVar
   configDir <- getConfigDirectory
+  key <- getKey (configDir </> "sensei.jwk")
   serverName <- pack . fromMaybe "" <$> lookupEnv "SENSEI_SERVER_NAME"
   serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-  server <- startAppServer serverName NoCORS serverPort (senseiApp env signal output configDir)
+  server <- startAppServer serverName NoCORS serverPort (senseiApp env signal key output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
 
 readPort :: Maybe String -> Int
@@ -92,19 +99,33 @@ baseServer signal =
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
-senseiApp :: Maybe Env -> MVar () -> FilePath -> FilePath -> LoggerEnv -> IO Application
-senseiApp env signal output configDir logger = do
+  
+senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
+senseiApp env signal publicAuthKey output configDir logger = do
   runDB output configDir logger $ initLogStorage
+  let jwtConfig = defaultJWTSettings publicAuthKey
+      cookieConfig = defaultCookieSettings
+      contextConfig = jwtConfig :. cookieConfig :. EmptyContext
+      contextProxy :: Proxy [JWTSettings,CookieSettings]
+      contextProxy = Proxy 
   pure $
-    serve fullAPI $
-      hoistServer fullAPI runApp $
+    serveWithContext fullAPI contextConfig $
+      hoistServerWithContext fullAPI contextProxy runApp $
         pure senseiSwagger
-          :<|> baseServer signal
+          :<|> validateAuth
           :<|> Tagged (userInterface env)
   where
+    validateAuth (Authenticated _) = baseServer signal
+    validateAuth _ = throwAll err401 {errHeaders = [("www-authenticate", "Basic realm=\"sensei\"")]}
+    
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
     runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger)
 
     handleDBError :: IO a -> IO a
     handleDBError io =
       io `catch` \(SQLiteDBError _q txt) -> throwM $ err500 {errBody = fromStrict $ encodeUtf8 txt}
+
+-- | This orphan instance is needed because of the 'validateAuth' function above
+instance MonadError ServerError SQLiteDB where
+  throwError = throwM
+  catchError = catch 

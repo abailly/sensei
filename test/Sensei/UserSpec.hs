@@ -18,12 +18,6 @@ import Test.QuickCheck.Classes
 
 -- * Orphan Instances
 
-instance Arbitrary TimeOfDay where
-  arbitrary = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger <$> choose (0, 59))
-
-instance Arbitrary TimeZone where
-  arbitrary = hoursToTimeZone <$> choose (- 12, 12)
-
 generateUser :: Gen Text
 generateUser = resize 20 (pack . getASCIIString <$> arbitrary)
 
