@@ -1,14 +1,11 @@
 import { get } from './request.js';
 import { formatISODate, nextDay } from './date.js';
-import { drawNotes } from './notes.js';
-import { drawCommands } from './commands.js';
+import {  drawCommands } from './commands.js';
 import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
-import { colorOf } from './color.js';
-import { drawTimeline } from "./css-timeline.js";
-import { drawCssNotes } from "./css-notes.js";
-import { LocalDate, LocalDateTime } from "@js-joda/core";
+import { LocalDateTime } from "@js-joda/core";
+import Timeline from "./timeline/Timeline";
 
 /**
  Create a new div container for a timeline
@@ -26,45 +23,40 @@ function createTimelineContainer(day, data, notesData) {
   const commands = <input type="checkbox" id={commandsName} />;
   const summary = <input type="checkbox" id={summaryName} />;
 
-  const container =
-    <div id={day} class='timeline'>
-      <div class='timeline-controls'>
-        <label for={detailsName}>Expand</label>
-        {details}
-        <label for={notesName}>Notes</label>
-        {notes}
-        <label for={commandsName}>Commands</label>
-        {commands}
-        <label for={summaryName}>Summary</label>
-        {summary}
-      </div>
-      {commandsDiv}
-      {summaryDiv}
-      {chart}
-    </div>;
+  let timeline = undefined;
+
+    const container =
+        <div id={day} class='timeline'>
+            <div class='timeline-controls'>
+                <label for={detailsName}>Expand</label>
+                {details}
+                <label for={notesName}>Notes</label>
+                {notes}
+                <label for={commandsName}>Commands</label>
+                {commands}
+                <label for={summaryName}>Summary</label>
+                {summary}
+            </div>
+            {commandsDiv}
+            {summaryDiv}
+            {chart}
+        </div>;
 
   details.addEventListener('change', (e) => {
     if (e.target.checked) {
-      drawTimeline(chart, day, data, f => f.viewType);
+      timeline.draw(f => f.viewType);
     } else {
-      drawTimeline(chart, day, data);
+      timeline.draw();
     }
   });
 
   notes.addEventListener('change', (e) => {
     if (e.target.checked) {
       get(`/api/flows/${config.user}/${day}/notes`, (notesData) => {
-        drawCssNotes(chart, day, notesData);
-      });
-    } else {
-      document.getElementById("notes-" + day).remove();
-      document.getElementById('title-notes-' + day).remove();
-      const regExp = new RegExp('^note-' + day + '.*$');
-      Array.from(document.body.childNodes).forEach(node => {
-        if (node.id !== undefined && regExp.test(node.id)) {
-          node.remove();
-        }
-      });
+        timeline.drawNotes(notesData);
+            });
+        } else {
+            timeline.clearNotes();
     }
   });
 
@@ -88,7 +80,8 @@ function createTimelineContainer(day, data, notesData) {
   });
 
   document.getElementById('timelines').appendChild(container);
-  drawTimeline(chart, day, data);
+  timeline = new Timeline(chart, day, data);
+    timeline.draw();
 }
 
 /**

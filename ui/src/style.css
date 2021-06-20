@@ -132,47 +132,47 @@ table.tbl-log td {
     width: 100px;
 }
 
-.timeline-flows {
+.timeline-header {
     grid-column: 1/24;
     grid-row: auto/auto;
 }
 
-.timeline-flows ul {
+.timeline-header ul {
     padding: 0 0 0 100px;
     list-style: none;
     white-space: nowrap;
     font-size: 0;
 }
 
-.timeline-flows ul li {
+.timeline-header ul li {
     padding-bottom: 8px;
 }
 
-.timeline-flows ul h2,
-.timeline-flows ul h3,
-.timeline-flows ul h4 {
+.timeline-header ul h2,
+.timeline-header ul h3,
+.timeline-header ul h4 {
     margin: 0 0 1px 0;
     font-weight: normal;
     font-size: 11px;
 }
 
-.timeline-flows ul h2 {
+.timeline-header ul h2 {
     color: #777;
     text-transform: uppercase;
 }
 
-.timeline-flows ul h3 {
+.timeline-header ul h3 {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden
 }
 
-.timeline-flows ul h4 {
+.timeline-header ul h4 {
     color: #fff;
     font-style: italic;
 }
 
-.timeline-flows li {
+.timeline-header li {
     position: relative;
     display: inline-block;
 }
@@ -219,14 +219,14 @@ table.tbl-log td {
     display: inline-block;
 }
 
-.timeline-header {
+.timeline-title {
     grid-column: 1/1;
     grid-row: auto/auto;
 }
 
-.timeline-header > div h2,
-.timeline-header > div h3,
-.timeline-header > div h4 {
+.timeline-title > div h2,
+.timeline-title > div h3,
+.timeline-title > div h4 {
     margin: 0 0 1px 0;
     font-weight: normal;
     font-size: 14px;
@@ -246,7 +246,6 @@ table.tbl-log td {
 
 .timeline-note {
     cursor: pointer;
-    background: #315273;
 }
 
 div [id^='timeline-container-'] {
@@ -278,8 +277,24 @@ div [id^='notes-'] ul li div {
     height: 16px;
     position: absolute;
     left: 0;
-    border-radius: 8px;
     width: 100%;
+}
+
+
+div [id^='note-button-'] {
+    font-size: 12px;
+    vertical-align: middle;
+    text-align: center;
+}
+
+div [id^='note-button-'] i {
+    vertical-align: middle;
+    text-align: center;
+}
+
+div [id^='note-desc-'] div, h4 {
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
 }
 
 .c-dialog {

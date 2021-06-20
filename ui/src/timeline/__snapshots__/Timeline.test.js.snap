@@ -1,13 +1,13 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`CSS Timeline expect timeline not to clear notes 1`] = `
+exports[`Timeline expect timeline not to clear notes 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -148,6 +148,12 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
+      class="timeline-title"
+      id="title-notes-2020-12-17"
+    >
+      Notes
+    </div>
+    <div
       class="timeline-chart"
       id="notes-2020-12-17"
     >
@@ -159,8 +165,13 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
             aria-controls="note-2020-11-16T09:30:00"
             aria-haspopup="dialog"
             class="timeline-event timeline-note"
+            id="note-button-2020-11-16T09:30:00"
             type="button"
-          />
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
         </li>
         <li
           style="width: 16px; margin-left: 267.33333333333337px;"
@@ -169,8 +180,13 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
             aria-controls="note-2020-11-16T10:55:00"
             aria-haspopup="dialog"
             class="timeline-event timeline-note"
+            id="note-button-2020-11-16T10:55:00"
             type="button"
-          />
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
         </li>
         <li
           style="width: 16px; margin-left: 267.33333333333337px;"
@@ -179,13 +195,18 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
             aria-controls="note-2020-11-16T12:20:00"
             aria-haspopup="dialog"
             class="timeline-event timeline-note"
+            id="note-button-2020-11-16T12:20:00"
             type="button"
-          />
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
         </li>
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -208,7 +229,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -231,7 +252,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -286,7 +307,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -309,7 +330,7 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -396,14 +417,14 @@ exports[`CSS Timeline expect timeline not to clear notes 1`] = `
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be drawn 1`] = `
+exports[`Timeline expect timeline to be drawn 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -544,7 +565,7 @@ exports[`CSS Timeline expect timeline to be drawn 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -695,14 +716,14 @@ exports[`CSS Timeline expect timeline to be drawn 1`] = `
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be drawn with negative left margin when flow start before user start of day 1`] = `
+exports[`Timeline expect timeline to be drawn with negative left margin when flow start before user start of day 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -843,7 +864,7 @@ exports[`CSS Timeline expect timeline to be drawn with negative left margin when
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -988,14 +1009,14 @@ exports[`CSS Timeline expect timeline to be drawn with negative left margin when
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be drawn with positive left margin when flow start after user start of day 1`] = `
+exports[`Timeline expect timeline to be drawn with positive left margin when flow start after user start of day 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -1136,7 +1157,7 @@ exports[`CSS Timeline expect timeline to be drawn with positive left margin when
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1287,14 +1308,14 @@ exports[`CSS Timeline expect timeline to be drawn with positive left margin when
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
+exports[`Timeline expect timeline to be expand at selected date 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -1435,7 +1456,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1458,7 +1479,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1481,7 +1502,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1536,7 +1557,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1559,7 +1580,7 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1646,14 +1667,14 @@ exports[`CSS Timeline expect timeline to be expand at selected date 1`] = `
 </div>
 `;
 
-exports[`CSS Timeline expect timeline to have row label with flowtype after being drawn without 1`] = `
+exports[`Timeline expect timeline to have row label with flowtype after being drawn without 1`] = `
 <div>
   <div
     id="timeline-container-2020-12-17"
   >
     <div
-      class="timeline-flows"
-      id="timeline-flows-2020-12-17"
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
     >
       <ul>
         <li
@@ -1794,7 +1815,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1817,7 +1838,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1840,7 +1861,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1895,7 +1916,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1918,7 +1939,7 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
       </ul>
     </div>
     <div
-      class="timeline-header"
+      class="timeline-title"
     >
       <div>
         <h3>
@@ -1936,6 +1957,662 @@ exports[`CSS Timeline expect timeline to have row label with flowtype after bein
           <div
             class="timeline-event"
             style="background: rgb(69, 0, 221);"
+          />
+        </li>
+      </ul>
+    </div>
+    <div
+      class="timeline-time"
+      id="timeline-time-2020-12-17"
+    >
+      <ul>
+        <li>
+          08:00
+        </li>
+        <li>
+          08:30
+        </li>
+        <li>
+          09:00
+        </li>
+        <li>
+          09:30
+        </li>
+        <li>
+          10:00
+        </li>
+        <li>
+          10:30
+        </li>
+        <li>
+          11:00
+        </li>
+        <li>
+          11:30
+        </li>
+        <li>
+          12:00
+        </li>
+        <li>
+          12:30
+        </li>
+        <li>
+          13:00
+        </li>
+        <li>
+          13:30
+        </li>
+        <li>
+          14:00
+        </li>
+        <li>
+          14:30
+        </li>
+        <li>
+          15:00
+        </li>
+        <li>
+          15:30
+        </li>
+        <li>
+          16:00
+        </li>
+        <li>
+          16:30
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Timeline notes are cleared for good 1`] = `
+<div>
+  <div
+    id="timeline-container-2020-12-17"
+  >
+    <div
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
+    >
+      <ul>
+        <li
+          style="width: 100px; margin-left: 100px;"
+        >
+          <div>
+            <h2>
+              08:30
+            </h2>
+            <h2>
+              09:00
+            </h2>
+            <h3>
+              Flowing
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 100px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              09:00
+            </h2>
+            <h2>
+              09:30
+            </h2>
+            <h3>
+              Daily
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 150px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              09:30
+            </h2>
+            <h2>
+              10:15
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 350px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              10:15
+            </h2>
+            <h2>
+              12:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 333.33333333333337px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              12:00
+            </h2>
+            <h2>
+              13:40
+            </h2>
+            <h3>
+              Other
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 66.66666666666666px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              13:40
+            </h2>
+            <h2>
+              14:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 200px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              14:00
+            </h2>
+            <h2>
+              15:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 400px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              15:00
+            </h2>
+            <h2>
+              17:00
+            </h2>
+            <h3>
+              Rework
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 0px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              17:00
+            </h2>
+            <h2>
+              17:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div
+      class="timeline-title"
+    >
+      <div>
+        <h3>
+          2020-12-17
+        </h3>
+      </div>
+    </div>
+    <div
+      class="timeline-events"
+    >
+      <ul>
+        <li
+          style="width: 100px; margin-left: 100px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(0, 221, 34);"
+          />
+        </li>
+        <li
+          style="width: 100px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 255, 255);"
+          />
+        </li>
+        <li
+          style="width: 150px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 350px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 333.33333333333337px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(51, 255, 212);"
+          />
+        </li>
+        <li
+          style="width: 66.66666666666666px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 200px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 400px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(69, 0, 221);"
+          />
+        </li>
+        <li
+          style="width: 0px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+      </ul>
+    </div>
+    <div
+      class="timeline-time"
+      id="timeline-time-2020-12-17"
+    >
+      <ul>
+        <li>
+          08:00
+        </li>
+        <li>
+          08:30
+        </li>
+        <li>
+          09:00
+        </li>
+        <li>
+          09:30
+        </li>
+        <li>
+          10:00
+        </li>
+        <li>
+          10:30
+        </li>
+        <li>
+          11:00
+        </li>
+        <li>
+          11:30
+        </li>
+        <li>
+          12:00
+        </li>
+        <li>
+          12:30
+        </li>
+        <li>
+          13:00
+        </li>
+        <li>
+          13:30
+        </li>
+        <li>
+          14:00
+        </li>
+        <li>
+          14:30
+        </li>
+        <li>
+          15:00
+        </li>
+        <li>
+          15:30
+        </li>
+        <li>
+          16:00
+        </li>
+        <li>
+          16:30
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Timeline notes can be drawn after being cleared 1`] = `
+<div>
+  <div
+    id="timeline-container-2020-12-17"
+  >
+    <div
+      class="timeline-header"
+      id="timeline-header-2020-12-17"
+    >
+      <ul>
+        <li
+          style="width: 100px; margin-left: 100px;"
+        >
+          <div>
+            <h2>
+              08:30
+            </h2>
+            <h2>
+              09:00
+            </h2>
+            <h3>
+              Flowing
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 100px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              09:00
+            </h2>
+            <h2>
+              09:30
+            </h2>
+            <h3>
+              Daily
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 150px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              09:30
+            </h2>
+            <h2>
+              10:15
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 350px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              10:15
+            </h2>
+            <h2>
+              12:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 333.33333333333337px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              12:00
+            </h2>
+            <h2>
+              13:40
+            </h2>
+            <h3>
+              Other
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 66.66666666666666px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              13:40
+            </h2>
+            <h2>
+              14:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 200px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              14:00
+            </h2>
+            <h2>
+              15:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 400px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              15:00
+            </h2>
+            <h2>
+              17:00
+            </h2>
+            <h3>
+              Rework
+            </h3>
+          </div>
+        </li>
+        <li
+          style="width: 0px; margin-left: 0px;"
+        >
+          <div>
+            <h2>
+              17:00
+            </h2>
+            <h2>
+              17:00
+            </h2>
+            <h3>
+              Meeting
+            </h3>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div
+      class="timeline-title"
+      id="title-notes-2020-12-17"
+    >
+      Notes
+    </div>
+    <div
+      class="timeline-chart"
+      id="notes-2020-12-17"
+    >
+      <ul>
+        <li
+          style="width: 16px; margin-left: 292px;"
+        >
+          <div
+            aria-controls="note-2020-11-16T09:30:00"
+            aria-haspopup="dialog"
+            class="timeline-event timeline-note"
+            id="note-button-2020-11-16T09:30:00"
+            type="button"
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
+        </li>
+        <li
+          style="width: 16px; margin-left: 267.33333333333337px;"
+        >
+          <div
+            aria-controls="note-2020-11-16T10:55:00"
+            aria-haspopup="dialog"
+            class="timeline-event timeline-note"
+            id="note-button-2020-11-16T10:55:00"
+            type="button"
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
+        </li>
+        <li
+          style="width: 16px; margin-left: 267.33333333333337px;"
+        >
+          <div
+            aria-controls="note-2020-11-16T12:20:00"
+            aria-haspopup="dialog"
+            class="timeline-event timeline-note"
+            id="note-button-2020-11-16T12:20:00"
+            type="button"
+          >
+            <i
+              class="fas fa-sticky-note"
+            />
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div
+      class="timeline-title"
+    >
+      <div>
+        <h3>
+          2020-12-17
+        </h3>
+      </div>
+    </div>
+    <div
+      class="timeline-events"
+    >
+      <ul>
+        <li
+          style="width: 100px; margin-left: 100px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(0, 221, 34);"
+          />
+        </li>
+        <li
+          style="width: 100px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 255, 255);"
+          />
+        </li>
+        <li
+          style="width: 150px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 350px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 333.33333333333337px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(51, 255, 212);"
+          />
+        </li>
+        <li
+          style="width: 66.66666666666666px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 200px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
+          />
+        </li>
+        <li
+          style="width: 400px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(69, 0, 221);"
+          />
+        </li>
+        <li
+          style="width: 0px; margin-left: 0px;"
+        >
+          <div
+            class="timeline-event"
+            style="background: rgb(255, 242, 3);"
           />
         </li>
       </ul>
