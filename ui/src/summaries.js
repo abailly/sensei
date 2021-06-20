@@ -1,51 +1,63 @@
-import { dom, clear } from './dom';
-import {config} from './config';
-import {get} from './request';
-import {currentMonthPeriod, currentWeekPeriod, currentYearPeriod} from "./date";
+import { dom, clear, clearElement } from './dom';
+import { config } from './config';
+import { get } from './request';
+import { currentMonthPeriod, currentWeekPeriod, currentYearPeriod } from "./date";
 import { drawSummary } from './summary.js';
 
 /// Draw the charts
-export default function summaries() {
+export function summaries(router, container, from, to, period) {
+  const summaryDiv = <div id="summaries"></div>;
+
+  clearElement(container);
+  container.appendChild(summaryDiv);
+
+  get(`/api/flows/${config.user}/summary?from=${from}&to=${to}&period=${period}`, (summaryData, links) =>
+    drawSummary(summaryDiv, router, summaryData, links));
+
+  return summaryDiv;
+}
+
+export function baseSummaries(router, container) {
   const summaryDiv = <div id="summaries"></div>;
   const content = <div class="content">
-        <div class="controls">
-        <input type="radio" id="yearly" name="period" value="yearly" checked/>
-        <label for="yearly">Yearly</label>
-        <input type="radio" id="monthly" name="period" value="monthly" checked/>
-        <label for="monthly">Monthly</label>
-        <input type="radio" id="weekly" name="period" value="weekly"/>
-        <label for="weekly">Weekly</label>
-        </div>
-    { summaryDiv }
+    <div class="controls">
+      <input type="radio" id="yearly" name="period" value="yearly" checked />
+      <label for="yearly">Yearly</label>
+      <input type="radio" id="monthly" name="period" value="monthly" checked />
+      <label for="monthly">Monthly</label>
+      <input type="radio" id="weekly" name="period" value="weekly" />
+      <label for="weekly">Weekly</label>
+    </div>
+    {summaryDiv}
   </div>;
 
-  clear('main');
-  document.getElementById('main').appendChild(content);
+  clearElement(container);
+  container.appendChild(content);
 
   document.getElementById('yearly').addEventListener('change', (e) => {
-    const [start,end] = currentYearPeriod();
+    const [start, end] = currentYearPeriod();
     clear('summaries');
     if (e.target.checked) {
-      get(`/api/flows/${config.user}/summary?from=${start}&to=${end}`, (summaryData) =>
-        drawSummary(summaryDiv, summaryData));
+      get(`/api/flows/${config.user}/summary?from=${start}&to=${end}&period=Year`, (summaryData, links) =>
+        drawSummary(summaryDiv, router, summaryData, links));
     }
   });
 
   document.getElementById('monthly').addEventListener('change', (e) => {
-    const [start,end] = currentMonthPeriod();
+    const [start, end] = currentMonthPeriod();
     clear('summaries');
     if (e.target.checked) {
-      get(`/api/flows/${config.user}/summary?from=${start}&to=${end}`, (summaryData) =>
-        drawSummary(summaryDiv, summaryData));
+      get(`/api/flows/${config.user}/summary?from=${start}&to=${end}&period=Month`, (summaryData, links) =>
+        drawSummary(summaryDiv, router, summaryData, links));
     }
   });
 
   document.getElementById('weekly').addEventListener('change', (e) => {
-    const [start,end] = currentWeekPeriod();
+    const [start, end] = currentWeekPeriod();
     clear('summaries');
     if (e.target.checked) {
-      get(`/api/flows/${config.user}/summary?from=${start}&to=${end}`, (summaryData) =>
-        drawSummary(summaryDiv, summaryData));
+      get(`/api/flows/${config.user}/summary?from=${start}&to=${end}&period=Week`, (summaryData, links) =>
+        drawSummary(summaryDiv, router, summaryData, links));
     }
   });
 
