@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
       summaries(router, document.getElementById('main'), params.from, params.to, params.period);
     })
     .on('/summaries', function() {
-      baseSummaries(router, document.getElementById('main'));
+      summaries(router, document.getElementById('main'));
     })
     .on(function() {
       charts();

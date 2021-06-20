@@ -5,10 +5,9 @@
 module Sensei.FlowAPISpec where
 
 import Data.Function ((&))
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromJust)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Lens (modL)
-import Network.URI.Extra (URI)
 import Sensei.API
 import Sensei.Builder
 import Sensei.Server.Links hiding (Other)
@@ -136,16 +135,8 @@ spec = withApp app $
           200
           [ "Link"
               <:> encodeUtf8
-                ( writeLinkHeader
-                    [ Link
-                        @URI
-                        "/api/flows/arnaud/summary?from=1995-09-10&to=1995-10-10&period=Month"
-                        [(Rel, "prev")],
-                      Link
-                        @URI
-                        "/api/flows/arnaud/summary?from=1995-11-10&to=1995-12-10&period=Month"
-                        [(Rel, "next")]
-                    ]
+                ( writeLinkHeader $
+                    fromJust $ periodLinks "arnaud" aDay (localDay endPeriod) Month 
                 )
           ]
           (jsonBodyEquals expected)
