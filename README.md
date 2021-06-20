@@ -1,5 +1,15 @@
 # sensei
 
+# Install
+
+## On local machine
+
+1. `stack install` install the main program into the path
+2. `cd ui && npm install && npm run build` builds the frontend UI
+3. `ln -s ~/.local/bin/sensei-exe ~/.local/bin/ep` creates the shell command
+
+You can then launch the backend application with `sensei-exe`, which will the become available at [localhost:23456](http://localhost:23456), and log time using the `ep` command.
+
 # User Profile
 
 User profile can be set using the command-line tool `ep`.

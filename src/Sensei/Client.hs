@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -6,17 +8,33 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sensei.Client where
+module Sensei.Client
+(ClientMonad(..),
+ killC ,
+postEventC ,
+getFlowC ,
+updateFlowC ,
+queryFlowC ,
+queryFlowDayC ,
+queryFlowPeriodSummaryC ,
+notesDayC ,
+commandsDayC ,
+searchNotesC ,
+getLogC ,
+getUserProfileC ,
+setUserProfileC ,
+getVersionsC ,
+tryKillingServer, send)
+  where
 
 import Control.Concurrent (threadDelay)
-import Data.CaseInsensitive
-import Data.Sequence
 import Data.Text (Text)
 import Data.Time
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.HTTP.Types.Status
 import Sensei.API
 import Sensei.App
+import Sensei.Client.Monad
 import Sensei.Version
 import Servant
 import Servant.Client
@@ -29,9 +47,8 @@ postEventC :: Event -> ClientMonad ()
 getFlowC :: Text -> Reference -> ClientMonad (Maybe Event)
 updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
-queryFlowSummaryC :: Text -> ClientMonad [GroupViews (FlowType, NominalDiffTime)]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
-queryFlowDaySummaryC :: Text -> Day -> ClientMonad FlowSummary
+queryFlowPeriodSummaryC :: Text -> Maybe Day -> Maybe Day -> Maybe Group -> ClientMonad (Headers '[Header "Link" Text] FlowSummary)
 notesDayC :: Text -> Day -> ClientMonad (Headers '[Header "Link" Text] [NoteView])
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
@@ -39,8 +56,8 @@ getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
-( getFlowC :<|> updateFlowC :<|> queryFlowSummaryC
-    :<|> queryFlowDaySummaryC
+( getFlowC :<|> updateFlowC
+    :<|> queryFlowPeriodSummaryC
     :<|> notesDayC
     :<|> commandsDayC
     :<|> queryFlowDayC
@@ -50,33 +67,6 @@ getVersionsC :: ClientMonad Versions
   :<|> (postEventC :<|> getLogC)
   :<|> (getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
-
-newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => m a}
-
-instance Functor ClientMonad where
-  fmap f (ClientMonad a) = ClientMonad $ fmap f a
-
-instance Applicative ClientMonad where
-  pure a = ClientMonad (pure a)
-  ClientMonad f <*> ClientMonad a = ClientMonad $ f <*> a
-
-instance Monad ClientMonad where
-  ClientMonad a >>= f =
-    ClientMonad $ a >>= unClient . f
-
-instance RunClient ClientMonad where
-  runRequest req = ClientMonad $ do
-    let request =
-          req
-            { requestHeaders =
-                (mk "Host", "localhost:23456")
-                  <| (mk "Origin", "http://localhost:23456")
-                  <| (mk "X-API-Version", toHeader senseiVersion)
-                  <| requestHeaders req
-            }
-    runRequest request
-
-  throwClientError err = ClientMonad $ throwClientError err
 
 tryKillingServer :: ClientEnv -> IO ()
 tryKillingServer env = do
@@ -90,7 +80,7 @@ send :: ClientMonad a -> IO a
 send act = do
   mgr <- newManager defaultManagerSettings
   let base = BaseUrl Http "127.0.0.1" 23456 ""
-      env = ClientEnv mgr base Nothing
+      env = mkClientEnv mgr base
   res <- runClientM (unClient act) env
   case res of
     -- server is not running, fork it

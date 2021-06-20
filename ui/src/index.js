@@ -2,10 +2,11 @@ import style from './style.css';
 import charts from './charts';
 import logs from './logs';
 import notes from './notes';
+import { summaries, baseSummaries } from './summaries';
 import { setUserProfile } from './user.js';
 import { formatISODate } from './date.js';
 import Navigo from 'navigo';
-import {LocalDate} from "@js-joda/core";
+import { LocalDate } from "@js-joda/core";
 
 document.addEventListener('DOMContentLoaded', () => {
   google.charts.load('current', { 'packages': ['corechart', 'bar', 'timeline', 'calendar'] });
@@ -34,6 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .on('/log', function() {
       logs(router, document.getElementById('main'), 1);
+    })
+    .on('/summaries/:from/:to/:period', function(params) {
+      summaries(router, document.getElementById('main'), params.from, params.to, params.period);
+    })
+    .on('/summaries', function() {
+      summaries(router, document.getElementById('main'));
     })
     .on(function() {
       charts();

@@ -1,13 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.API
@@ -16,10 +10,6 @@ module Sensei.API
     SetCurrentTime,
     GetCurrentTime,
     senseiAPI,
-    nextPageLink,
-    previousPageLink,
-    nextDayLink,
-    previousDayLink,
     module Sensei.Color,
     module Sensei.Duration,
     module Sensei.Flow,
@@ -35,11 +25,8 @@ module Sensei.API
   )
 where
 
-import Control.Applicative ((<|>))
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text)
 import Data.Time
-import Network.HTTP.Link as Link
-import Network.URI.Extra (uriFromString)
 import Sensei.Color
 import Sensei.Duration
 import Sensei.Flow
@@ -98,18 +85,18 @@ type PatchFlowTimeshift =
     :> ReqBody '[JSON] TimeDifference
     :> Patch '[JSON] Event
 
-type GetGroupSummary =
-  Summary "Retrieve grouped summary of flows by type."
+type GetPeriodSummary =
+  Summary
+    "Retrieve flows summary, eg. time spend in flows by type, for a given time period. \
+    \ The time period is given by query arguments `from` and `to`, with `from` being \
+    \ inclusive lower bound and `to` being exclusive upper bound. \
+    \ `from` must be a valid ISO8601 date _before_ `to`."
     :> Capture "user" Text
     :> "summary"
-    :> Get '[JSON] [GroupViews (FlowType, NominalDiffTime)]
-
-type GetDailySummary =
-  Summary "Retrieve daily summary of time spend in flows by type."
-    :> Capture "user" Text
-    :> Capture "day" Day
-    :> "summary"
-    :> Get '[JSON] FlowSummary
+    :> QueryParam "from" Day
+    :> QueryParam "to" Day
+    :> QueryParam "period" Group
+    :> Get '[JSON] (Headers '[Header "Link" Text] FlowSummary)
 
 type GetNotes =
   Summary "Retrieve timestamped notes for some day, or all notes if no day is given."
@@ -144,7 +131,9 @@ type GetFlowsTimeline =
     :> Get '[JSON] [FlowView]
 
 type GetGroupedTimelines =
-  Summary "Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...)."
+  Summary
+    "Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...). \
+    \ If no 'group' param is given, returns _all_ flows."
     :> Capture "user" Text
     :> QueryParams "group" Group
     :> Get '[JSON] [GroupViews FlowView]
@@ -172,8 +161,7 @@ type SenseiAPI =
            :> Tags "Flows"
            :> ( GetFlow
                   :<|> PatchFlowTimeshift
-                  :<|> GetGroupSummary
-                  :<|> GetDailySummary
+                  :<|> GetPeriodSummary
                   :<|> GetNotes
                   :<|> GetCommands
                   :<|> GetFlowsTimeline
@@ -195,31 +183,3 @@ type SenseiAPI =
 
 senseiAPI :: Proxy SenseiAPI
 senseiAPI = Proxy
-
-nextPageLink :: Text -> Maybe Natural -> Maybe Link.Link
-nextPageLink userName page = do
-  p <- page <|> pure 1
-  let next = show (succ p)
-  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> next
-  pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
-
-previousPageLink :: Text -> Maybe Natural -> Maybe Link.Link
-previousPageLink userName page = do
-  p <- page
-  let prev = show (pred p)
-  uri <- uriFromString $ "/api/log/" <> unpack userName <> "?page=" <> prev
-  pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]
-
-nextDayLink :: Text -> Maybe Day -> Maybe Link.Link
-nextDayLink userName day = do
-  d <- day
-  let next = showGregorian (succ d)
-  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> next <> "/" <> "notes"
-  pure $ Link uri [(Rel, "next"), (Link.Other "page", pack next)]
-
-previousDayLink :: Text -> Maybe Day -> Maybe Link.Link
-previousDayLink userName day = do
-  d <- day
-  let prev = showGregorian (pred d)
-  uri <- uriFromString $ "/api/flows/" <> unpack userName <> "/" <> prev <> "/" <> "notes"
-  pure $ Link uri [(Rel, "prev"), (Link.Other "page", pack prev)]

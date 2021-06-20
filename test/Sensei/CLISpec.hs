@@ -1,10 +1,12 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Sensei.CLISpec where
 
-import Test.Hspec
-import Sensei.CLI
 import Data.Either (isLeft)
 import Sensei.API
+import Sensei.CLI
+import Test.Hspec
 
 spec :: Spec
 spec = describe "Command-Line Interface" $ do
@@ -25,17 +27,22 @@ spec = describe "Command-Line Interface" $ do
       runOptionsParser Nothing ["-U"] `shouldBe` Right (UserOptions GetProfile)
 
     it "parses '-U -c config' as user profile upload" $ do
-      runOptionsParser Nothing ["-U", "-c", "config" ] `shouldBe` Right (UserOptions (SetProfile "config"))
+      runOptionsParser Nothing ["-U", "-c", "config"] `shouldBe` Right (UserOptions (SetProfile "config"))
 
     it "parses '-v' as versions display" $ do
-      runOptionsParser Nothing ["-v" ] `shouldBe` Right (UserOptions GetVersions)
+      runOptionsParser Nothing ["-v"] `shouldBe` Right (UserOptions GetVersions)
 
     it "parses '-S -10m' as 10 minutes shift" $ do
-      runOptionsParser Nothing ["-S", "-10m" ] `shouldBe` Right (UserOptions $ ShiftTimestamp (Minutes (-10)))
+      runOptionsParser Nothing ["-S", "-10m"] `shouldBe` Right (UserOptions $ ShiftTimestamp (Minutes (-10)))
 
     it "parses '-Q latest' as retrieval of latest flow" $ do
-      runOptionsParser Nothing ["-Q", "latest" ] `shouldBe` Right (UserOptions $ GetFlow Latest)
+      runOptionsParser Nothing ["-Q", "latest"] `shouldBe` Right (UserOptions $ GetFlow Latest)
 
     it "parses '-N --search foo' as search query" $ do
-      runOptionsParser Nothing ["-N", "--search", "foo", "-f", "section" ] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
-      runOptionsParser Nothing ["-N", "-s", "foo", "-f", "section" ] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
+      runOptionsParser Nothing ["-N", "--search", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
+      runOptionsParser Nothing ["-N", "-s", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
+
+    it "parses -s as a summary with default date" $ do
+      runOptionsParser Nothing ["-s"] `shouldSatisfy` \case
+        (Right (QueryOptions _ True [])) -> True
+        _ -> False

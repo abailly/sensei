@@ -158,8 +158,8 @@ interpret (WriteEvent f) = modify $ \m@Model {events} -> m {events = events |> f
 interpret (ReadFlow Latest) = do
   fs <- Seq.filter (not . isTrace) <$> gets events
   case viewr fs of
-    _ :> f@EventFlow{} -> pure $ Just f
-    _ :> n@EventNote{} -> pure $ Just n
+    _ :> f@EventFlow {} -> pure $ Just f
+    _ :> n@EventNote {} -> pure $ Just n
     _ -> pure Nothing
 interpret (ReadFlow _) = error "not implemented"
 interpret (ReadEvents (Page pageNum size)) = do

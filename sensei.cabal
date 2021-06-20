@@ -1,5 +1,5 @@
 name:                sensei
-version:             0.24.0
+version:             0.30.0
 synopsis:            A tool to collect information about one's coding process
 homepage:            https://github.com/abailly/sensei#readme
 license:             BSD3
@@ -23,9 +23,10 @@ library
                      , Sensei.Client
                      , Sensei.App
                      , Sensei.Server
+                     , Sensei.Server.Links
                      , Sensei.Server.UI
                      , Sensei.Server.Config
-                     , Sensei.CLI
+                     , Sensei.Group, Sensei.CLI
                      , Sensei.Time
                      , Sensei.Version
                      , Sensei.Wrapper
@@ -34,13 +35,12 @@ library
                      , Sensei.DB.File
                      , Sensei.DB.Log
                      , Sensei.DB.SQLite
-  other-modules: Sensei.Flow, Sensei.FlowView, Sensei.Group, Sensei.Server.OpenApi,
+  other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.IO, Sensei.Server.Tags
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , aeson-pretty
-                     , ad
                      , ansi-terminal
                      , async
                      , base
@@ -76,13 +76,11 @@ library
                      , template-haskell
                      , text
                      , time
+                     , time-lens
                      , unix
                      , unordered-containers
                      , wai
                      , wai-app-static
-                     , wai-cors
-                     , wai-extra
-                     , warp
   default-language:    Haskell2010
 
 executable sensei-exe
@@ -112,6 +110,7 @@ test-suite sensei-test
                      , Sensei.LogSpec
                      , Sensei.DurationSpec
                      , Sensei.ServerSpec
+                     , Sensei.Server.LinksSpec
                      , Sensei.Builder
                      , Sensei.TestHelper
                      , Sensei.UISpec
@@ -136,6 +135,7 @@ test-suite sensei-test
                      , http-link-header
                      , http-media
                      , http-types
+                     , lens
                      , mtl
                      , prettyprinter
                      , QuickCheck
@@ -147,6 +147,7 @@ test-suite sensei-test
                      , servant-server-base
                      , text
                      , time
+                     , time-lens
                      , unix
                      , wai
                      , wai-extra

@@ -40,6 +40,7 @@ function formatLogEntry(entry) {
     default: return '';
   };
 }
+
 /*
   Display (latest) event log entries from the server
 */

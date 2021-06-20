@@ -66,7 +66,7 @@ toClientResponse SResponse {..} =
   Response simpleStatus (fromList simpleHeaders) http11 simpleBody
 
 instance RunClient (WaiSession st) where
-  runRequest req = do
+  runRequestAcceptStatus _ req = do
     WaiSession $ ReaderT $ \_ -> fromClientRequest req >>= \r -> toClientResponse <$> request r
 
   throwClientError err = error (show err)

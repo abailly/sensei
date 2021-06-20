@@ -1,29 +1,29 @@
-import {get} from './request.js';
-import {formatISODate} from './date.js';
-import {drawCommands} from './commands.js';
-import {drawSummary} from './summary.js';
-import {dom, clearElement} from './dom.js';
-import {config} from "./config";
-import {LocalDateTime} from "@js-joda/core";
+import { get } from './request.js';
+import { formatISODate, nextDay } from './date.js';
+import {  drawCommands } from './commands.js';
+import { drawSummary } from './summary.js';
+import { dom, clearElement } from './dom.js';
+import { config } from "./config";
+import { LocalDateTime } from "@js-joda/core";
 import Timeline from "./timeline/Timeline";
 
 /**
  Create a new div container for a timeline
  */
 function createTimelineContainer(day, data, notesData) {
-    const detailsName = 'checkbox-' + day;
-    const notesName = 'notes-checkbox-' + day;
-    const commandsName = 'cmd-checkbox-' + day;
-    const summaryName = 'summary-checkbox-' + day;
-    const chart = <div class="timeline-chart"/>;
-    const commandsDiv = <div id={'commands-' + day} class="timeline-chart"/>;
-    const summaryDiv = <div id={'summary-' + day} class="summary"/>;
-    const details = <input type="checkbox" id={detailsName}/>;
-    const notes = <input type="checkbox" id={notesName}/>;
-    const commands = <input type="checkbox" id={commandsName}/>;
-    const summary = <input type="checkbox" id={summaryName}/>;
+  const detailsName = 'checkbox-' + day;
+  const notesName = 'notes-checkbox-' + day;
+  const commandsName = 'cmd-checkbox-' + day;
+  const summaryName = 'summary-checkbox-' + day;
+  const chart = <div class="timeline-chart" />;
+  const commandsDiv = <div id={'commands-' + day} class="timeline-chart" />;
+  const summaryDiv = <div id={'summary-' + day} class="summary" />;
+  const details = <input type="checkbox" id={detailsName} />;
+  const notes = <input type="checkbox" id={notesName} />;
+  const commands = <input type="checkbox" id={commandsName} />;
+  const summary = <input type="checkbox" id={summaryName} />;
 
-    let timeline = undefined;
+  let timeline = undefined;
 
     const container =
         <div id={day} class='timeline'>
@@ -42,45 +42,45 @@ function createTimelineContainer(day, data, notesData) {
             {chart}
         </div>;
 
-    details.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            timeline.draw(f => f.flowType);
-        } else {
-            timeline.draw();
-        }
-    });
+  details.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      timeline.draw(f => f.viewType);
+    } else {
+      timeline.draw();
+    }
+  });
 
-    notes.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            get(`/api/flows/${config.user}/${day}/notes`, (notesData) => {
-                timeline.drawNotes(notesData);
+  notes.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      get(`/api/flows/${config.user}/${day}/notes`, (notesData) => {
+        timeline.drawNotes(notesData);
             });
         } else {
             timeline.clearNotes();
-        }
-    });
+    }
+  });
 
-    commands.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            get(`/api/flows/${config.user}/${day}/commands`, (commandsData) =>
-                drawCommands(commandsDiv, commandsData));
-        } else {
-            clearElement(commandsDiv);
-        }
-    });
+  commands.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      get(`/api/flows/${config.user}/${day}/commands`, (commandsData) =>
+        drawCommands(commandsDiv, commandsData));
+    } else {
+      clearElement(commandsDiv);
+    }
+  });
 
 
-    summary.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            get(`/api/flows/${config.user}/${day}/summary`, (summaryData) =>
-                drawSummary(summaryDiv, summaryData));
-        } else {
-            clearElement(summaryDiv);
-        }
-    });
+  summary.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      get(`/api/flows/${config.user}/summary?from=${day}&to=${nextDay(LocalDate.parse(day))}`, (summaryData) =>
+        drawSummary(summaryDiv, summaryData));
+    } else {
+      clearElement(summaryDiv);
+    }
+  });
 
-    document.getElementById('timelines').appendChild(container);
-    timeline = new Timeline(chart, day, data);
+  document.getElementById('timelines').appendChild(container);
+  timeline = new Timeline(chart, day, data);
     timeline.draw();
 }
 
@@ -90,28 +90,28 @@ function createTimelineContainer(day, data, notesData) {
  For now, we assume the data is a list of days
  */
 function drawCharts(flowData) {
-    flowData.forEach((f) => {
-        const day = formatISODate(LocalDateTime.parse(f.groupTime));
-        const data = f.subGroup.leafViews;
-        createTimelineContainer(day, data);
-    });
+  flowData.forEach((f) => {
+    const day = formatISODate(LocalDateTime.parse(f.groupTime));
+    const data = f.subGroup.map(l => l.contents);
+    createTimelineContainer(day, data);
+  });
 }
 
 function fetchFlowData(selectedDate) {
-    get(`/api/flows/${config.user}/` + selectedDate, (flowData) => {
-        createTimelineContainer(selectedDate, flowData);
-    });
+  get(`/api/flows/${config.user}/` + selectedDate, (flowData) => {
+    createTimelineContainer(selectedDate, flowData);
+  });
 };
 
 function fetchAllFlowData() {
-    get(`/api/flows/${config.user}?group=Day`, drawCharts);
+  get(`/api/flows/${config.user}?group=Day`, drawCharts);
 };
 
 export default function timeline() {
-    const obj = {};
+  const obj = {};
 
-    obj.fetchFlowData = fetchFlowData;
-    obj.fetchAllFlowData = fetchAllFlowData;
+  obj.fetchFlowData = fetchFlowData;
+  obj.fetchAllFlowData = fetchAllFlowData;
 
-    return obj;
+  return obj;
 }

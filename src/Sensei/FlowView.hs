@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -8,8 +7,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Sensei.FlowView where
 
@@ -59,9 +56,10 @@ mkCommandView tz (EventTrace Trace {..}) =
       }
 mkCommandView _ _ = Nothing
 
-commandOnDay ::
-  Day -> CommandView -> Bool
-commandOnDay day = sameDayThan day (localDay . commandStart)
+commandInPeriod ::
+  Maybe LocalTime -> Maybe LocalTime -> CommandView -> Bool
+commandInPeriod (Just lb) (Just ub) = withinPeriod lb ub commandStart
+commandInPeriod _ _ = undefined
 
 -- | A single "flow" timeslice of a given type
 -- `FlowView`s times are expressed in the `LocalTime` of the users to which they
@@ -69,13 +67,14 @@ commandOnDay day = sameDayThan day (localDay . commandStart)
 data FlowView = FlowView
   { flowStart :: LocalTime,
     flowEnd :: LocalTime,
-    flowType :: FlowType
+    viewType :: FlowType
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-flowOnDay ::
-  Day -> FlowView -> Bool
-flowOnDay day = sameDayThan day (localDay . flowStart)
+flowInPeriod ::
+  Maybe LocalTime -> Maybe LocalTime -> FlowView -> Bool
+flowInPeriod (Just lb) (Just ub) = withinPeriod lb ub flowStart
+flowInPeriod _ _ = undefined
 
 appendFlow :: TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
 appendFlow _ _ (EventFlow (Flow {_flowType = End})) [] = []
@@ -99,7 +98,7 @@ fillFlowEnd endOfDay v st
         let end = LocalTime (localDay (flowStart v)) endOfDay
             oneHour = secondsToNominalDiffTime 3600
             plus1hour = addLocalTime oneHour (flowStart v)
-         in if end < (flowStart v)
+         in if end < flowStart v
               then v {flowEnd = plus1hour}
               else v {flowEnd = end}
   | otherwise = v
@@ -135,9 +134,22 @@ normalizeLastView endOfDay (v : rest@(_ : _)) = v : normalizeLastView endOfDay r
 instance HasSummary FlowView FlowType where
   summarize views =
     views
-      |> List.sortBy (compare `on` flowType)
-      |> NE.groupBy ((==) `on` flowType)
-      |> fmap (\flows@(f :| _) -> (flowType f, sum $ fmap duration flows))
+      |> List.sortBy (compare `on` viewType)
+      |> NE.groupBy ((==) `on` viewType)
+      |> fmap (\flows@(f :| _) -> (viewType f, sum $ fmap duration flows))
 
 duration :: FlowView -> NominalDiffTime
 duration FlowView {flowStart, flowEnd} = diffLocalTime flowEnd flowStart
+
+makeSummary :: Maybe LocalTime -> Maybe LocalTime -> [FlowView] -> [CommandView] -> FlowSummary
+makeSummary fromTime toTime views commands =
+  let summaryFlows =
+        views
+          |> filter (flowInPeriod fromTime toTime)
+          |> summarize
+      summaryCommands =
+        commands
+          |> filter (commandInPeriod fromTime toTime)
+          |> summarize
+      summaryPeriod = makePeriod fromTime toTime
+   in FlowSummary {..}

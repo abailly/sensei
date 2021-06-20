@@ -2,10 +2,10 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- |Handles migration of DB schema and data in SQLite.
--- This is heavily inspired by <https://github.com/ameingast/postgresql-simple-migration postgressql-simple-migration>
--- package and it should be possible to factor out the commonalities in a single package
--- with specific drivers for various backends.
+-- | Handles migration of DB schema and data in SQLite.
+--  This is heavily inspired by <https://github.com/ameingast/postgresql-simple-migration postgressql-simple-migration>
+--  package and it should be possible to factor out the commonalities in a single package
+--  with specific drivers for various backends.
 module Sensei.DB.SQLite.Migration where
 
 import Control.Exception.Safe
@@ -86,16 +86,16 @@ createConfig =
 createNotesSearch :: Migration
 createNotesSearch =
   Migration
-  "createNotesSearch"
-  "create virtual table notes_search using fts5(id, note);"
-  "drop table notes_search;"
+    "createNotesSearch"
+    "create virtual table notes_search using fts5(id, note);"
+    "drop table notes_search;"
 
 populateSearch :: Migration
 populateSearch =
   Migration
-  "populateSearch"
-  "insert into notes_search select id,json_extract(flow_data, '$._flowNote') from event_log where flow_type = 'Note';"
-  "delete from notes_search;"
+    "populateSearch"
+    "insert into notes_search select id,json_extract(flow_data, '$._flowNote') from event_log where flow_type = 'Note';"
+    "delete from notes_search;"
 
 runMigration ::
   Connection -> MigrationResult -> Migration -> IO MigrationResult
@@ -127,7 +127,7 @@ applyMigration m@Migration {..} cnx = do
       q = "insert into schema_migrations (filename, checksum) values (?,?)"
   execute_ cnx apply
   execute cnx q (name, toText h)
-  pure $ MigrationSuccessful
+  pure MigrationSuccessful
 
 runMigrations :: Connection -> [Migration] -> IO MigrationResult
 runMigrations cnx =

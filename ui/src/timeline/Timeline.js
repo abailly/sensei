@@ -45,7 +45,7 @@ function TimelineHeader(startTimeOfDay, endTimeOfDay, flowData) {
     this.startTimeOfDay = startTimeOfDay;
     this.endTimeOfDay = endTimeOfDay;
     this.addFlow = function (flow) {
-        this.headerFlows.push(new HeaderFlow(LocalDateTime.parse(flow.flowStart), LocalDateTime.parse(flow.flowEnd), flow.flowType, this.startTimeOfDay, this.endTimeOfDay));
+        this.headerFlows.push(new HeaderFlow(LocalDateTime.parse(flow.flowStart), LocalDateTime.parse(flow.flowEnd), flow.viewType, this.startTimeOfDay, this.endTimeOfDay));
     }
 
     flowData.forEach(flow => {
@@ -65,7 +65,7 @@ function TimelineHeader(startTimeOfDay, endTimeOfDay, flowData) {
                     <div>
                         <h2>{flowStartDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
                         <h2>{flowEndDate.format(DateTimeFormatter.ofPattern("HH:mm"))}</h2>
-                        <h3>{flow.flowType}</h3>
+                        <h3>{flow.viewType}</h3>
                     </div>
                 </li>;
                 items.appendChild(item);
@@ -85,10 +85,10 @@ function TimelineHeader(startTimeOfDay, endTimeOfDay, flowData) {
 
 }
 
-function HeaderFlow(startDate, endDate, flowType, startTimeOfDay, endTimeOfDay) {
+function HeaderFlow(startDate, endDate, viewType, startTimeOfDay, endTimeOfDay) {
     this.startDate = startDate;
     this.endDate = endDate;
-    this.flowType = flowType;
+    this.viewType = viewType;
     this.startTimeOfDay = startTimeOfDay;
     this.endTimeOfDay = endTimeOfDay;
 }
@@ -154,7 +154,7 @@ function TimelineFlow(startTimeOfday, endTimeOfDay, flow, previousFlowEnd) {
         const flowWidth = Math.abs((flowStartDate.until(flowEndDate, ChronoUnit.MINUTES) / THIRTY_MINUTES) * HALF_HOUR_WIDTH);
         container.appendChild(<li
             style={'width:' + flowWidth + 'px; margin-left:' + this.flowLeftMargin(index) + 'px;'}>
-            <div class='timeline-event' style={'background: ' + colorOf(this.flow.flowType) + ';'}></div>
+            <div class='timeline-event' style={'background: ' + colorOf(this.flow.viewType) + ';'}></div>
         </li>);
     }
 }

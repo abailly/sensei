@@ -28,7 +28,7 @@ spec =
         putJSON_ "/time/arnaud" times
 
         getJSON "/time/arnaud"
-          `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals times)
+          `shouldRespondJSONBody` times
 
     withApp (app {withFailingStorage = True}) $
       it "returns error 500 with details given DB fails to access storage file" $ do

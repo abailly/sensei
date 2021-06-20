@@ -79,10 +79,6 @@ table.tbl-log td {
 }
 
 
-div#notes .note-full {
-    padding: 1em;
-}
-
 .note-full h3 {
     display: inline-block;
     width: 6%;
@@ -338,4 +334,19 @@ div [id^='note-desc-'] div, h4 {
 .c-dialog[aria-hidden="true"] {
     visibility: hidden;
     opacity: 0;
+}
+
+div.period {
+    font-size: 80%;
+    margin: .8em 0 .5em 0;
+}
+
+span.date {
+    margin: 0 .5em 0 .5em;
+}
+
+.note-content blockquote {
+    border-left: 0.5rem outset gray;
+    padding-left: 0.5rem;
+    text-style: italic;
 }

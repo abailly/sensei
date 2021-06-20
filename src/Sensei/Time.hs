@@ -8,7 +8,7 @@ module Sensei.Time
     TimeRange (..),
     inRange,
     rangeFromDay,
-    sameDayThan,
+    withinPeriod,
     module Data.Time,
   )
 where
@@ -45,6 +45,7 @@ rangeFromDay day tz =
       rangeEnd = localTimeToUTC tz $ LocalTime (succ day) (TimeOfDay 0 0 0)
    in TimeRange {..}
 
-sameDayThan :: Day -> (a -> Day) -> a -> Bool
-sameDayThan day selector a =
-  selector a == day
+withinPeriod :: LocalTime -> LocalTime -> (a -> LocalTime) -> a -> Bool
+withinPeriod lowerBound upperBound selector a =
+  let time = selector a
+   in time >= lowerBound && time < upperBound

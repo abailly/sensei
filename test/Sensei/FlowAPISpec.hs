@@ -1,67 +1,69 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.FlowAPISpec where
 
-import Data.Maybe (catMaybes)
+import Data.Function ((&))
+import Data.Maybe (catMaybes, fromJust)
 import Data.Text.Encoding (encodeUtf8)
-import Network.HTTP.Link (writeLinkHeader)
+import Data.Time.Lens (modL)
 import Sensei.API
+import Sensei.Builder
+import Sensei.Server.Links hiding (Other)
 import Sensei.TestHelper
 import Sensei.Time
-import Sensei.Builder
 import Test.Hspec
 
 spec :: Spec
 spec = withApp app $
   describe "Flows API" $ do
-    it "POST /api/flows/<user>/Other with Flow body register start of a flow event" $ do
-      let flow = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-      postFlow flow
+    it "POST /api/log with Flow body register start of a flow event" $ do
+      postFlow anOtherFlow
         `shouldRespondWith` 200
 
     it "GET /api/flows/<user> retrieves all Flows ungrouped" $ do
-      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
+      let flow1 = anOtherFlow
+          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (succ aDay) 0) "some/directory"
       postFlow_ flow1
       postFlow_ flow2
 
       let expectedGroups =
-            [ Leaf
-                [ FlowView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50000) (TimeOfDay 18 30 0)) Other,
-                  FlowView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (FlowType "Meeting")
-                ]
+            [ Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay sixThirtyPM) Other,
+              Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) oneAM) (FlowType "Meeting")
             ]
 
-      getJSON "/api/flows/arnaud"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
+      getJSON "/api/flows/arnaud" `shouldRespondJSONBody` expectedGroups
 
     it "GET /api/flows/<user>?group=Day retrieves all Flows grouped by Day" $ do
-      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (toEnum 50001) 0) "some/directory"
+      let flow1 = anOtherFlow
+          flow3 = anOtherFlow & later 1000 seconds
+          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (succ aDay) 0) "some/directory"
       postFlow_ flow1
+      postFlow_ flow3
       postFlow_ flow2
 
       let expectedGroups =
             [ GroupLevel
                 Day
-                (LocalTime (toEnum 50000) (TimeOfDay 1 0 0))
-                (Leaf [FlowView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50000) (TimeOfDay 18 30 0)) Other]),
+                (LocalTime aDay oneAM)
+                [ Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay (TimeOfDay 1 16 40)) Other,
+                  Leaf $ FlowView (LocalTime aDay (TimeOfDay 1 16 40)) (LocalTime aDay sixThirtyPM) Other
+                ],
               GroupLevel
                 Day
-                (LocalTime (toEnum 50001) (TimeOfDay 1 0 0))
-                (Leaf [FlowView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) (LocalTime (toEnum 50001) (TimeOfDay 18 30 0)) (FlowType "Meeting")])
+                (LocalTime (succ aDay) oneAM)
+                [Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) sixThirtyPM) (FlowType "Meeting")]
             ]
 
-      getJSON "/api/flows/arnaud?group=Day"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expectedGroups)
+      getJSON "/api/flows/arnaud?group=Day" `shouldRespondJSONBody` expectedGroups
 
     it "GET /api/flows/<user>/<day>/notes retrieves Notes for given day with link headers" $ do
-      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = NoteFlow "arnaud" (UTCTime (toEnum 50001) 0) "some/directory" "some note"
-          expectedNotes = [NoteView (LocalTime (toEnum 50001) (TimeOfDay 1 0 0)) "some note"]
+      let flow1 = anOtherFlow
+          flow2 = NoteFlow "arnaud" (UTCTime (succ aDay) 0) "some/directory" "some note"
+          expectedNotes = [NoteView (LocalTime (succ aDay) oneAM) "some note"]
 
-      postFlow_  flow1
+      postFlow_ flow1
       postNote_ flow2
 
       getJSON "/api/flows/arnaud/1995-10-11/notes"
@@ -71,82 +73,103 @@ spec = withApp app $
               <:> encodeUtf8
                 ( writeLinkHeader $
                     catMaybes
-                      [ nextDayLink "arnaud" (Just $ toEnum 50001),
-                        previousDayLink "arnaud" (Just $ toEnum 50001)
+                      [ nextDayLink "arnaud" (Just $ succ aDay),
+                        previousDayLink "arnaud" (Just $ succ aDay)
                       ]
                 )
           ]
           (jsonBodyEquals expectedNotes)
 
     it "GET /api/flows/<user>/<day>/commands retrieves commands run for given day" $ do
-      let cmd1 = Trace "arnaud" (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10
-          cmd2 = Trace "arnaud" (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100
+      let cmd1 = Trace "arnaud" (UTCTime aDay 0) "some/directory" "foo" ["bar"] 0 10
+          cmd2 = Trace "arnaud" (UTCTime aDay 1000) "other/directory" "git" ["bar"] 0 100
 
           expected =
-            [ CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 0 0)) "foo" 10,
-              CommandView (LocalTime (toEnum 50000) (TimeOfDay 1 16 40)) "git" 100
+            [ CommandView (LocalTime aDay oneAM) "foo" 10,
+              CommandView (LocalTime aDay (TimeOfDay 1 16 40)) "git" 100
             ]
 
       postTrace_ cmd1
       postTrace_ cmd2
 
       getJSON "/api/flows/arnaud/1995-10-10/commands"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+        `shouldRespondJSONBody` expected
 
-    it "GET /api/flows/<user>/day/summary returns a summary of flows and traces for given day" $ do
-      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = Flow (FlowType "Learning") "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
-          cmd1 = Trace "arnaud" (UTCTime (toEnum 50000) 0) "some/directory" "foo" ["bar"] 0 10
-          cmd2 = Trace "arnaud" (UTCTime (toEnum 50000) 1000) "other/directory" "git" ["bar"] 0 100
+    it "GET /api/flows/<user>/summary returns a summary of flows and traces for given period" $ do
+      let flow1 = anOtherFlow
+          flow2 = Flow (FlowType "Learning") "arnaud" (UTCTime aDay 1000) "some/directory"
+          flow3 = flow2 & later 1 month
+          cmd1 = Trace "arnaud" (UTCTime aDay 0) "some/directory" "foo" ["bar"] 0 10
+          cmd2 = Trace "arnaud" (UTCTime aDay 1000) "other/directory" "git" ["bar"] 0 100
 
       postFlow_ flow1
       postFlow_ flow2
-      postTrace_  cmd1
-      postTrace_  cmd2
+      postFlow_ flow3
+      postTrace_ cmd1
+      postTrace_ cmd2
 
       let expected =
             FlowSummary
-              { summaryPeriod = (toEnum 50000, toEnum 50000),
-                summaryFlows = [(FlowType "Learning", 0), (Other, 1000)],
+              { summaryPeriod = (startPeriod, endPeriod),
+                summaryFlows = [(FlowType "Learning", 62000), (Other, 1000)],
                 summaryCommands = [("foo", 10), ("git", 100)]
               }
+          startPeriod = LocalTime aDay midnight
+          endPeriod = startPeriod & modL month (+ 1)
 
-      getJSON "/api/flows/arnaud/1995-10-10/summary"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+      getJSON "/api/flows/arnaud/summary?from=1995-10-10&to=1995-11-10"
+        `shouldRespondJSONBody` expected
+
+    it "GET /api/flows/<user>/summary returns link to next and previous period" $ do
+      let expected =
+            FlowSummary
+              { summaryPeriod = (startPeriod, endPeriod),
+                summaryFlows = [],
+                summaryCommands = []
+              }
+          startPeriod = LocalTime aDay midnight
+          endPeriod = startPeriod & modL month (+ 1)
+
+      getJSON "/api/flows/arnaud/summary?from=1995-10-10&to=1995-11-10&period=Month"
+        `shouldRespondWith` ResponseMatcher
+          200
+          [ "Link"
+              <:> encodeUtf8
+                ( writeLinkHeader $
+                    fromJust $ periodLinks "arnaud" aDay (localDay endPeriod) Month 
+                )
+          ]
+          (jsonBodyEquals expected)
 
     it "PATCH /api/flows/<user>/latest/timestamp updates latest flow's timestamp" $ do
-      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = Flow Other "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
-          trace = Trace "arnaud" (UTCTime (toEnum 50000) 2000) "other/directory" "git" ["bar"] 0 100
+      let flow1 = anOtherFlow
+          flow2 = Flow Other "arnaud" (UTCTime aDay 1000) "some/directory"
+          trace = Trace "arnaud" (UTCTime aDay 2000) "other/directory" "git" ["bar"] 0 100
 
       postFlow_ flow1
       postFlow_ flow2
       postTrace_ trace
 
-      let expected = flow1 {_flowTimestamp = (UTCTime (toEnum 50000) 400)}
+      let expected = flow1 {_flowTimestamp = UTCTime aDay 400}
           timeshift :: TimeDifference = Minutes (-10)
 
-      patchJSON "/api/flows/arnaud/latest/timestamp" timeshift
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+      patchJSON "/api/flows/arnaud/latest/timestamp" timeshift `shouldRespondJSONBody` expected
 
     it "GET /api/flows/<user>/latest retrieves latest flow" $ do
-      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = Flow Other "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
+      let flow1 = anOtherFlow
+          flow2 = Flow Other "arnaud" (UTCTime aDay 1000) "some/directory"
 
       postFlow_ flow1
       postFlow_ flow2
 
-      getJSON "/api/flows/arnaud/latest"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals flow2)
+      getJSON "/api/flows/arnaud/latest" `shouldRespondJSONBody` flow2
 
     it "GET /api/flows/<user>/2 retrieves flow 2 steps back" $ do
-      let flow1 = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
-          flow2 = Flow Other "arnaud" (UTCTime (toEnum 50000) 1000) "some/directory"
-          flow3 = Flow Other "arnaud" (UTCTime (toEnum 50000) 2000) "some/directory"
-
+      let flow1 = anOtherFlow
+          flow2 = anOtherFlow & later 1000 seconds
+          flow3 = anOtherFlow & later 2000 seconds
       postFlow_ flow1
       postFlow_ flow2
       postFlow_ flow3
 
-      getJSON "/api/flows/arnaud/2"
-        `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals flow1)
+      getJSON "/api/flows/arnaud/2" `shouldRespondJSONBody` flow1

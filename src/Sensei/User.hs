@@ -90,8 +90,8 @@ parseJSONFromVersion v o =
 
     parseCommands =
       if v < 4
-      then pure Nothing
-      else o .: "userCommands"
+        then pure Nothing
+        else o .: "userCommands"
 
 instance ToJSON UserProfile where
   toJSON UserProfile {..} =
