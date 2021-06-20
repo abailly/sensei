@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Sensei.Server.LinksSpec where
 
-import Sensei.Server.Links (periodLinks, href, uriToText)
+import Sensei.Server.Links (periodLinks, href, uriToText, linkParams, LinkParam(..))
 import Data.Time.Calendar as Date
 import Sensei.Group(Group(..))
 import Data.Text(isInfixOf, pack)
@@ -21,10 +21,12 @@ prop_generatePrevNextLinksForPeriods =
   let groups = [ Week, Month, Quarter, Year ]
       links = concat $ mapMaybe (periodLinks "bob" day day) groups
       linkUris = uriToText . href <$> links
+      params = concat $ map fst . linkParams <$> links
       inUri t = any (t `isInfixOf`) linkUris
   in counterexample (show links) $
      nub links == links &&
-     all inUri (pack . show <$> groups)
+     all inUri (pack . show <$> groups) &&
+     Other "from" `elem` params && Other "to" `elem` params && Other "period" `elem` params
 
 days :: Gen Day
 days = toEnum <$> arbitrary 

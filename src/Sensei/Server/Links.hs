@@ -43,22 +43,15 @@ previousDayLink user day = do
 
 periodLinks :: Text -> Day -> Day -> Group -> Maybe [Link.Link URI]
 periodLinks userName fromDay toDay period = do
-  nextHeader <- nextMonthLink userName fromDay toDay period
-  prevHeader <- previousMonthLink userName fromDay toDay period
+  nextHeader <- periodLink userName fromDay toDay period succ "next"
+  prevHeader <- periodLink userName fromDay toDay period pred "prev"
   pure [prevHeader, nextHeader]
 
-nextMonthLink :: Text -> Day -> Day -> Group -> Maybe (Link.Link URI)
-nextMonthLink user from to period =  do
+periodLink :: Text -> Day -> Day -> Group -> (Int -> Int) -> Text -> Maybe (Link.Link URI)
+periodLink user from to period increment tag =  do
   let rollOver = toPeriod period
-      f = showGregorian . rollOver succ $ from
-      t = showGregorian . rollOver succ $ to
+      f = showGregorian . rollOver increment $ from
+      t = showGregorian . rollOver increment $ to
   uri <- uriFromString $ "/api/flows/" <> unpack user <> "/summary?from=" <> f <> "&to=" <> t <> "&period=" <> show period
-  pure $ Link uri [(Rel, "next")]
+  pure $ Link uri [(Rel, tag), (Link.Other "from", pack f), (Link.Other "to", pack t), (Link.Other "period", pack (show period))]
 
-previousMonthLink :: Text -> Day -> Day -> Group -> Maybe (Link.Link URI)
-previousMonthLink user from to period = do
-  let rollOver = toPeriod period
-      f = showGregorian . rollOver pred $ from
-      t = showGregorian . rollOver pred $ to
-  uri <- uriFromString $ "/api/flows/" <> unpack user <> "/summary?from=" <> f <> "&to=" <> t <> "&period=" <> show period
-  pure $ Link uri [(Rel, "prev")]
