@@ -44,8 +44,12 @@ toPeriod = \case
   Month -> modL month
   Year -> modL year . dimap fromInteger fromIntegral
   Day -> modL day
-  Week -> modL day . fmap (* 7)
-  Quarter -> modL month . fmap (* 3)
+  Week -> modL day . times 7
+  Quarter -> modL month . times 3
+
+times :: Int -> (a -> a) -> a -> a
+times 0 _ a = a
+times n f a = times (n - 1) f (f a)
 
 instance ToHttpApiData Group where
   toUrlPiece f = Text.pack (show f)
