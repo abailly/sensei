@@ -3,6 +3,7 @@
 
 module Sensei.UserSpec where
 
+import qualified Data.ByteString.Lazy as LBS
 import Data.Aeson
 import qualified Data.Map as Map
 import Data.Proxy
@@ -15,6 +16,7 @@ import Sensei.TestHelper
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Classes
+import Sensei.Server.Auth.Types(SerializedToken(..))
 
 -- * Orphan Instances
 
@@ -27,6 +29,9 @@ genTimeOfDay = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger 
 genTimeZone :: Gen TimeZone
 genTimeZone = hoursToTimeZone <$> choose (- 12, 12)
 
+genToken :: Gen (Maybe SerializedToken)
+genToken = elements [ Just $ SerializedToken (LBS.toStrict validAuthToken), Nothing ]
+
 instance Arbitrary UserProfile where
   arbitrary =
     UserProfile
@@ -36,6 +41,7 @@ instance Arbitrary UserProfile where
       <*> genTimeOfDay
       <*> arbitrary
       <*> arbitrary
+      <*> genToken
 
 spec :: Spec
 spec = describe "Users Management" $ do
@@ -90,7 +96,8 @@ spec = describe "Users Management" $ do
                   userStartOfDay = TimeOfDay 08 00 00,
                   userEndOfDay = TimeOfDay 18 30 00,
                   userFlowTypes = Nothing,
-                  userCommands = Just (Map.fromList [("g", "/usr/bin/git")])
+                  userCommands = Just (Map.fromList [("g", "/usr/bin/git")]),
+                  userToken = Just $ SerializedToken (LBS.toStrict validAuthToken)
                 }
         putJSON_ "/api/users/arnaud" profile
 

@@ -27,39 +27,42 @@ module Sensei.TestHelper
     SResponse,
     shouldRespondJSONBody,
     shouldNotThrow,
-    
+
     -- * Useful data
-    validAuthToken, sampleKey, wrongKey
+    validAuthToken,
+    authTokenFor,
+    sampleKey,
+    wrongKey,
   )
 where
 
 import Control.Concurrent.MVar
-import Control.Exception.Safe (bracket, finally, catch, Exception)
+import Control.Exception.Safe (Exception, bracket, catch, finally)
 import Control.Monad (unless, when)
 import qualified Data.Aeson as A
-import GHC.Stack(HasCallStack)
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
-import qualified Network.HTTP.Types.Header as HTTP
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8)
+import GHC.Stack (HasCallStack)
+import qualified Network.HTTP.Types.Header as HTTP
 import Network.Wai.Test (SResponse)
 import Preface.Log
 import Sensei.App (senseiApp)
-import Sensei.Server.Config
 import Sensei.Server.Auth.Types
+import Sensei.Server.Config
 import Sensei.Version
 import Servant
 import System.Directory
 import System.FilePath ((<.>))
 import System.IO (hClose)
+import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Temp (mkstemp)
-import Test.Hspec (ActionWith, Spec, SpecWith, around, Expectation, expectationFailure)
+import Test.Hspec (ActionWith, Expectation, Spec, SpecWith, around, expectationFailure)
 import Test.Hspec.Wai as W (WaiExpectation, WaiSession, request, shouldRespondWith)
 import Test.Hspec.Wai.Matcher as W
-import System.IO.Unsafe(unsafePerformIO)
 
 data AppBuilder = AppBuilder {withStorage :: Bool, withFailingStorage :: Bool, withEnv :: Env}
 
@@ -78,7 +81,7 @@ withTempFile =
 
 withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempDir =
-  bracket (mkTempFile >>= (\ fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
+  bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
 buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
 buildApp AppBuilder {..} act = do
@@ -118,12 +121,13 @@ getJSON path =
   request "GET" path defaultHeaders mempty
 
 defaultHeaders :: [HTTP.Header]
-defaultHeaders = [ ("Accept", "application/json")
-                 , ("Content-Type", "application/json")
-                 , ("X-API-Version", toHeader senseiVersion)
-                 , ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken)
-                 ]
-                 
+defaultHeaders =
+  [ ("Accept", "application/json"),
+    ("Content-Type", "application/json"),
+    ("X-API-Version", toHeader senseiVersion),
+    ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken)
+  ]
+
 shouldRespondJSONBody ::
   (Eq a, Show a, A.FromJSON a) =>
   WaiSession st SResponse ->
@@ -150,11 +154,12 @@ bodyContains fragment =
         then Nothing
         else Just ("String " <> unpack (decodeUtf8 fragment) <> " not found in " <> unpack (decodeUtf8 $ toStrict body))
 
-shouldNotThrow :: forall e a . (Exception e, HasCallStack) => IO a -> Proxy e -> Expectation
-shouldNotThrow action _ = void action `catch` \ (err :: e) -> expectationFailure ("Expected action to not throw " <> show err)
+shouldNotThrow :: forall e a. (Exception e, HasCallStack) => IO a -> Proxy e -> Expectation
+shouldNotThrow action _ = void action `catch` \(err :: e) -> expectationFailure ("Expected action to not throw " <> show err)
 
 validAuthToken :: LBS.ByteString
 validAuthToken = unsafePerformIO $ authTokenFor (AuthToken 1 1) sampleKey
+{-# NOINLINE validAuthToken #-}
 
 authTokenFor :: AuthenticationToken -> JWK -> IO LBS.ByteString
 authTokenFor claims key = either (error . show) id <$> makeJWT claims (defaultJWTSettings key) Nothing

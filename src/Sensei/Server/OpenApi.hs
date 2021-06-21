@@ -8,6 +8,7 @@ import Data.Swagger hiding (Reference)
 import Data.Text (pack)
 import Data.Time
 import Sensei.API
+import Sensei.Server.Auth.Types (SerializedToken)
 import Sensei.Version
 import Servant.Swagger
 import System.Exit
@@ -62,9 +63,9 @@ instance ToSchema Group
 
 instance ToParamSchema Reference where
   toParamSchema _ =
-        mempty
-          & enum_ ?~ ["latest", "head", "<any natural number>"]
-          & type_ .~ Just SwaggerString
+    mempty
+      & enum_ ?~ ["latest", "head", "<any natural number>"]
+      & type_ .~ Just SwaggerString
 
 instance ToSchema a => ToSchema (GroupViews a) where
   declareNamedSchema proxy =
@@ -73,9 +74,22 @@ instance ToSchema a => ToSchema (GroupViews a) where
 instance ToSchema Versions
 
 instance ToSchema Event
+
 instance ToSchema Flow
+
 instance ToSchema Trace
+
 instance ToSchema NoteFlow
+
+instance ToSchema SerializedToken where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "SerializedToken") $
+        mempty
+          & description
+            ?~ "A JWT Token in its serialized form, eg. 3 sequneces of base64-encoded strings separated by dots \
+               \ which contain JSON objects. See https://jwt.io/introduction for more details."
+          & type_ ?~ SwaggerString
 
 senseiSwagger :: Swagger
 senseiSwagger =

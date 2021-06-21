@@ -18,6 +18,7 @@ import GHC.Generics (Generic)
 import Numeric.Natural
 import Sensei.Color
 import Sensei.Flow
+import Sensei.Server.Auth.Types (SerializedToken)
 
 -- | Customizable parameters for registering and displaying flows.
 --  This configuration defines user-specific configurations that are used
@@ -47,7 +48,11 @@ data UserProfile = UserProfile
     -- | Custom definition of command aliases
     --  This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
     --  it actually will wrap referenced program's execution in the current environment.
-    userCommands :: Maybe (Map.Map String String)
+    userCommands :: Maybe (Map.Map String String),
+    -- | An authentication token, serialized as a 'ByteString'
+    -- This is a signed JWT encoding a 'AuthorizationToken' that can be used by clients to authenticate
+    -- requests.
+    userToken :: Maybe SerializedToken
   }
   deriving (Eq, Show, Generic)
 
@@ -63,7 +68,8 @@ defaultProfile =
       userStartOfDay = TimeOfDay 08 00 00,
       userEndOfDay = TimeOfDay 18 30 00,
       userFlowTypes = Nothing,
-      userCommands = Nothing
+      userCommands = Nothing,
+      userToken = Nothing
     }
 
 parseJSONFromVersion :: Natural -> Object -> Parser UserProfile
@@ -75,6 +81,7 @@ parseJSONFromVersion v o =
     <*> o .: "userEndOfDay"
     <*> parseFlowTypes
     <*> parseCommands
+    <*> parseToken
   where
     parseFlowTypes =
       case v of
@@ -92,6 +99,11 @@ parseJSONFromVersion v o =
         then pure Nothing
         else o .: "userCommands"
 
+    parseToken =
+      if v <= 5
+        then pure Nothing
+        else o .: "userToken"
+      
 instance ToJSON UserProfile where
   toJSON UserProfile {..} =
     object
@@ -101,6 +113,7 @@ instance ToJSON UserProfile where
         "userEndOfDay" .= userEndOfDay,
         "userFlowTypes" .= userFlowTypes,
         "userCommands" .= userCommands,
+        "userToken" .= userToken,
         "userProfileVersion" .= currentVersion
       ]
 
