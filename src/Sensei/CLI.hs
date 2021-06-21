@@ -31,6 +31,7 @@ data Options
   | RecordOptions {recordType :: FlowType}
   | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
   | UserOptions {userAction :: UserAction}
+  | AuthOptions
   deriving (Show, Eq)
 
 data NotesQuery = QueryDay Day | QuerySearch Text
@@ -55,20 +56,37 @@ runOptionsParser flows arguments =
 optionsParserInfo :: Maybe [FlowType] -> ParserInfo Options
 optionsParserInfo flows =
   info
-    (optionsParser flows <**> helper)
+    (commandsParser flows <**> helper)
     ( progDesc $
         unlines
-          [ "ep(oché) - Record start time of some flow type for current user",
+          [ "ep(oché) - Record and query all kind of coding activity: flows, commands, notes",
             "version: " <> showVersion senseiVersion <> ", storage: " <> show currentVersion
           ]
     )
 
-optionsParser :: Maybe [FlowType] -> Parser Options
-optionsParser flows =
-  QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
-    <|> RecordOptions <$> flowTypeParser flows
-    <|> NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> searchParser)) <*> formatParser
-    <|> UserOptions <$> (profileParser *> userActionParser)
+commandsParser :: Maybe [FlowType] -> Parser Options
+commandsParser flows = hsubparser
+  ( command "auth" (info authOptions ( progDesc "Manage authentication keys and tokens" ))
+    <> command "query" (info queryOptions ( progDesc "Query data and summaries" ))
+    <> command "record" (info (recordOptions flows) ( progDesc "Record flows" ))
+    <> command "notes" (info notesOptions ( progDesc "Record and query notes" ))
+    <> command "user" (info userOptions ( progDesc "Get and set user profile" ))
+  )
+
+authOptions :: Parser Options
+authOptions = pure AuthOptions
+
+queryOptions :: Parser Options
+queryOptions = QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
+
+recordOptions :: Maybe [FlowType] -> Parser Options
+recordOptions flows = RecordOptions <$> flowTypeParser flows
+
+notesOptions :: Parser Options
+notesOptions = NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> searchParser)) <*> formatParser
+
+userOptions :: Parser Options
+userOptions = UserOptions <$> (profileParser *> userActionParser)
 
 {-# NOINLINE today #-}
 today :: Day
@@ -240,6 +258,7 @@ ep (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
 ep (UserOptions (GetFlow q)) curUser _ _ = do
   f <- send (getFlowC curUser q)
   display f
+ep AuthOptions _ _ _ = error "Not implemented"
 
 println :: BS.ByteString -> IO ()
 println bs =
