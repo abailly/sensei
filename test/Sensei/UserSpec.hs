@@ -21,13 +21,19 @@ import Test.QuickCheck.Classes
 generateUser :: Gen Text
 generateUser = resize 20 (pack . getASCIIString <$> arbitrary)
 
+genTimeOfDay :: Gen TimeOfDay
+genTimeOfDay = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger <$> choose (0, 59))
+
+genTimeZone :: Gen TimeZone
+genTimeZone = hoursToTimeZone <$> choose (- 12, 12)
+
 instance Arbitrary UserProfile where
   arbitrary =
     UserProfile
       <$> generateUser
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
+      <*> genTimeZone
+      <*> genTimeOfDay
+      <*> genTimeOfDay
       <*> arbitrary
       <*> arbitrary
 
