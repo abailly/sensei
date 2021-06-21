@@ -76,8 +76,8 @@ instance Arbitrary Actions where
   arbitrary =
     Actions <$> (arbitrary >>= sequence . map (generateAction startTime) . enumFromTo 1 . getPositive)
 
-instance Arbitrary Natural where
-  arbitrary = fromInteger . getPositive <$> arbitrary
+genNatural :: Gen Natural
+genNatural = fromInteger . getPositive <$> arbitrary
 
 startTime :: UTCTime
 startTime = UTCTime (toEnum 50000) 10000
@@ -87,7 +87,7 @@ generateAction baseTime k =
   frequency
     [ (9, SomeAction . WriteEvent <$> generateEvent baseTime k),
       (2, pure $ SomeAction (ReadFlow Latest)),
-      (1, arbitrary >>= \(n, s) -> pure (SomeAction (ReadEvents (Page n s)))),
+      (1, (,) <$> genNatural <*> genNatural >>= \(n, s) -> pure (SomeAction (ReadEvents (Page n s)))),
       (1, choose (0, k) >>= \n -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime n)))),
       (1, pure $ SomeAction ReadViews),
       (1, pure $ SomeAction ReadCommands)
