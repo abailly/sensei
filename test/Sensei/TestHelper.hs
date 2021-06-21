@@ -8,6 +8,7 @@ module Sensei.TestHelper
     withFailingStorage,
     withEnv,
     withTempFile,
+    withTempDir,
     withApp,
     buildApp,
 
@@ -25,16 +26,18 @@ module Sensei.TestHelper
     module W,
     SResponse,
     shouldRespondJSONBody,
-
+    shouldNotThrow,
+    
     -- * Useful data
     validAuthToken, sampleKey, wrongKey
   )
 where
 
 import Control.Concurrent.MVar
-import Control.Exception.Safe (bracket, finally)
+import Control.Exception.Safe (bracket, finally, catch, Exception)
 import Control.Monad (unless, when)
 import qualified Data.Aeson as A
+import GHC.Stack(HasCallStack)
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
 import qualified Data.ByteString.Lazy as LBS
@@ -53,7 +56,7 @@ import System.Directory
 import System.FilePath ((<.>))
 import System.IO (hClose)
 import System.Posix.Temp (mkstemp)
-import Test.Hspec (ActionWith, Spec, SpecWith, around)
+import Test.Hspec (ActionWith, Spec, SpecWith, around, Expectation, expectationFailure)
 import Test.Hspec.Wai as W (WaiExpectation, WaiSession, request, shouldRespondWith)
 import Test.Hspec.Wai.Matcher as W
 import System.IO.Unsafe(unsafePerformIO)
@@ -69,9 +72,13 @@ withoutStorage builder = builder {withStorage = False}
 withApp :: AppBuilder -> SpecWith ((), Application) -> Spec
 withApp builder = around (buildApp builder)
 
-withTempFile :: (FilePath -> IO a) -> IO a
+withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempFile =
   bracket mkTempFile (\fp -> removePathForcibly fp >> removePathForcibly (fp <.> "old"))
+
+withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
+withTempDir =
+  bracket (mkTempFile >>= (\ fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
 buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
 buildApp AppBuilder {..} act = do
@@ -86,7 +93,7 @@ buildApp AppBuilder {..} act = do
   where
     mkTempDir = mkstemp "config-sensei" >>= \(fp, h) -> hClose h >> removePathForcibly fp >> createDirectory fp >> pure fp
 
-mkTempFile :: IO FilePath
+mkTempFile :: HasCallStack => IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
 postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
@@ -142,6 +149,9 @@ bodyContains fragment =
       if fragment `isInfixOf` toStrict body
         then Nothing
         else Just ("String " <> unpack (decodeUtf8 fragment) <> " not found in " <> unpack (decodeUtf8 $ toStrict body))
+
+shouldNotThrow :: forall e a . (Exception e, HasCallStack) => IO a -> Proxy e -> Expectation
+shouldNotThrow action _ = void action `catch` \ (err :: e) -> expectationFailure ("Expected action to not throw " <> show err)
 
 validAuthToken :: LBS.ByteString
 validAuthToken = unsafePerformIO $ authTokenFor (AuthToken 1 1) sampleKey

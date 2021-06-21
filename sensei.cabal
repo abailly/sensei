@@ -115,6 +115,7 @@ test-suite sensei-test
                      , Sensei.LogSpec
                      , Sensei.DurationSpec
                      , Sensei.ServerSpec
+                     , Sensei.Server.AuthSpec
                      , Sensei.Server.LinksSpec
                      , Sensei.Builder
                      , Sensei.TestHelper

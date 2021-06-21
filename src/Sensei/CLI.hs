@@ -18,8 +18,10 @@ import Data.Time
 import Data.Time.Format.ISO8601
 import Options.Applicative
 import Sensei.API
+import Sensei.Server.Auth.Types (createKeys)
 import Sensei.CLI.Terminal
 import Sensei.Client
+import Sensei.IO (getConfigDirectory)
 import Sensei.Version
 import Servant (Headers (getResponse))
 import System.Exit
@@ -31,7 +33,7 @@ data Options
   | RecordOptions {recordType :: FlowType}
   | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
   | UserOptions {userAction :: UserAction}
-  | AuthOptions
+  | AuthOptions AuthOptions
   deriving (Show, Eq)
 
 data NotesQuery = QueryDay Day | QuerySearch Text
@@ -43,6 +45,10 @@ data UserAction
   | GetVersions
   | ShiftTimestamp TimeDifference
   | GetFlow Reference
+  deriving (Show, Eq)
+
+data AuthOptions =
+  CreateKeys | NoOp
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -74,7 +80,8 @@ commandsParser flows = hsubparser
   )
 
 authOptions :: Parser Options
-authOptions = pure AuthOptions
+authOptions =
+  AuthOptions <$> createKeysParser
 
 queryOptions :: Parser Options
 queryOptions = QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
@@ -217,6 +224,14 @@ userActionParser =
               )
         )
 
+createKeysParser :: Parser AuthOptions
+createKeysParser =
+   flag NoOp CreateKeys
+   ( long "create-keys"
+        <> short 'c'
+        <> help "Create a new pair of keys, storing them in user's config directory"
+    )
+
 parseSenseiOptions ::
   UserProfile -> IO Options
 parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlows userProfile)
@@ -258,7 +273,8 @@ ep (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
 ep (UserOptions (GetFlow q)) curUser _ _ = do
   f <- send (getFlowC curUser q)
   display f
-ep AuthOptions _ _ _ = error "Not implemented"
+ep (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
+ep (AuthOptions NoOp) _ _ _ = pure ()
 
 println :: BS.ByteString -> IO ()
 println bs =

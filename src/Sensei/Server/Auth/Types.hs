@@ -18,6 +18,7 @@ module Sensei.Server.Auth.Types
     TokenID (..),
     Bytes (..),
     makeNewKey,
+    createKeys,
     getKey,
     module Crypto.JOSE.JWK,
     module SAS,
@@ -38,6 +39,7 @@ import GHC.TypeLits (KnownNat, Nat, natVal)
 import Preface.Codec
 import Servant
 import Servant.Auth.Server as SAS
+import System.FilePath((</>))
 
 -- Tokens structure from AWS
 -- AWS ID Token structure
@@ -168,6 +170,9 @@ getKey :: FilePath -> IO JWK
 getKey jwkFile = do
   bytes <- BS.readFile jwkFile
   either (\err -> error ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
+
+createKeys :: FilePath -> IO ()
+createKeys directory = makeNewKey >>= \ jwk -> BS.writeFile (directory </> "sensei.jwk") (LBS.toStrict $ encode jwk)
 
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
   deriving (Eq, Show)
