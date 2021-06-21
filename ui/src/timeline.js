@@ -4,7 +4,7 @@ import {  drawCommands } from './commands.js';
 import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
-import { LocalDateTime } from "@js-joda/core";
+import {LocalDate, LocalDateTime} from "@js-joda/core";
 import Timeline from "./timeline/Timeline";
 
 /**
