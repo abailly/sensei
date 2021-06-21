@@ -31,11 +31,10 @@ data UserProfile = UserProfile
     --  but for display and analysis purpose we need to be able to relate absolute timestamps
     --  with meaningful time.
     userTimezone :: TimeZone,
+    -- | This user's standard start of day time. This parameter is used when displaying timelines
+    --  for flows and other events, to bound the scale the timeline is displayed with. It's also
+    --  used when normalising and grouping flows in a timeline.
     userStartOfDay :: TimeOfDay,
-    -- ˆThis user's standard start of day time. This parameter is used when displaying timelines
-    -- for flows and other events, to bound the scale the timeline is displayed with. It's also
-    -- used when normalising and grouping flows in a timeline.
-
     -- | This user's standard end of (work) day time. This is used to normalise daily timelines, either to add
     --  some dummy flow or to compute the end of flows which have not been properly "closed".
     --  If one forgets to `End` the day then this parameter will be used to limit the duration of "unfinished"
