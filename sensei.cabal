@@ -133,6 +133,7 @@ test-suite sensei-test
                      , base
                      , binary
                      , bytestring
+                     , base64-bytestring
                      , case-insensitive
                      , colour
                      , containers

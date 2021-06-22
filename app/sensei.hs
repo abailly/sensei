@@ -7,9 +7,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Main where
 
+import Control.Exception(try)
 import Data.Maybe (fromMaybe)
 import Data.Text (pack)
 import qualified Data.Time as Time
@@ -17,6 +19,7 @@ import Sensei.App
 import Sensei.CLI
 import qualified Sensei.Client as Client
 import Sensei.IO (readConfig)
+import Sensei.API(userDefinedFlows)
 import Sensei.Wrapper
 import System.Directory
 import System.Environment
@@ -43,8 +46,11 @@ main = do
   let io = wrapperIO config
   case prog of
     "ep" -> do
-      profile <- send io $ (Client.getUserProfileC $ pack curUser)
-      opts <- parseSenseiOptions profile
+      res <- try @Client.ClientError $ send io $ (Client.getUserProfileC $ pack curUser)
+      let flows = case res of
+                    Left _err -> Nothing
+                    Right profile -> userDefinedFlows profile
+      opts <- parseSenseiOptions flows
       ep config opts (pack curUser) st (pack currentDir)
     "sensei-exe" -> startServer
     _ -> do

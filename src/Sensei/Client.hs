@@ -11,6 +11,7 @@
 module Sensei.Client
 (ClientMonad(..),
  ClientConfig(..),
+ ClientError,
  killC ,
 postEventC ,
 getFlowC ,
@@ -29,6 +30,7 @@ send)
   where
 
 import Control.Concurrent (threadDelay)
+import Control.Exception(throwIO)
 import Data.Text (Text)
 import Data.Time
 import Network.HTTP.Client (defaultManagerSettings, newManager)
@@ -94,6 +96,6 @@ send config act = do
         send config act
 
     -- something is wrong, bail out
-    Left otherError -> error $ "failed to connect to server: " <> show otherError
+    Left otherError -> throwIO otherError
     -- everything's right
     Right v -> pure v

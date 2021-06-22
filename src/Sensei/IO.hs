@@ -6,7 +6,7 @@ import Sensei.Client.Monad ( ClientConfig, defaultConfig)
 import qualified Data.ByteString.Lazy as LBS
 import System.Directory
 import System.FilePath ((</>))
-import Data.Aeson (eitherDecode)
+import Data.Aeson (eitherDecode, encode)
 
 getConfigDirectory :: IO FilePath
 getConfigDirectory = do
@@ -32,3 +32,9 @@ readConfig = do
       Right conf -> pure conf
       Left err -> error $ "Configuration file " <> configFile <> " does not contain valid ClientConfig: " <> err
     else pure defaultConfig
+
+writeConfig :: ClientConfig -> IO ()
+writeConfig config = do
+  dir <- getConfigDirectory
+  let configFile = dir </> "client.json"
+  LBS.writeFile configFile (encode config)

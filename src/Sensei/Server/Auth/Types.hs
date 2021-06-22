@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -19,6 +20,7 @@ module Sensei.Server.Auth.Types
     Bytes (..),
     makeNewKey,
     createKeys,
+    createToken,
     getKey,
     module Crypto.JOSE.JWK,
     module SAS,
@@ -169,6 +171,13 @@ getKey jwkFile = do
 createKeys :: FilePath -> IO ()
 createKeys directory = makeNewKey >>= \ jwk -> BS.writeFile (directory </> "sensei.jwk") (LBS.toStrict $ encode jwk)
 
+createToken :: FilePath -> IO SerializedToken
+createToken directory = do
+  key <- getKey (directory </> "sensei.jwk") 
+  makeJWT (AuthToken 1 1) (defaultJWTSettings key) Nothing >>= \case
+    Left err -> error $ "Failed to create token :"  <> show err
+    Right jwt -> pure $ SerializedToken $ LBS.toStrict jwt
+  
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
   deriving (Eq, Show)
 

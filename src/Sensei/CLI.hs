@@ -18,10 +18,10 @@ import Data.Time
 import Data.Time.Format.ISO8601
 import Options.Applicative
 import Sensei.API
-import Sensei.Server.Auth.Types (createKeys)
+import Sensei.Server.Auth.Types (createKeys, createToken)
 import Sensei.CLI.Terminal
 import Sensei.Client
-import Sensei.IO (getConfigDirectory)
+import Sensei.IO (getConfigDirectory, writeConfig)
 import Sensei.Version
 import Servant (Headers (getResponse))
 import System.Exit
@@ -48,7 +48,7 @@ data UserAction
   deriving (Show, Eq)
 
 data AuthOptions =
-  CreateKeys | NoOp
+  CreateKeys | CreateToken | NoOp
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -81,7 +81,7 @@ commandsParser flows = hsubparser
 
 authOptions :: Parser Options
 authOptions =
-  AuthOptions <$> createKeysParser
+  AuthOptions <$> (createKeysParser <|> createTokenParser)
 
 queryOptions :: Parser Options
 queryOptions = QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
@@ -232,9 +232,17 @@ createKeysParser =
         <> help "Create a new pair of keys, storing them in user's config directory"
     )
 
+createTokenParser :: Parser AuthOptions
+createTokenParser =
+   flag NoOp CreateToken
+   ( long "create-token"
+        <> short 't'
+        <> help "Create a new token using existing key, and update 'client.json' configuration file"
+    )
+
 parseSenseiOptions ::
-  UserProfile -> IO Options
-parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlows userProfile)
+  Maybe [FlowType] -> IO Options
+parseSenseiOptions flows = execParser (optionsParserInfo flows)
 
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
@@ -274,6 +282,9 @@ ep config (UserOptions (GetFlow q)) curUser _ _ = do
   f <- send config (getFlowC curUser q)
   display f
 ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
+ep config (AuthOptions CreateToken) _ _ _ = do
+  token <- getConfigDirectory >>= createToken
+  writeConfig config { authToken = Just token }
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
 
 println :: BS.ByteString -> IO ()
