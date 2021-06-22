@@ -11,6 +11,7 @@ import Data.Time(UTCTime(..))
 import Sensei.API
 import Sensei.Client hiding (send)
 import Sensei.TestHelper
+import Control.Monad.Reader(runReaderT)
 import Sensei.Wrapper
 import Sensei.WaiTestHelper
 import System.Exit
@@ -22,7 +23,7 @@ io = WrapperIO {..}
   where
     runProcess _ _ = pure ExitSuccess
     getCurrentTime = pure $ UTCTime (toEnum 50000) 0
-    send (ClientMonad a) = a
+    send (ClientMonad a) = runReaderT a (ClientConfig "localhost" 23456)
     fileExists = const $ pure True
 
 spec :: Spec

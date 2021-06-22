@@ -239,42 +239,42 @@ parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlow
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
 
-ep :: Options -> Text -> UTCTime -> Text -> IO ()
-ep (QueryOptions day False []) usrName _ _ =
-  send (queryFlowDayC usrName day) >>= display
-ep (QueryOptions day True []) usrName _ _ =
-  send (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day) Nothing) >>= display . getResponse
-ep (QueryOptions _ _ grps) usrName _ _ =
-  send (queryFlowC usrName grps) >>= display
-ep (NotesOptions (QueryDay day) noteFormat) usrName _ _ =
-  send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
-ep (NotesOptions (QuerySearch txt) noteFormat) usrName _ _ =
-  send (searchNotesC usrName (Just txt)) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
-ep (RecordOptions ftype) curUser startDate curDir =
+ep :: ClientConfig -> Options -> Text -> UTCTime -> Text -> IO ()
+ep config (QueryOptions day False []) usrName _ _ =
+  send config (queryFlowDayC usrName day) >>= display
+ep config (QueryOptions day True []) usrName _ _ =
+  send config (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day) Nothing) >>= display . getResponse
+ep config (QueryOptions _ _ grps) usrName _ _ =
+  send config (queryFlowC usrName grps) >>= display
+ep config (NotesOptions (QueryDay day) noteFormat) usrName _ _ =
+  send config (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
+ep config (NotesOptions (QuerySearch txt) noteFormat) usrName _ _ =
+  send config (searchNotesC usrName (Just txt)) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
+ep config (RecordOptions ftype) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
-      send $ postEventC (EventNote $ NoteFlow curUser startDate curDir txt)
+      send config $ postEventC (EventNote $ NoteFlow curUser startDate curDir txt)
     _ ->
-      send $ postEventC (EventFlow $ Flow ftype curUser startDate curDir)
-ep (UserOptions GetProfile) usrName _ _ =
-  send (getUserProfileC usrName) >>= display
-ep (UserOptions (SetProfile file)) usrName _ _ = do
+      send config $ postEventC (EventFlow $ Flow ftype curUser startDate curDir)
+ep config (UserOptions GetProfile) usrName _ _ =
+  send config (getUserProfileC usrName) >>= display
+ep config (UserOptions (SetProfile file)) usrName _ _ = do
   profile <- eitherDecode <$> LBS.readFile file
   case profile of
     Left err -> hPutStrLn stderr ("failed to decode user profile from " <> file <> ": " <> err) >> exitWith (ExitFailure 1)
-    Right prof -> void $ send (setUserProfileC usrName prof)
-ep (UserOptions GetVersions) _ _ _ = do
-  vs <- send getVersionsC
+    Right prof -> void $ send config (setUserProfileC usrName prof)
+ep config (UserOptions GetVersions) _ _ _ = do
+  vs <- send config getVersionsC
   display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
-ep (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
-  f <- send (updateFlowC curUser diff)
+ep config (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
+  f <- send config (updateFlowC curUser diff)
   display f
-ep (UserOptions (GetFlow q)) curUser _ _ = do
-  f <- send (getFlowC curUser q)
+ep config (UserOptions (GetFlow q)) curUser _ _ = do
+  f <- send config (getFlowC curUser q)
   display f
-ep (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
-ep (AuthOptions NoOp) _ _ _ = pure ()
+ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
+ep _config (AuthOptions NoOp) _ _ _ = pure ()
 
 println :: BS.ByteString -> IO ()
 println bs =

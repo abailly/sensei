@@ -29,9 +29,29 @@ import System.Process
     waitForProcess,
   )
 
-io :: WrapperIO IO
-io = WrapperIO {..}
+main :: IO ()
+main = do
+  hSetBuffering stdout NoBuffering
+  currentDir <- getCurrentDirectory
+  prog <- getProgName
+  progArgs <- getArgs
+  st <- Time.getCurrentTime
+  curUser <- fromMaybe "" <$> lookupEnv "USER"
+
+  case prog of
+    "ep" -> do
+      profile <- send (Client.getUserProfileC $ pack curUser)
+      opts <- parseSenseiOptions profile
+      ep dummyConfig opts (pack curUser) st (pack currentDir)
+    "sensei-exe" -> startServer
+    _ -> do
+      res <- tryWrapProg io curUser prog progArgs currentDir
+      handleWrapperResult prog res
   where
+    io :: WrapperIO IO
+    io = WrapperIO {..}
+
+    dummyConfig = Client.ClientConfig "localhost" 23456
     runProcess =
       \realProg progArgs -> do
         (_, _, _, h) <-
@@ -45,28 +65,9 @@ io = WrapperIO {..}
 
     getCurrentTime = Time.getCurrentTime
 
-    send = Client.send
+    send = Client.send dummyConfig
 
     fileExists = doesFileExist
-
-main :: IO ()
-main = do
-  hSetBuffering stdout NoBuffering
-  currentDir <- getCurrentDirectory
-  prog <- getProgName
-  progArgs <- getArgs
-  st <- Time.getCurrentTime
-  curUser <- fromMaybe "" <$> lookupEnv "USER"
-
-  case prog of
-    "ep" -> do
-      profile <- Client.send (Client.getUserProfileC $ pack curUser)
-      opts <- parseSenseiOptions profile
-      ep opts (pack curUser) st (pack currentDir)
-    "sensei-exe" -> startServer
-    _ -> do
-      res <- tryWrapProg io curUser prog progArgs currentDir
-      handleWrapperResult prog res
 
 handleWrapperResult :: String -> Either WrapperError ExitCode -> IO b
 handleWrapperResult prog (Left UnMappedAlias {}) = do

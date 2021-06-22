@@ -126,11 +126,6 @@ instance ToJWT RegistrationToken
 
 instance FromJWT RegistrationToken
 
-type instance BasicAuthCfg = BasicAuthData -> IO (AuthResult AuthenticationToken)
-
-instance FromBasicAuthData AuthenticationToken where
-  fromBasicAuthData authData authCheckFunction = authCheckFunction authData
-
 type Login = ByteString
 
 data Credentials = Credentials

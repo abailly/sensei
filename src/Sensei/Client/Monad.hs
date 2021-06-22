@@ -1,20 +1,30 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sensei.Client.Monad where
+module Sensei.Client.Monad
+( ClientConfig(..), ClientMonad(..), module Control.Monad.Reader)
+  where
 
+import Control.Monad.Reader(ReaderT(..), MonadReader(..))
+import Control.Monad.Trans(MonadTrans(..))
 import Data.CaseInsensitive
 import Data.Sequence
-import Servant
 import Sensei.Version
+import Servant
 import Servant.Client.Core
 
-newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => m a}
+data ClientConfig =
+  ClientConfig { serverHost :: String,
+                 serverPort :: Int
+               }
+  deriving (Eq, Show)
+
+newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => ReaderT ClientConfig m a}
 
 instance Functor ClientMonad where
   fmap f (ClientMonad a) = ClientMonad $ fmap f a
@@ -27,6 +37,10 @@ instance Monad ClientMonad where
   ClientMonad a >>= f =
     ClientMonad $ a >>= unClient . f
 
+instance MonadReader ClientConfig ClientMonad where
+  ask = ClientMonad $ ReaderT pure
+  local f (ClientMonad ma) = ClientMonad $ local f ma
+
 instance RunClient ClientMonad where
   runRequestAcceptStatus st req = ClientMonad $ do
     let request =
@@ -37,6 +51,6 @@ instance RunClient ClientMonad where
                   <| (mk "X-API-Version", toHeader senseiVersion)
                   <| requestHeaders req
             }
-    runRequestAcceptStatus st request
+    lift (runRequestAcceptStatus st request)
 
-  throwClientError err = ClientMonad $ throwClientError err
+  throwClientError err = ClientMonad $ lift $ throwClientError err

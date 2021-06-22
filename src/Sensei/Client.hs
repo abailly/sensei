@@ -10,6 +10,7 @@
 
 module Sensei.Client
 (ClientMonad(..),
+ ClientConfig(..),
  killC ,
 postEventC ,
 getFlowC ,
@@ -24,7 +25,7 @@ getLogC ,
 getUserProfileC ,
 setUserProfileC ,
 getVersionsC ,
-tryKillingServer, send)
+send)
   where
 
 import Control.Concurrent (threadDelay)
@@ -68,34 +69,29 @@ getVersionsC :: ClientMonad Versions
   :<|> (getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
-tryKillingServer :: ClientEnv -> IO ()
-tryKillingServer env = do
-  _ <- runClientM (unClient killC) env
-  -- we ignore the result of kill as it probaly will be an error: the server
-  -- might not stop gracefully, in time to return us a response so yolo and
-  -- simply give it some time to restart...
-  threadDelay 1000000
-
-send :: ClientMonad a -> IO a
-send act = do
+send :: ClientConfig -> ClientMonad a -> IO a
+send config act = do
   mgr <- newManager defaultManagerSettings
   let base = BaseUrl Http "127.0.0.1" 23456 ""
       env = mkClientEnv mgr base
-  res <- runClientM (unClient act) env
+  res <- runClientM (runReaderT (unClient act) config) env
   case res of
     -- server is not running, fork it
     Left (ConnectionError _) -> do
       daemonizeServer
       -- retry sending the trace to server
-      send act
+      send config act
 
     -- incorrect version, kill server and retry
     -- TODO: user 'Accept: ' header with proper mime-type instead of custome
     -- header hijacking 406 response code
     Left (FailureResponse _req resp)
       | responseStatusCode resp == notAcceptable406 -> do
-        tryKillingServer env
-        send act
+          -- we ignore the result of kill as it probaly will be an error: the server
+          -- might not stop gracefully, in time to return us a response so yolo and
+          -- simply give it some time to restart...
+        runClientM (runReaderT (unClient killC) config) env >> threadDelay 1000000
+        send config act
 
     -- something is wrong, bail out
     Left otherError -> error $ "failed to connect to server: " <> show otherError
