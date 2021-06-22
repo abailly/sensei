@@ -6,14 +6,18 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Sensei.Client.Monad
-( ClientConfig(..), ClientMonad(..), module Control.Monad.Reader)
+( ClientConfig(..), ClientMonad(..), module Control.Monad.Reader, defaultConfig)
   where
 
 import Control.Monad.Reader(ReaderT(..), MonadReader(..))
 import Control.Monad.Trans(MonadTrans(..))
 import Data.CaseInsensitive
+import Data.Aeson(ToJSON, FromJSON)
+import GHC.Generics(Generic)
 import Data.Sequence
 import Sensei.Version
 import Sensei.Server.Auth.Types(SerializedToken(..))
@@ -27,7 +31,10 @@ data ClientConfig =
                  serverPort :: Int,
                  authToken :: Maybe SerializedToken
                }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+defaultConfig :: ClientConfig
+defaultConfig = ClientConfig "localhost" 23456 Nothing
 
 newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => ReaderT ClientConfig m a}
 

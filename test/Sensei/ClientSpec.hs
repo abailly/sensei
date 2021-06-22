@@ -31,7 +31,8 @@ response :: Response
 response = Response status200 (fromList [("Content-type","application/json")]) http11 (encode $ Versions senseiVersion senseiVersion currentVersion currentVersion) 
 
 spec :: Spec
-spec = describe "Sensei Client" $ do
+spec = describe "ClientMonad" $ do
+  
   it "sets Host, Origin and X-API-Version header from ClientConfig info" $ do
     let config = ClientConfig "1.2.3.4" 1234 Nothing
         [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) config)

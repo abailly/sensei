@@ -29,6 +29,7 @@ library
                      , Sensei.Server.Config
                      , Sensei.Group
                      , Sensei.CLI
+                     , Sensei.IO
                      , Sensei.Time
                      , Sensei.Version
                      , Sensei.Wrapper
@@ -39,7 +40,7 @@ library
                      , Sensei.DB.SQLite
   other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
-                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.IO, Sensei.Server.Tags,
+                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags,
                  Sensei.Server.Auth.API
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson

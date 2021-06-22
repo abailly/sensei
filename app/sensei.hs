@@ -16,6 +16,7 @@ import qualified Data.Time as Time
 import Sensei.App
 import Sensei.CLI
 import qualified Sensei.Client as Client
+import Sensei.IO (readConfig)
 import Sensei.Wrapper
 import System.Directory
 import System.Environment
@@ -37,38 +38,37 @@ main = do
   progArgs <- getArgs
   st <- Time.getCurrentTime
   curUser <- fromMaybe "" <$> lookupEnv "USER"
+  config <- readConfig
 
+  let io = wrapperIO config
   case prog of
     "ep" -> do
-      profile <- send (Client.getUserProfileC $ pack curUser)
+      profile <- send io $ (Client.getUserProfileC $ pack curUser)
       opts <- parseSenseiOptions profile
-      ep dummyConfig opts (pack curUser) st (pack currentDir)
+      ep config opts (pack curUser) st (pack currentDir)
     "sensei-exe" -> startServer
     _ -> do
       res <- tryWrapProg io curUser prog progArgs currentDir
       handleWrapperResult prog res
   where
-    io :: WrapperIO IO
-    io = WrapperIO {..}
+    wrapperIO config = WrapperIO {  
+      runProcess =
+        \realProg progArgs -> do
+          (_, _, _, h) <-
+            createProcess
+              (proc realProg progArgs)
+                { std_in = Inherit,
+                  std_out = Inherit,
+                  std_err = Inherit
+                }
+          waitForProcess h,
 
-    dummyConfig = Client.ClientConfig "localhost" 23456 Nothing
+      getCurrentTime = Time.getCurrentTime,
 
-    runProcess =
-      \realProg progArgs -> do
-        (_, _, _, h) <-
-          createProcess
-            (proc realProg progArgs)
-              { std_in = Inherit,
-                std_out = Inherit,
-                std_err = Inherit
-              }
-        waitForProcess h
+      send = Client.send config,
 
-    getCurrentTime = Time.getCurrentTime
-
-    send = Client.send dummyConfig
-
-    fileExists = doesFileExist
+      fileExists = doesFileExist
+    }
 
 handleWrapperResult :: String -> Either WrapperError ExitCode -> IO b
 handleWrapperResult prog (Left UnMappedAlias {}) = do
