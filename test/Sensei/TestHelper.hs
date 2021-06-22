@@ -30,6 +30,7 @@ module Sensei.TestHelper
 
     -- * Useful data
     validAuthToken,
+    validSerializedToken,
     authTokenFor,
     sampleKey,
     wrongKey,
@@ -160,6 +161,9 @@ shouldNotThrow action _ = void action `catch` \(err :: e) -> expectationFailure 
 validAuthToken :: LBS.ByteString
 validAuthToken = unsafePerformIO $ authTokenFor (AuthToken 1 1) sampleKey
 {-# NOINLINE validAuthToken #-}
+
+validSerializedToken :: SerializedToken
+validSerializedToken = SerializedToken $ LBS.toStrict validAuthToken
 
 authTokenFor :: AuthenticationToken -> JWK -> IO LBS.ByteString
 authTokenFor claims key = either (error . show) id <$> makeJWT claims (defaultJWTSettings key) Nothing

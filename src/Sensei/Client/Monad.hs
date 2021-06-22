@@ -15,12 +15,14 @@ import Control.Monad.Trans(MonadTrans(..))
 import Data.CaseInsensitive
 import Data.Sequence
 import Sensei.Version
+import Sensei.Server.Auth.Types(SerializedToken)
 import Servant
 import Servant.Client.Core
 
 data ClientConfig =
   ClientConfig { serverHost :: String,
-                 serverPort :: Int
+                 serverPort :: Int,
+                 authToken :: Maybe SerializedToken
                }
   deriving (Eq, Show)
 

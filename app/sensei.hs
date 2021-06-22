@@ -51,7 +51,8 @@ main = do
     io :: WrapperIO IO
     io = WrapperIO {..}
 
-    dummyConfig = Client.ClientConfig "localhost" 23456
+    dummyConfig = Client.ClientConfig "localhost" 23456 Nothing
+
     runProcess =
       \realProg progArgs -> do
         (_, _, _, h) <-

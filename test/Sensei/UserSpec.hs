@@ -3,7 +3,6 @@
 
 module Sensei.UserSpec where
 
-import qualified Data.ByteString.Lazy as LBS
 import Data.Aeson
 import qualified Data.Map as Map
 import Data.Proxy
@@ -30,7 +29,7 @@ genTimeZone :: Gen TimeZone
 genTimeZone = hoursToTimeZone <$> choose (- 12, 12)
 
 genToken :: Gen (Maybe SerializedToken)
-genToken = elements [ Just $ SerializedToken (LBS.toStrict validAuthToken), Nothing ]
+genToken = elements [ Just validSerializedToken, Nothing ]
 
 instance Arbitrary UserProfile where
   arbitrary =
@@ -97,7 +96,7 @@ spec = describe "Users Management" $ do
                   userEndOfDay = TimeOfDay 18 30 00,
                   userFlowTypes = Nothing,
                   userCommands = Just (Map.fromList [("g", "/usr/bin/git")]),
-                  userToken = Just $ SerializedToken (LBS.toStrict validAuthToken)
+                  userToken = Just validSerializedToken
                 }
         putJSON_ "/api/users/arnaud" profile
 
