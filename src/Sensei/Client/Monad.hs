@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -15,9 +16,11 @@ import Control.Monad.Trans(MonadTrans(..))
 import Data.CaseInsensitive
 import Data.Sequence
 import Sensei.Version
-import Sensei.Server.Auth.Types(SerializedToken)
+import Sensei.Server.Auth.Types(SerializedToken(..))
 import Servant
 import Servant.Client.Core
+import Data.Text(pack)
+import Data.Text.Encoding(encodeUtf8)
 
 data ClientConfig =
   ClientConfig { serverHost :: String,
@@ -45,13 +48,18 @@ instance MonadReader ClientConfig ClientMonad where
 
 instance RunClient ClientMonad where
   runRequestAcceptStatus st req = ClientMonad $ do
-    let request =
+    ClientConfig{serverHost,serverPort,authToken} <- ask
+    let hostPort = encodeUtf8 $ pack $ serverHost <> ":" <> show serverPort
+        authorization rest =
+          maybe rest (\ tok -> (mk "Authorization", "Bearer " <> unToken tok) <| rest) authToken
+
+        request =
           req
             { requestHeaders =
-                (mk "Host", "localhost:23456")
-                  <| (mk "Origin", "http://localhost:23456")
+                (mk "Host", hostPort)
+                  <| (mk "Origin", "http://" <> hostPort)
                   <| (mk "X-API-Version", toHeader senseiVersion)
-                  <| requestHeaders req
+                  <| authorization (requestHeaders req)
             }
     lift (runRequestAcceptStatus st request)
 
