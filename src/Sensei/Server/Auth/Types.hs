@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -41,7 +41,7 @@ import GHC.TypeLits (KnownNat, Nat, natVal)
 import Preface.Codec
 import Servant
 import Servant.Auth.Server as SAS
-import System.FilePath((</>))
+import System.FilePath ((</>))
 
 -- Tokens structure from AWS
 -- AWS ID Token structure
@@ -169,15 +169,15 @@ getKey jwkFile = do
   either (\err -> error ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
 
 createKeys :: FilePath -> IO ()
-createKeys directory = makeNewKey >>= \ jwk -> BS.writeFile (directory </> "sensei.jwk") (LBS.toStrict $ encode jwk)
+createKeys directory = makeNewKey >>= \jwk -> BS.writeFile (directory </> "sensei.jwk") (LBS.toStrict $ encode jwk)
 
 createToken :: FilePath -> IO SerializedToken
 createToken directory = do
-  key <- getKey (directory </> "sensei.jwk") 
+  key <- getKey (directory </> "sensei.jwk")
   makeJWT (AuthToken 1 1) (defaultJWTSettings key) Nothing >>= \case
-    Left err -> error $ "Failed to create token :"  <> show err
+    Left err -> error $ "Failed to create token :" <> show err
     Right jwt -> pure $ SerializedToken $ LBS.toStrict jwt
-  
+
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
   deriving (Eq, Show)
 

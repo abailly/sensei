@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -16,31 +16,38 @@ import Control.Concurrent.MVar
 import Control.Exception.Safe (catch, throwM, try)
 import Control.Monad.Except
 import Control.Monad.Reader (ReaderT (runReaderT))
+import Crypto.JOSE (JWK)
 import Data.ByteString.Lazy (fromStrict)
 import Data.Maybe (fromMaybe)
 import Data.Swagger (Swagger)
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
+import Network.CORS (WithCORS (..))
 import Preface.Log
 import Preface.Server
-import Crypto.JOSE(JWK)
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite
-import Network.CORS(WithCORS(..))
 import Sensei.IO
-import System.FilePath((</>))
 import Sensei.Server
+import Sensei.Server.Auth.API (Protected)
+import Sensei.Server.Auth.Types
+  ( AuthResult (..),
+    CookieSettings,
+    JWTSettings,
+    defaultCookieSettings,
+    defaultJWTSettings,
+    getKey,
+    throwAll,
+  )
 import Sensei.Server.Config
-import Sensei.Server.Auth.API(Protected)
-import Sensei.Server.Auth.Types(getKey,
-                                defaultJWTSettings, defaultCookieSettings, throwAll, JWTSettings, CookieSettings, AuthResult(..))
 import Sensei.Server.OpenApi
 import Sensei.Server.UI
 import Sensei.Version
 import Servant
 import System.Environment (lookupEnv, setEnv)
+import System.FilePath ((</>))
 import System.Posix.Daemonize
 
 type FullAPI =
@@ -99,15 +106,14 @@ baseServer signal =
     :<|> (getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
-  
 senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
 senseiApp env signal publicAuthKey output configDir logger = do
   runDB output configDir logger $ initLogStorage
   let jwtConfig = defaultJWTSettings publicAuthKey
       cookieConfig = defaultCookieSettings
       contextConfig = jwtConfig :. cookieConfig :. EmptyContext
-      contextProxy :: Proxy [JWTSettings,CookieSettings]
-      contextProxy = Proxy 
+      contextProxy :: Proxy [JWTSettings, CookieSettings]
+      contextProxy = Proxy
   pure $
     serveWithContext fullAPI contextConfig $
       hoistServerWithContext fullAPI contextProxy runApp $
@@ -117,7 +123,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
   where
     validateAuth (Authenticated _) = baseServer signal
     validateAuth _ = throwAll err401 {errHeaders = [("www-authenticate", "Basic realm=\"sensei\"")]}
-    
+
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
     runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger)
 
@@ -128,4 +134,4 @@ senseiApp env signal publicAuthKey output configDir logger = do
 -- | This orphan instance is needed because of the 'validateAuth' function above
 instance MonadError ServerError SQLiteDB where
   throwError = throwM
-  catchError = catch 
+  catchError = catch

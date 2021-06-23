@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Sensei.Server.Links
-(nextPageLink, previousPageLink, nextDayLink, previousDayLink, periodLinks, module Link)
-where
+module Sensei.Server.Links (nextPageLink, previousPageLink, nextDayLink, previousDayLink, periodLinks, module Link) where
 
 import Control.Applicative ((<|>))
 import Data.Text (Text, pack, unpack)
@@ -48,10 +46,9 @@ periodLinks userName fromDay toDay period = do
   pure [prevHeader, nextHeader]
 
 periodLink :: Text -> Day -> Day -> Group -> (Int -> Int) -> Text -> Maybe (Link.Link URI)
-periodLink user from to period increment tag =  do
+periodLink user from to period increment tag = do
   let rollOver = toPeriod period
       f = showGregorian . rollOver increment $ from
       t = showGregorian . rollOver increment $ to
   uri <- uriFromString $ "/api/flows/" <> unpack user <> "/summary?from=" <> f <> "&to=" <> t <> "&period=" <> show period
   pure $ Link uri [(Rel, tag), (Link.Other "from", pack f), (Link.Other "to", pack t), (Link.Other "period", pack (show period))]
-

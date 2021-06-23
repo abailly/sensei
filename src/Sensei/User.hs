@@ -103,7 +103,7 @@ parseJSONFromVersion v o =
       if v <= 5
         then pure Nothing
         else o .: "userToken"
-      
+
 instance ToJSON UserProfile where
   toJSON UserProfile {..} =
     object

@@ -1,14 +1,14 @@
 module Sensei.Color where
 
-import Data.Text(unpack, pack)
+import Data.Aeson
 import qualified Data.Colour.Names as Colour
 import Data.Colour.SRGB
-import Data.Aeson
 import Data.String
+import Data.Text (pack, unpack)
 import System.Random
 
--- |A color for the purpose of configuring display of various graphs
-newtype Color = Color { rgb :: Colour Double }
+-- | A color for the purpose of configuring display of various graphs
+newtype Color = Color {rgb :: Colour Double}
   deriving (Eq)
 
 instance IsString Color where
@@ -24,7 +24,7 @@ instance ToJSON Color where
   toJSON (Color color) = String $ pack $ sRGB24show color
 
 instance FromJSON Color where
-  parseJSON = withText "Color" $ \ t -> do
+  parseJSON = withText "Color" $ \t -> do
     let col = unpack t
     case sRGB24reads col of
       [(color, "")] -> pure $ Color color
@@ -37,7 +37,7 @@ instance Random Color where
     let (r, s') = random s
         (g, s'') = random s'
         (b, s''') = random s''
-    in (Color $ sRGB24 r g b, s''')
+     in (Color $ sRGB24 r g b, s''')
 
 randomColors ::
   Int -> [Color]

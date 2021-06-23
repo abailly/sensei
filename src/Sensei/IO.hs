@@ -2,11 +2,11 @@
 
 module Sensei.IO where
 
-import Sensei.Client.Monad ( ClientConfig, defaultConfig)
+import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Lazy as LBS
+import Sensei.Client.Monad (ClientConfig, defaultConfig)
 import System.Directory
 import System.FilePath ((</>))
-import Data.Aeson (eitherDecode, encode)
 
 getConfigDirectory :: IO FilePath
 getConfigDirectory = do
@@ -27,10 +27,10 @@ readConfig = do
   configExists <- doesFileExist configFile
   if configExists
     then do
-    bs <- LBS.readFile configFile
-    case eitherDecode bs of
-      Right conf -> pure conf
-      Left err -> error $ "Configuration file " <> configFile <> " does not contain valid ClientConfig: " <> err
+      bs <- LBS.readFile configFile
+      case eitherDecode bs of
+        Right conf -> pure conf
+        Left err -> error $ "Configuration file " <> configFile <> " does not contain valid ClientConfig: " <> err
     else pure defaultConfig
 
 writeConfig :: ClientConfig -> IO ()

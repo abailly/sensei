@@ -18,10 +18,10 @@ import Data.Time
 import Data.Time.Format.ISO8601
 import Options.Applicative
 import Sensei.API
-import Sensei.Server.Auth.Types (createKeys, createToken)
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
+import Sensei.Server.Auth.Types (createKeys, createToken)
 import Sensei.Version
 import Servant (Headers (getResponse))
 import System.Exit
@@ -47,8 +47,10 @@ data UserAction
   | GetFlow Reference
   deriving (Show, Eq)
 
-data AuthOptions =
-  CreateKeys | CreateToken | NoOp
+data AuthOptions
+  = CreateKeys
+  | CreateToken
+  | NoOp
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -71,13 +73,14 @@ optionsParserInfo flows =
     )
 
 commandsParser :: Maybe [FlowType] -> Parser Options
-commandsParser flows = hsubparser
-  ( command "auth" (info authOptions ( progDesc "Manage authentication keys and tokens" ))
-    <> command "query" (info queryOptions ( progDesc "Query data and summaries" ))
-    <> command "record" (info (recordOptions flows) ( progDesc "Record flows" ))
-    <> command "notes" (info notesOptions ( progDesc "Record and query notes" ))
-    <> command "user" (info userOptions ( progDesc "Get and set user profile" ))
-  )
+commandsParser flows =
+  hsubparser
+    ( command "auth" (info authOptions (progDesc "Manage authentication keys and tokens"))
+        <> command "query" (info queryOptions (progDesc "Query data and summaries"))
+        <> command "record" (info (recordOptions flows) (progDesc "Record flows"))
+        <> command "notes" (info notesOptions (progDesc "Record and query notes"))
+        <> command "user" (info userOptions (progDesc "Get and set user profile"))
+    )
 
 authOptions :: Parser Options
 authOptions =
@@ -226,16 +229,20 @@ userActionParser =
 
 createKeysParser :: Parser AuthOptions
 createKeysParser =
-   flag NoOp CreateKeys
-   ( long "create-keys"
+  flag
+    NoOp
+    CreateKeys
+    ( long "create-keys"
         <> short 'c'
         <> help "Create a new pair of keys, storing them in user's config directory"
     )
 
 createTokenParser :: Parser AuthOptions
 createTokenParser =
-   flag NoOp CreateToken
-   ( long "create-token"
+  flag
+    NoOp
+    CreateToken
+    ( long "create-token"
         <> short 't'
         <> help "Create a new token using existing key, and update 'client.json' configuration file"
     )
@@ -284,7 +291,7 @@ ep config (UserOptions (GetFlow q)) curUser _ _ = do
 ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
 ep config (AuthOptions CreateToken) _ _ _ = do
   token <- getConfigDirectory >>= createToken
-  writeConfig config { authToken = Just token }
+  writeConfig config {authToken = Just token}
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
 
 println :: BS.ByteString -> IO ()

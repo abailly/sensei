@@ -3,16 +3,17 @@
 
 module Sensei.CLI.Terminal where
 
-import Control.Monad(void)
 import qualified Control.Exception.Safe as Exc
+import Control.Monad (void)
 import qualified Data.ByteString as BS
-import Data.Text.Encoding(decodeUtf8)
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Data.Text.Encoding (decodeUtf8)
 import System.Console.ANSI
-import System.IO
-import System.Directory(removeFile)
+import System.Directory (removeFile)
 import System.Environment
+import System.IO
+import System.Posix.Temp (mkstemp)
 import System.Process
   ( CreateProcess (std_err, std_in, std_out),
     StdStream (Inherit),
@@ -20,7 +21,6 @@ import System.Process
     proc,
     waitForProcess,
   )
-import System.Posix.Temp(mkstemp)
 
 captureNote :: IO Text.Text
 captureNote =
@@ -32,11 +32,11 @@ captureInEditor editor = do
   hClose hdl
   (_, _, _, h) <-
     createProcess
-    (proc editor [fp])
-    { std_in = Inherit,
-      std_out = Inherit,
-      std_err = Inherit
-    }
+      (proc editor [fp])
+        { std_in = Inherit,
+          std_out = Inherit,
+          std_err = Inherit
+        }
   void $ waitForProcess h
   decodeUtf8 <$> BS.readFile fp <* removeFile fp
 

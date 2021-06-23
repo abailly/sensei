@@ -1,36 +1,36 @@
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.Client
-(ClientMonad(..),
- ClientConfig(..),
- ClientError,
- killC ,
-postEventC ,
-getFlowC ,
-updateFlowC ,
-queryFlowC ,
-queryFlowDayC ,
-queryFlowPeriodSummaryC ,
-notesDayC ,
-commandsDayC ,
-searchNotesC ,
-getLogC ,
-getUserProfileC ,
-setUserProfileC ,
-getVersionsC ,
-send)
-  where
+  ( ClientMonad (..),
+    ClientConfig (..),
+    ClientError,
+    killC,
+    postEventC,
+    getFlowC,
+    updateFlowC,
+    queryFlowC,
+    queryFlowDayC,
+    queryFlowPeriodSummaryC,
+    notesDayC,
+    commandsDayC,
+    searchNotesC,
+    getLogC,
+    getUserProfileC,
+    setUserProfileC,
+    getVersionsC,
+    send,
+  )
+where
 
 import Control.Concurrent (threadDelay)
-import Control.Exception(throwIO)
+import Control.Exception (throwIO)
 import Data.Text (Text)
 import Data.Time
 import Network.HTTP.Client (defaultManagerSettings, newManager)
@@ -72,26 +72,24 @@ getVersionsC :: ClientMonad Versions
   :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
-send config act = do
+send config@ClientConfig {serverHost, serverPort} act = do
   mgr <- newManager defaultManagerSettings
-  let base = BaseUrl Http "127.0.0.1" 23456 ""
+  let base = BaseUrl Http serverHost serverPort ""
       env = mkClientEnv mgr base
   res <- runClientM (runReaderT (unClient act) config) env
   case res of
     -- server is not running, fork it
-    Left (ConnectionError _) -> do
-      daemonizeServer
-      -- retry sending the trace to server
-      send config act
+    -- TODO: probably not such a good idea?
+    Left (ConnectionError _) -> daemonizeServer >> error "Should never happen" -- daemonizeserver exits the current process
 
     -- incorrect version, kill server and retry
     -- TODO: user 'Accept: ' header with proper mime-type instead of custome
     -- header hijacking 406 response code
     Left (FailureResponse _req resp)
       | responseStatusCode resp == notAcceptable406 -> do
-          -- we ignore the result of kill as it probaly will be an error: the server
-          -- might not stop gracefully, in time to return us a response so yolo and
-          -- simply give it some time to restart...
+        -- we ignore the result of kill as it probaly will be an error: the server
+        -- might not stop gracefully, in time to return us a response so yolo and
+        -- simply give it some time to restart...
         runClientM (runReaderT (unClient killC) config) env >> threadDelay 1000000
         send config act
 

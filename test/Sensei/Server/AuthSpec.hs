@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Sensei.Server.AuthSpec where
 
 import Control.Exception (ErrorCall)

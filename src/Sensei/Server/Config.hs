@@ -6,7 +6,6 @@ import Data.Char
 data Env = Dev | Prod
   deriving (Eq, Show)
 
-
 readEnv ::
   String -> Maybe Env
 readEnv s =

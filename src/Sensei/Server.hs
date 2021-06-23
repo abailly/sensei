@@ -8,7 +8,7 @@
 module Sensei.Server where
 
 import Control.Concurrent.MVar
-import Control.Monad(join)
+import Control.Monad (join)
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
@@ -17,7 +17,7 @@ import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
-import Sensei.Server.Links (nextDayLink, periodLinks, nextPageLink, previousDayLink, previousPageLink)
+import Sensei.Server.Links (nextDayLink, nextPageLink, periodLinks, previousDayLink, previousPageLink)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant

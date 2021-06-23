@@ -1,36 +1,34 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
-module Sensei.Client.Monad
-( ClientConfig(..), ClientMonad(..), module Control.Monad.Reader, defaultConfig)
-  where
+module Sensei.Client.Monad (ClientConfig (..), ClientMonad (..), module Control.Monad.Reader, defaultConfig) where
 
-import Control.Monad.Reader(ReaderT(..), MonadReader(..))
-import Control.Monad.Trans(MonadTrans(..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Trans (MonadTrans (..))
+import Data.Aeson (FromJSON, ToJSON)
 import Data.CaseInsensitive
-import Data.Aeson(ToJSON, FromJSON)
-import GHC.Generics(Generic)
 import Data.Sequence
+import Data.Text (pack)
+import Data.Text.Encoding (encodeUtf8)
+import GHC.Generics (Generic)
+import Sensei.Server.Auth.Types (SerializedToken (..))
 import Sensei.Version
-import Sensei.Server.Auth.Types(SerializedToken(..))
 import Servant
 import Servant.Client.Core
-import Data.Text(pack)
-import Data.Text.Encoding(encodeUtf8)
 
-data ClientConfig =
-  ClientConfig { serverHost :: String,
-                 serverPort :: Int,
-                 authToken :: Maybe SerializedToken
-               }
+data ClientConfig = ClientConfig
+  { serverHost :: String,
+    serverPort :: Int,
+    authToken :: Maybe SerializedToken
+  }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 defaultConfig :: ClientConfig
@@ -55,10 +53,10 @@ instance MonadReader ClientConfig ClientMonad where
 
 instance RunClient ClientMonad where
   runRequestAcceptStatus st req = ClientMonad $ do
-    ClientConfig{serverHost,serverPort,authToken} <- ask
+    ClientConfig {serverHost, serverPort, authToken} <- ask
     let hostPort = encodeUtf8 $ pack $ serverHost <> ":" <> show serverPort
         authorization rest =
-          maybe rest (\ tok -> (mk "Authorization", "Bearer " <> unToken tok) <| rest) authToken
+          maybe rest (\tok -> (mk "Authorization", "Bearer " <> unToken tok) <| rest) authToken
 
         request =
           req
