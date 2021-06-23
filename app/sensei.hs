@@ -18,8 +18,9 @@ import qualified Data.Time as Time
 import Sensei.App
 import Sensei.CLI
 import qualified Sensei.Client as Client
-import Sensei.IO (readConfig)
+import Sensei.IO (readConfig, getConfigDirectory)
 import Sensei.API(userDefinedFlows)
+import Sensei.Server.Config(readServerConfig, defaultConfig)
 import Sensei.Wrapper
 import System.Directory
 import System.Environment
@@ -52,7 +53,7 @@ main = do
                     Right profile -> userDefinedFlows profile
       opts <- parseSenseiOptions flows
       ep config opts (pack curUser) st (pack currentDir)
-    "sensei-exe" -> startServer
+    "sensei-exe" -> getConfigDirectory >>= readServerConfig >>= startServer . fromMaybe defaultConfig
     _ -> do
       res <- tryWrapProg io curUser prog progArgs currentDir
       handleWrapperResult prog res

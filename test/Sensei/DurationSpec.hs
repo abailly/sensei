@@ -1,11 +1,12 @@
 {-# LANGUAGE TypeApplications #-}
+
 module Sensei.DurationSpec where
 
+import Data.Proxy
+import Sensei.API
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Classes
-import Sensei.API
-import Data.Proxy
 
 instance Arbitrary TimeDifference where
   arbitrary = oneof [Minutes <$> arbitrary, Hours <$> arbitrary]
@@ -13,7 +14,7 @@ instance Arbitrary TimeDifference where
 parsePrettyPrinted :: TimeDifference -> Bool
 parsePrettyPrinted td =
   let pp = prettyPrint td
-  in parse pp == Right td
+   in parse pp == Right td
 
 spec :: Spec
 spec = describe "Time Difference" $ do

@@ -27,12 +27,13 @@ import Servant.Client.Core
 data ClientConfig = ClientConfig
   { serverHost :: String,
     serverPort :: Int,
-    authToken :: Maybe SerializedToken
+    authToken :: Maybe SerializedToken,
+    startServerLocally :: Bool
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 defaultConfig :: ClientConfig
-defaultConfig = ClientConfig "localhost" 23456 Nothing
+defaultConfig = ClientConfig "localhost" 23456 Nothing True
 
 newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => ReaderT ClientConfig m a}
 

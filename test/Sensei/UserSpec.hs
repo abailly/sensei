@@ -11,11 +11,11 @@ import Data.Time.LocalTime
 import Sensei.API
 import Sensei.ColorSpec ()
 import Sensei.DB.Model ()
+import Sensei.Server.Auth.Types (SerializedToken (..))
 import Sensei.TestHelper
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Classes
-import Sensei.Server.Auth.Types(SerializedToken(..))
 
 -- * Orphan Instances
 
@@ -29,7 +29,7 @@ genTimeZone :: Gen TimeZone
 genTimeZone = hoursToTimeZone <$> choose (- 12, 12)
 
 genToken :: Gen (Maybe SerializedToken)
-genToken = elements [ Just validSerializedToken, Nothing ]
+genToken = elements [Just validSerializedToken, Nothing]
 
 instance Arbitrary UserProfile where
   arbitrary =

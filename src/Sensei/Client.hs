@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -72,28 +73,33 @@ getVersionsC :: ClientMonad Versions
   :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
-send config@ClientConfig {serverHost, serverPort} act = do
+send config@ClientConfig {serverHost, serverPort, startServerLocally} act = do
   mgr <- newManager defaultManagerSettings
   let base = BaseUrl Http serverHost serverPort ""
       env = mkClientEnv mgr base
   res <- runClientM (runReaderT (unClient act) config) env
   case res of
-    -- server is not running, fork it
-    -- TODO: probably not such a good idea?
-    Left (ConnectionError _) -> daemonizeServer >> error "Should never happen" -- daemonizeserver exits the current process
-
-    -- incorrect version, kill server and retry
-    -- TODO: user 'Accept: ' header with proper mime-type instead of custome
-    -- header hijacking 406 response code
-    Left (FailureResponse _req resp)
-      | responseStatusCode resp == notAcceptable406 -> do
-        -- we ignore the result of kill as it probaly will be an error: the server
-        -- might not stop gracefully, in time to return us a response so yolo and
-        -- simply give it some time to restart...
-        runClientM (runReaderT (unClient killC) config) env >> threadDelay 1000000
-        send config act
-
-    -- something is wrong, bail out
-    Left otherError -> throwIO otherError
-    -- everything's right
+    Left err ->
+      if startServerLocally
+        then handleError env err
+        else throwIO err
     Right v -> pure v
+  where
+    handleError env = \case
+      -- server is not running, fork it
+      -- TODO: probably not such a good idea?
+      ConnectionError _ -> daemonizeServer >> error "Should never happen" -- daemonizeserver exits the current process
+
+      -- incorrect version, kill server and retry
+      -- TODO: user 'Accept: ' header with proper mime-type instead of custome
+      -- header hijacking 406 response code
+      FailureResponse _req resp
+        | responseStatusCode resp == notAcceptable406 -> do
+          -- we ignore the result of kill as it probaly will be an error: the server
+          -- might not stop gracefully, in time to return us a response so yolo and
+          -- simply give it some time to restart...
+          runClientM (runReaderT (unClient killC) config) env >> threadDelay 1000000
+          send config act
+
+      -- something is wrong, bail out
+      otherError -> throwIO otherError

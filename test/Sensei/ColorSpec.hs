@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+
 module Sensei.ColorSpec where
 
+import Data.Colour.SRGB
+import Data.Proxy
 import Sensei.API
 import Test.Hspec
-import Data.Colour.SRGB
 import Test.QuickCheck
-import Data.Proxy
 import Test.QuickCheck.Classes
 
 instance Arbitrary Color where

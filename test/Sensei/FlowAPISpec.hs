@@ -136,7 +136,7 @@ spec = withApp app $
           [ "Link"
               <:> encodeUtf8
                 ( writeLinkHeader $
-                    fromJust $ periodLinks "arnaud" aDay (localDay endPeriod) Month 
+                    fromJust $ periodLinks "arnaud" aDay (localDay endPeriod) Month
                 )
           ]
           (jsonBodyEquals expected)

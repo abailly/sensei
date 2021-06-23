@@ -61,14 +61,17 @@ fullAPI = Proxy
 daemonizeServer :: IO ()
 daemonizeServer = do
   setEnv "ENVIRONMENT" "Prod"
-  daemonize startServer
+  config <- readServerConfig =<< getConfigDirectory
+  maybe raiseError (daemonize . startServer) config
+  where
+    raiseError = error $ "Server configuration file does not exist, not starting sensei daemon"
 
-startServer :: IO ()
-startServer =
-  getConfigDirectory >>= getDataFile >>= sensei
+startServer :: ServerConfig -> IO ()
+startServer serverConfig =
+  getConfigDirectory >>= getDataFile >>= sensei serverConfig
 
-sensei :: FilePath -> IO ()
-sensei output = do
+sensei :: ServerConfig -> FilePath -> IO ()
+sensei _serverConfig output = do
   signal <- newEmptyMVar
   configDir <- getConfigDirectory
   key <- getKey (configDir </> "sensei.jwk")
@@ -77,13 +80,6 @@ sensei output = do
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
   server <- startAppServer serverName NoCORS serverPort (senseiApp env signal key output configDir)
   waitServer server `race_` (takeMVar signal >> stopServer server)
-
-readPort :: Maybe String -> Int
-readPort Nothing = 23456
-readPort (Just portString) =
-  case reads portString of
-    (p, []) : _ -> p
-    _ -> error ("invalid environment variable SENSEI_SERVER_PORT " <> portString)
 
 baseServer ::
   (MonadIO m, DB m) =>
