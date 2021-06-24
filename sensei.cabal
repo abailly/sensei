@@ -52,6 +52,7 @@ library
                      , case-insensitive
                      , colour
                      , containers
+                     , cryptonite
                      , directory
                      , file-embed
                      , filepath

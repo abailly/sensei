@@ -22,11 +22,13 @@ module Sensei.Server.Auth.Types
     createKeys,
     createToken,
     getKey,
+    setPassword,
     module Crypto.JOSE.JWK,
     module SAS,
   )
 where
 
+import Crypto.KDF.BCrypt
 import Crypto.JOSE.JWK
 import Data.Aeson
 import Data.ByteString (ByteString)
@@ -39,9 +41,11 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import GHC.Generics
 import GHC.TypeLits (KnownNat, Nat, natVal)
 import Preface.Codec
+import Sensei.User(UserProfile(..))
 import Servant
 import Servant.Auth.Server as SAS
 import System.FilePath ((</>))
+import System.Random(newStdGen, randoms)
 
 -- Tokens structure from AWS
 -- AWS ID Token structure
@@ -178,6 +182,18 @@ createToken directory = do
     Left err -> error $ "Failed to create token :" <> show err
     Right jwt -> pure $ SerializedToken $ LBS.toStrict jwt
 
+encrypt :: ByteString -> ByteString -> ByteString
+encrypt = bcrypt cost
+
+cost :: Int
+cost = 10
+
+setPassword :: UserProfile -> Text -> IO UserProfile
+setPassword oldProfile newPassword = do
+  g <- newStdGen
+  let s = BS.pack $ take 16 $ randoms g
+  pure $ oldProfile { userPassword = (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword) }
+  
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
   deriving (Eq, Show)
 
