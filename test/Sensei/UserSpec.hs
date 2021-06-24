@@ -11,8 +11,8 @@ import Data.Time.LocalTime
 import Sensei.API
 import Sensei.ColorSpec ()
 import Sensei.DB.Model ()
-import Sensei.Server.Auth.Types (SerializedToken (..))
 import Sensei.TestHelper
+import Preface.Codec(Encoded(..), Base64, toBase64)
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Classes
@@ -28,8 +28,11 @@ genTimeOfDay = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger 
 genTimeZone :: Gen TimeZone
 genTimeZone = hoursToTimeZone <$> choose (- 12, 12)
 
-genToken :: Gen (Maybe SerializedToken)
-genToken = elements [Just validSerializedToken, Nothing]
+genPassword :: Gen (Encoded Base64, Encoded Base64)
+genPassword = (,) <$> genBase64 <*> genBase64
+
+genBase64 :: Gen (Encoded Base64)
+genBase64 = toBase64 <$> arbitrary
 
 instance Arbitrary UserProfile where
   arbitrary =
@@ -40,7 +43,7 @@ instance Arbitrary UserProfile where
       <*> genTimeOfDay
       <*> arbitrary
       <*> arbitrary
-      <*> genToken
+      <*> genPassword
 
 spec :: Spec
 spec = describe "Users Management" $ do
@@ -88,16 +91,15 @@ spec = describe "Users Management" $ do
         getJSON "/api/users/arnaud" `shouldRespondJSONBody` defaultProfile
 
       it "PUT /api/users/<user> sets user profile" $ do
-        let profile =
-              UserProfile
-                { userName = "robert",
-                  userTimezone = hoursToTimeZone 1,
-                  userStartOfDay = TimeOfDay 08 00 00,
-                  userEndOfDay = TimeOfDay 18 30 00,
-                  userFlowTypes = Nothing,
-                  userCommands = Just (Map.fromList [("g", "/usr/bin/git")]),
-                  userToken = Just validSerializedToken
-                }
+        let profile = defaultProfile {userName = "robert"}
+
+        putJSON_ "/api/users/arnaud" profile
+
+        getJSON "/api/users/arnaud" `shouldRespondJSONBody` profile
+
+      it "PUT /api/users/<user> sets hashed user's password in profile" $ do
+        let profile = defaultProfile {userPassword = ("1234", "1234") }
+
         putJSON_ "/api/users/arnaud" profile
 
         getJSON "/api/users/arnaud" `shouldRespondJSONBody` profile

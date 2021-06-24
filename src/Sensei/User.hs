@@ -16,9 +16,9 @@ import Data.Time
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
 import Numeric.Natural
+import Preface.Codec(Encoded, Base64)
 import Sensei.Color
 import Sensei.Flow
-import Sensei.Server.Auth.Types (SerializedToken)
 
 -- | Customizable parameters for registering and displaying flows.
 --  This configuration defines user-specific configurations that are used
@@ -49,10 +49,9 @@ data UserProfile = UserProfile
     --  This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
     --  it actually will wrap referenced program's execution in the current environment.
     userCommands :: Maybe (Map.Map String String),
-    -- | An authentication token, serialized as a 'ByteString'
-    -- This is a signed JWT encoding a 'AuthorizationToken' that can be used by clients to authenticate
-    -- requests.
-    userToken :: Maybe SerializedToken
+    -- | User's password, salted and hashed.
+    -- The profile stores the user's password properly salted and hashed with bcrypt.
+    userPassword :: (Encoded Base64, Encoded Base64)
   }
   deriving (Eq, Show, Generic)
 
@@ -69,7 +68,7 @@ defaultProfile =
       userEndOfDay = TimeOfDay 18 30 00,
       userFlowTypes = Nothing,
       userCommands = Nothing,
-      userToken = Nothing
+      userPassword = ("", "")
     }
 
 parseJSONFromVersion :: Natural -> Object -> Parser UserProfile
@@ -81,7 +80,7 @@ parseJSONFromVersion v o =
     <*> o .: "userEndOfDay"
     <*> parseFlowTypes
     <*> parseCommands
-    <*> parseToken
+    <*> parsePassword
   where
     parseFlowTypes =
       case v of
@@ -99,10 +98,10 @@ parseJSONFromVersion v o =
         then pure Nothing
         else o .: "userCommands"
 
-    parseToken =
+    parsePassword =
       if v <= 5
-        then pure Nothing
-        else o .: "userToken"
+        then pure ("", "")
+        else o .: "userPassword"
 
 instance ToJSON UserProfile where
   toJSON UserProfile {..} =
@@ -113,7 +112,7 @@ instance ToJSON UserProfile where
         "userEndOfDay" .= userEndOfDay,
         "userFlowTypes" .= userFlowTypes,
         "userCommands" .= userCommands,
-        "userToken" .= userToken,
+        "userPassword" .= userPassword,
         "userProfileVersion" .= currentVersion
       ]
 

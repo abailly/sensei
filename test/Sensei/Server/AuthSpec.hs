@@ -33,3 +33,4 @@ spec = describe "Authentication Operations" $ do
 
       take 2 (B64.decode <$> BS.split (fromIntegral $ ord '.') bsToken)
         `shouldBe` [Right "{\"alg\":\"PS512\"}", Right "{\"dat\":{\"auOrgID\":1,\"auID\":1}}"]
+

@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Swagger-based documentation for `booking` API
@@ -7,6 +8,7 @@ import Control.Lens
 import Data.Swagger hiding (Reference)
 import Data.Text (pack)
 import Data.Time
+import Preface.Codec (Base64, Encoded)
 import Sensei.API
 import Sensei.Server.Auth.Types (SerializedToken)
 import Sensei.Version
@@ -89,6 +91,15 @@ instance ToSchema SerializedToken where
           & description
             ?~ "A JWT Token in its serialized form, eg. 3 sequneces of base64-encoded strings separated by dots \
                \ which contain JSON objects. See https://jwt.io/introduction for more details."
+          & type_ ?~ SwaggerString
+
+instance ToSchema (Encoded Base64) where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Base64") $
+        mempty
+          & description
+            ?~ "A base64-encoded bytestring."
           & type_ ?~ SwaggerString
 
 senseiSwagger :: Swagger
