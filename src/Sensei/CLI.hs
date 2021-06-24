@@ -21,7 +21,7 @@ import Sensei.API
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
-import Sensei.Server.Auth.Types (createKeys, createToken)
+import Sensei.Server.Auth.Types (createKeys, createToken, setPassword)
 import Sensei.Version
 import Servant (Headers (getResponse))
 import System.Exit
@@ -50,6 +50,7 @@ data UserAction
 data AuthOptions
   = CreateKeys
   | CreateToken
+  | SetPassword
   | NoOp
   deriving (Show, Eq)
 
@@ -84,7 +85,7 @@ commandsParser flows =
 
 authOptions :: Parser Options
 authOptions =
-  AuthOptions <$> (createKeysParser <|> createTokenParser)
+  AuthOptions <$> (createKeysParser <|> createTokenParser <|> setPasswordParser)
 
 queryOptions :: Parser Options
 queryOptions = QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
@@ -247,6 +248,16 @@ createTokenParser =
         <> help "Create a new token using existing key, and update 'client.json' configuration file"
     )
 
+setPasswordParser :: Parser AuthOptions
+setPasswordParser =
+  flag
+    NoOp
+    SetPassword
+    ( long "set-password"
+        <> short 'p'
+        <> help "Sets the password for the current user in his server's profile. Password is read from stdin."
+    )
+
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options
 parseSenseiOptions flows = execParser (optionsParserInfo flows)
@@ -292,7 +303,12 @@ ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
 ep config (AuthOptions CreateToken) _ _ _ = do
   token <- getConfigDirectory >>= createToken
   writeConfig config {authToken = Just token}
-ep _config (AuthOptions NoOp) _ _ _ = pure ()
+ep config (AuthOptions SetPassword) userName _ _ = do
+  oldProfile <- send config (getUserProfileC userName)
+  pwd <- readPassword 
+  newProfile <- setPassword oldProfile pwd
+  void $ send config (setUserProfileC userName newProfile)    
+ep _config (AuthOptions NoOp)_  _ _ = pure ()
 
 println :: BS.ByteString -> IO ()
 println bs =

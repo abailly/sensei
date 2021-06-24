@@ -95,3 +95,8 @@ getKey hdl = reverse <$> getKey' ""
       char <- getChar
       more <- hReady hdl
       (if more then getKey' else return) (char : chars)
+
+readPassword :: IO Text
+readPassword = do
+  putStr "Enter password: "
+  Text.pack <$> Exc.bracket_ (hSetEcho stdin False) (hSetEcho stdin True) getLine

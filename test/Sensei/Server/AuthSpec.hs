@@ -12,7 +12,7 @@ import Data.Proxy (Proxy (..))
 import Sensei.Server.Auth.Types (JWK, SerializedToken (..), createKeys, createToken, getKey, setPassword)
 import Sensei.TestHelper (shouldNotThrow, withTempDir)
 import System.FilePath ((</>))
-import Sensei.User(UserProfile(..), defaultProfile)
+import Sensei.API(UserProfile(..), defaultProfile)
 import Test.Hspec
 
 spec :: Spec
