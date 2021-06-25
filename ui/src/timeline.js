@@ -1,6 +1,6 @@
 import { get } from './request.js';
 import { formatISODate, nextDay } from './date.js';
-import {  drawCommands } from './commands.js';
+import { drawCommands } from './commands.js';
 import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
@@ -10,7 +10,7 @@ import Timeline from "./timeline/Timeline";
 /**
  Create a new div container for a timeline
  */
-function createTimelineContainer(day, data, notesData) {
+function createTimelineContainer(router, day, data, notesData) {
   const detailsName = 'checkbox-' + day;
   const notesName = 'notes-checkbox-' + day;
   const commandsName = 'cmd-checkbox-' + day;
@@ -25,22 +25,22 @@ function createTimelineContainer(day, data, notesData) {
 
   let timeline = undefined;
 
-    const container =
-        <div id={day} class='timeline'>
-            <div class='timeline-controls'>
-                <label for={detailsName}>Expand</label>
-                {details}
-                <label for={notesName}>Notes</label>
-                {notes}
-                <label for={commandsName}>Commands</label>
-                {commands}
-                <label for={summaryName}>Summary</label>
-                {summary}
-            </div>
-            {commandsDiv}
-            {summaryDiv}
-            {chart}
-        </div>;
+  const container =
+    <div id={day} class='timeline'>
+      <div class='timeline-controls'>
+        <label for={detailsName}>Expand</label>
+        {details}
+        <label for={notesName}>Notes</label>
+        {notes}
+        <label for={commandsName}>Commands</label>
+        {commands}
+        <label for={summaryName}>Summary</label>
+        {summary}
+      </div>
+      {commandsDiv}
+      {summaryDiv}
+      {chart}
+    </div>;
 
   details.addEventListener('change', (e) => {
     if (e.target.checked) {
@@ -52,17 +52,17 @@ function createTimelineContainer(day, data, notesData) {
 
   notes.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(`/api/flows/${config.user}/${day}/notes`, (notesData) => {
+      get(router, `/api/flows/${config.user}/${day}/notes`, (notesData) => {
         timeline.drawNotes(notesData);
-            });
-        } else {
-            timeline.clearNotes();
+      });
+    } else {
+      timeline.clearNotes();
     }
   });
 
   commands.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(`/api/flows/${config.user}/${day}/commands`, (commandsData) =>
+      get(router, `/api/flows/${config.user}/${day}/commands`, (commandsData) =>
         drawCommands(commandsDiv, commandsData));
     } else {
       clearElement(commandsDiv);
@@ -72,7 +72,7 @@ function createTimelineContainer(day, data, notesData) {
 
   summary.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(`/api/flows/${config.user}/summary?from=${day}&to=${nextDay(LocalDate.parse(day))}`, (summaryData) =>
+      get(router, `/api/flows/${config.user}/summary?from=${day}&to=${nextDay(LocalDate.parse(day))}`, (summaryData) =>
         drawSummary(summaryDiv, summaryData));
     } else {
       clearElement(summaryDiv);
@@ -81,7 +81,7 @@ function createTimelineContainer(day, data, notesData) {
 
   document.getElementById('timelines').appendChild(container);
   timeline = new Timeline(chart, day, data);
-    timeline.draw();
+  timeline.draw();
 }
 
 /**
@@ -89,29 +89,35 @@ function createTimelineContainer(day, data, notesData) {
  data
  For now, we assume the data is a list of days
  */
-function drawCharts(flowData) {
-  flowData.forEach((f) => {
-    const day = formatISODate(LocalDateTime.parse(f.groupTime));
-    const data = f.subGroup.map(l => l.contents);
-    createTimelineContainer(day, data);
-  });
+function drawCharts(router) {
+  return function(flowData) {
+    flowData.forEach((f) => {
+      const day = formatISODate(LocalDateTime.parse(f.groupTime));
+      const data = f.subGroup.map(l => l.contents);
+      createTimelineContainer(router, day, data);
+    });
+  };
 }
 
-function fetchFlowData(selectedDate) {
-  get(`/api/flows/${config.user}/` + selectedDate, (flowData) => {
-    createTimelineContainer(selectedDate, flowData);
-  });
+function fetchFlowData(router) {
+  return function(selectedDate) {
+    get(router, `/api/flows/${config.user}/` + selectedDate, (flowData) => {
+      createTimelineContainer(router, selectedDate, flowData);
+    });
+  };
 };
 
-function fetchAllFlowData() {
-  get(`/api/flows/${config.user}?group=Day`, drawCharts);
+function fetchAllFlowData(router) {
+  return function() {
+    get(router, `/api/flows/${config.user}?group=Day`, drawCharts(router));
+  };
 };
 
-export default function timeline() {
+export default function timeline(router) {
   const obj = {};
 
-  obj.fetchFlowData = fetchFlowData;
-  obj.fetchAllFlowData = fetchAllFlowData;
+  obj.fetchFlowData = fetchFlowData(router);
+  obj.fetchAllFlowData = fetchAllFlowData(router);
 
   return obj;
 }

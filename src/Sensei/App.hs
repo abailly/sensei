@@ -121,7 +121,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
           :<|> Tagged (userInterface env)
   where
     validateAuth (Authenticated _) = baseServer signal
-    validateAuth _ = throwAll err401 {errHeaders = [("www-authenticate", "Basic realm=\"sensei\"")]}
+    validateAuth _ = throwAll err401 {errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
 
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
     runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger)

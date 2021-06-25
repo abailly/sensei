@@ -3,7 +3,7 @@ import timeline from './timeline.js';
 import summary from './summary.js';
 
 /// Draw the charts
-export default function charts() {
+export default function charts(router) {
   const content = <div class="content">
     <div class="controls">
       <label for="flowDate">Select a date</label>
@@ -17,7 +17,7 @@ export default function charts() {
   clear('main');
   document.getElementById('main').appendChild(content);
 
-  const tl = timeline();
+  const tl = timeline(router);
 
   document.getElementById('flowDate').addEventListener('change', (e) => {
     clear('timelines');
