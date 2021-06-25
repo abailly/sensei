@@ -9,15 +9,19 @@ module Sensei.Server where
 
 import Control.Concurrent.MVar
 import Control.Monad (join)
+import Control.Exception.Safe (throwM)
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
+import Data.Text.Encoding(encodeUtf8)
 import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
 import Sensei.Server.Links (nextDayLink, nextPageLink, periodLinks, previousDayLink, previousPageLink)
+import Preface.Codec(fromBase64)
+import Sensei.Server.Auth.Types(Credentials(..), encrypt)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant
@@ -142,3 +146,12 @@ putUserProfileS _ profile = do
 getVersionsS ::
   (Monad m) => m Versions
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
+
+loginS ::
+  DB m => Credentials -> m NoContent
+loginS Credentials{credLogin,credPassword} = do
+  UserProfile{userPassword = (userSalt, hashedPassword) } <- getUserProfileS credLogin
+  let encryptedPassword = encrypt (fromBase64 userSalt) (encodeUtf8 credPassword)
+  if encryptedPassword == fromBase64 hashedPassword
+    then pure NoContent
+    else throwM err401

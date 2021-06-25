@@ -23,6 +23,7 @@ module Sensei.Server.Auth.Types
     createToken,
     getKey,
     setPassword,
+    encrypt,
     module Crypto.JOSE.JWK,
     module SAS,
   )

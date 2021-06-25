@@ -40,6 +40,7 @@ import Sensei.Server.Auth.Types
     defaultJWTSettings,
     getKey,
     throwAll,
+    Credentials
   )
 import Sensei.Server.Config
 import Sensei.Server.OpenApi
@@ -52,12 +53,13 @@ import System.Posix.Daemonize
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
+    :<|> "login" :> ReqBody '[JSON]  Credentials :> Post '[JSON] NoContent
     :<|> Protected :> (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI))
     :<|> Raw
 
 fullAPI :: Proxy FullAPI
 fullAPI = Proxy
-
+  
 daemonizeServer :: IO ()
 daemonizeServer = do
   setEnv "ENVIRONMENT" "Prod"
@@ -114,6 +116,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
     serveWithContext fullAPI contextConfig $
       hoistServerWithContext fullAPI contextProxy runApp $
         pure senseiSwagger
+          :<|> loginS
           :<|> validateAuth
           :<|> Tagged (userInterface env)
   where
