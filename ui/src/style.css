@@ -350,3 +350,36 @@ span.date {
     padding-left: 0.5rem;
     text-style: italic;
 }
+
+div#login {
+    width: 50%;
+    min-width: 10em;
+    margin: 1em auto 1em auto;
+}
+
+div#login .field label {
+    width: 30%;
+    text-align: right;
+    margin-right: 1em;
+    display: inline-block;
+}
+
+div#login .field input {
+    width: 60%;
+}
+
+div#login div {
+    margin-bottom: .5em;
+}
+
+div#login .control {
+    padding-left: calc(30% + 1em);
+}
+
+div#login .control button {
+    background-color: black;
+    color: white;
+    font-weight: bold;
+    padding: .3em;
+    border-radius: 4px;
+}
