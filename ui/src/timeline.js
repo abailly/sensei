@@ -4,7 +4,7 @@ import { drawCommands } from './commands.js';
 import { drawSummary } from './summary.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
-import { LocalDateTime } from "@js-joda/core";
+import { LocalDateTime, LocalDate } from "@js-joda/core";
 import Timeline from "./timeline/Timeline";
 
 /**
@@ -73,7 +73,7 @@ function createTimelineContainer(router, day, data, notesData) {
   summary.addEventListener('change', (e) => {
     if (e.target.checked) {
       get(router, `/api/flows/${config.user}/summary?from=${day}&to=${nextDay(LocalDate.parse(day))}`, (summaryData) =>
-        drawSummary(summaryDiv, summaryData));
+        drawSummary(summaryDiv, router, summaryData));
     } else {
       clearElement(summaryDiv);
     }
