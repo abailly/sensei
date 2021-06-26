@@ -12,7 +12,9 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Proxy (Proxy (..))
 import Sensei.Server.Auth.Types (Credentials(..), JWK, SerializedToken (..), createKeys, createToken, getKey, setPassword)
-import Sensei.TestHelper (matchHeaders,request, defaultHeaders,getSessionCookie, MatchHeader(..), putJSON_, postJSON, withApp, app,shouldRespondWith,shouldNotThrow, withTempDir)
+import Sensei.TestHelper (matchHeaders, matchBody,
+                          request,
+                          defaultHeaders, jsonBodyEquals, getSessionCookie, MatchHeader(..), putJSON_, postJSON, withApp, app,shouldRespondWith,shouldNotThrow, withTempDir)
 import System.FilePath ((</>))
 import Sensei.API(UserProfile(..), defaultProfile)
 import Test.Hspec
@@ -47,15 +49,15 @@ spec = describe "Authentication Operations" $ do
 
   withApp app $
     describe "Authentication API" $ do
-      it "POST /login returns 200 given user authenticates with valid password" $ do
+      it "POST /login returns 200 with user profile given user authenticates with valid password" $ do
         profile <- liftIO $ setPassword defaultProfile "password"
 
         putJSON_ "/api/users/arnaud" profile
 
         let credentials = Credentials (userName profile) "password"
-        postJSON "/login" credentials `shouldRespondWith` 200 { matchHeaders = [ has2Cookies ] }
+        postJSON "/login" credentials `shouldRespondWith` 200 { matchHeaders = [ has2Cookies ], matchBody = jsonBodyEquals profile }
 
-      it "POST /api/flows/<user> returns 200 given user authenticates with cookies" $ do
+      it "POST /api/flows/<user> returns 200 given user authenticates with JWT contained in cookie" $ do
         profile <- liftIO $ setPassword defaultProfile "password"
         putJSON_ "/api/users/arnaud" profile
         let credentials = Credentials (userName profile) "password"

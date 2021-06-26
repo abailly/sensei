@@ -159,7 +159,9 @@ type PutUserProfile =
 
 type LoginAPI =
   Summary "Allows users to login passing in credentials."
-    :> Description "If successful, this will set cookies containing user's data in the form of JWT token."
+    :> Description "If successful, this will set cookies containing user's data in the form of JWT token.\
+                   \ It will also return the 'UserProfile' of the logged in user."
+    
     :> "login"
     :> ReqBody '[JSON] Credentials
     :> Post
@@ -168,7 +170,7 @@ type LoginAPI =
              '[ Header "Set-Cookie" SetCookie,
                 Header "Set-Cookie" SetCookie
               ]
-             NoContent
+             UserProfile
          )
 
 type SenseiAPI =

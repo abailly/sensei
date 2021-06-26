@@ -151,7 +151,7 @@ loginS ::
              '[ Header "Set-Cookie" SetCookie,
                 Header "Set-Cookie" SetCookie
               ]
-             NoContent)
+             UserProfile)
 loginS js cs Credentials{credLogin,credPassword} = do
   profile <- getUserProfileS credLogin
   case authenticateUser credPassword profile of
@@ -159,5 +159,5 @@ loginS js cs Credentials{credLogin,credPassword} = do
       mApplyCookies <- liftIO $ acceptLogin cs js usr
       case mApplyCookies of
         Nothing -> throwM err401
-        Just applyCookies -> return $ applyCookies NoContent
+        Just applyCookies -> return $ applyCookies profile
     _ -> throwM err401

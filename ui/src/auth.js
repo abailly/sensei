@@ -1,5 +1,6 @@
 import { dom, clear, clearElement } from './dom';
 import { post } from './request';
+import { config } from './config.js';
 
 export function login(router, container) {
   const content = <div id='login'>
@@ -11,7 +12,7 @@ export function login(router, container) {
   function doLogin() {
     const credLogin = document.getElementById('username').value;
     const credPassword = document.getElementById('password').value;
-    post(router, '/login', { credLogin, credPassword }, () => router.navigate('/'));
+    post(router, '/login', { credLogin, credPassword }, (profile) => { config.userProfile = profile; router.navigate('/'); });
   };
 
   clearElement(container);
