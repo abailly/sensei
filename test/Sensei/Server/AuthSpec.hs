@@ -4,13 +4,14 @@ module Sensei.Server.AuthSpec where
 
 import Control.Exception (ErrorCall)
 import Data.Aeson (decode)
+import Data.Functor(void)
 import Control.Monad.Trans(liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Proxy (Proxy (..))
-import Sensei.Server.Auth.Types (Credentials(..), JWK, SerializedToken (..), createKeys, createToken, getKey, setPassword)
+import Sensei.Server.Auth.Types (Credentials(..), JWK, SerializedToken (..), createKeys, createToken, getKey, getPublicKey, setPassword)
 import Sensei.TestHelper (matchHeaders, matchBody,
                           request,
                           defaultHeaders, jsonBodyEquals, MatchHeader(..), putJSON_, postJSON,postJSON_,
@@ -30,6 +31,12 @@ spec = describe "Authentication Operations" $ do
       (decode jwk :: Maybe JWK) `shouldNotBe` Nothing
       getKey (dir </> "sensei.jwk") `shouldNotThrow` (Proxy :: Proxy ErrorCall)
 
+  it "can retrieve public key from private key in given directory" $ do
+    withTempDir $ \dir -> do
+      createKeys dir
+
+      void $ getPublicKey dir
+      
   it "can create token given keys exist in given directory" $ do
     withTempDir $ \dir -> do
       createKeys dir

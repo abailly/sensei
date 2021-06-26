@@ -21,7 +21,7 @@ import Sensei.API
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
-import Sensei.Server.Auth.Types (createKeys, createToken, setPassword)
+import Sensei.Server.Auth.Types (createKeys, getPublicKey, createToken, setPassword)
 import Sensei.Version
 import Servant (Headers (getResponse))
 import System.Exit
@@ -51,6 +51,7 @@ data AuthOptions
   = CreateKeys
   | CreateToken
   | SetPassword
+  | PublicKey
   | NoOp
   deriving (Show, Eq)
 
@@ -85,7 +86,7 @@ commandsParser flows =
 
 authOptions :: Parser Options
 authOptions =
-  AuthOptions <$> (createKeysParser <|> createTokenParser <|> setPasswordParser)
+  AuthOptions <$> (createKeysParser <|> publicKeyParser <|> createTokenParser <|> setPasswordParser)
 
 queryOptions :: Parser Options
 queryOptions = QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
@@ -238,6 +239,17 @@ createKeysParser =
         <> help "Create a new pair of keys, storing them in user's config directory"
     )
 
+publicKeyParser :: Parser AuthOptions
+publicKeyParser =
+  flag
+    NoOp
+    PublicKey
+    ( long "public-key"
+        <> short 'k'
+        <> help "Output a JWK representation of the public key from existing private key. \
+                \ This is useful for generating a public key from private key to put on a server."
+    )
+
 createTokenParser :: Parser AuthOptions
 createTokenParser =
   flag
@@ -300,6 +312,7 @@ ep config (UserOptions (GetFlow q)) curUser _ _ = do
   f <- send config (getFlowC curUser q)
   display f
 ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
+ep _config (AuthOptions PublicKey) _ _ _ = getConfigDirectory >>= getPublicKey >>= display
 ep config (AuthOptions CreateToken) _ _ _ = do
   token <- getConfigDirectory >>= createToken
   writeConfig config {authToken = Just token}

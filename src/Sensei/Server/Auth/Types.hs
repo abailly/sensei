@@ -22,6 +22,7 @@ module Sensei.Server.Auth.Types
     createKeys,
     createToken,
     getKey,
+    getPublicKey,
     setPassword,
     encrypt,
     authenticateUser,
@@ -30,6 +31,8 @@ module Sensei.Server.Auth.Types
   )
 where
 
+import Control.Lens((^.))
+import Control.Monad(unless)
 import Crypto.KDF.BCrypt
 import Crypto.JOSE.JWK
 import Data.Aeson
@@ -46,6 +49,7 @@ import Preface.Codec
 import Sensei.User(UserProfile(..))
 import Servant
 import Servant.Auth.Server as SAS
+import System.Directory(doesFileExist)
 import System.FilePath ((</>))
 import System.Random(newStdGen, randoms)
 
@@ -171,6 +175,9 @@ makeNewKey = genJWK (RSAGenParam (4096 `div` 8))
 
 getKey :: FilePath -> IO JWK
 getKey jwkFile = do
+  exists <- doesFileExist jwkFile
+  unless exists $ error $ "JWK file " <> jwkFile <> " does not exist"
+ 
   bytes <- BS.readFile jwkFile
   either (\err -> error ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
 
@@ -184,6 +191,11 @@ createToken directory = do
     Left err -> error $ "Failed to create token :" <> show err
     Right jwt -> pure $ SerializedToken $ LBS.toStrict jwt
 
+getPublicKey :: FilePath -> IO JWK
+getPublicKey directory = do
+  key <- getKey (directory </> "sensei.jwk")
+  maybe (error $ "Fail to get public key from private key in " <> directory) pure $ key ^. asPublicKey
+  
 encrypt :: ByteString -> ByteString -> ByteString
 encrypt = bcrypt cost
 

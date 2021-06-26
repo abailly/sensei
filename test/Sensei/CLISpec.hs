@@ -50,5 +50,8 @@ spec = describe "Command-Line Interface" $ do
     it "parses 'auth --create-keys' as creation of new key pair" $ do
       runOptionsParser Nothing ["auth", "--create-keys"] `shouldBe` Right (AuthOptions CreateKeys)
 
+    it "parses 'auth --public-key' as extraction of public key" $ do
+      runOptionsParser Nothing ["auth", "--public-key"] `shouldBe` Right (AuthOptions PublicKey)
+
     it "parses 'auth --set-password' as password creation" $ do
       runOptionsParser Nothing ["auth", "--set-password"] `shouldBe` Right (AuthOptions SetPassword)
