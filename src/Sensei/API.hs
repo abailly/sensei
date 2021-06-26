@@ -10,6 +10,7 @@ module Sensei.API
     LoginAPI,
     SetCurrentTime,
     GetCurrentTime,
+    Protected,
     senseiAPI,
     module Sensei.Color,
     module Sensei.Duration,
@@ -39,7 +40,7 @@ import Sensei.Time
 import Sensei.User
 import Sensei.Utils
 import Sensei.Version
-import Sensei.Server.Auth.Types(Credentials, SetCookie)
+import Sensei.Server.Auth.Types (Credentials, SetCookie, Auth, JWT, Cookie, AuthenticationToken)
 import Servant
 
 -- * API
@@ -172,6 +173,10 @@ type LoginAPI =
               ]
              UserProfile
          )
+
+-- | Protected endpoints require a valid 'AuthenticationToken' which can be provided
+-- through a 'JWT' token, or a 'Cookie'
+type Protected = Auth '[JWT, Cookie] AuthenticationToken
 
 type SenseiAPI =
   "api"

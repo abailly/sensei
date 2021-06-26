@@ -40,8 +40,7 @@ library
                      , Sensei.DB.SQLite
   other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
-                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags,
-                 Sensei.Server.Auth.API
+                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , aeson-pretty

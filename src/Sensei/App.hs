@@ -31,7 +31,6 @@ import Sensei.DB.Log ()
 import Sensei.DB.SQLite
 import Sensei.IO
 import Sensei.Server
-import Sensei.Server.Auth.API (Protected)
 import Sensei.Server.Auth.Types
   ( AuthResult (..),
     CookieSettings(..),
