@@ -114,15 +114,15 @@ runShake pwd uid = shakeArgs options $ do
   -- Most of the work is delegated to terraform
   "deploy" ~> do
     checkEnvironment
-    cmd_ "terraform" ["plan", "-out=.deploy.plan", "-var-file=infra/terraform.tfvars", "infra"]
-    cmd_ "terraform" ["apply", ".deploy.plan"]
+    cmd_ (Cwd "infra") "terraform" ["plan", "-out=.deploy.plan", "-var-file=terraform.tfvars"]
+    cmd_ (Cwd "infra") "terraform" ["apply", ".deploy.plan"]
 
   -- Clean up all resources set for the deployment
   "destroy" ~> do
     checkEnvironment
-    cmd_ "terraform" ["destroy", "-auto-approve", "-var-file=infra/terraform.tfvars", "infra"]
+    cmd_ (Cwd "infra") "terraform" ["destroy", "-auto-approve", "-var-file=terraform.tfvars"]
 
-  "ui/dist/index.html" %> \ _ -> do
+  "ui/dist/index.html" %> \_ -> do
     needDirectoryFiles
       "ui"
       [ "src//*.js",

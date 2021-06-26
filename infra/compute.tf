@@ -12,7 +12,7 @@ resource "google_compute_instance" "sensei" {
   tags = [ "sensei-server" ]
 
   metadata = {
-    sshKeys = file("infra/ssh_keys")
+    sshKeys = file("ssh_keys")
   }
 
 
