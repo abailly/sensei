@@ -12,6 +12,7 @@ pre {
 
 div#navbar {
     position: fixed;
+    z-index: 100;
     top: 0;
     left: 0;
     width: 100%;
@@ -382,4 +383,13 @@ div#login .control button {
     font-weight: bold;
     padding: .3em;
     border-radius: 4px;
+}
+
+button.btn-next , button.btn-prev {
+    background-color: black;
+    color: white;
+    font-weight: bold;
+    padding: .3em;
+    border-radius: 4px;
+    margin: .3em;
 }
