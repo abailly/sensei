@@ -4,7 +4,6 @@ module Sensei.Server.AuthSpec where
 
 import Control.Exception (ErrorCall)
 import Data.Aeson (decode)
-import Data.Maybe(fromJust)
 import Control.Monad.Trans(liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64
@@ -14,7 +13,8 @@ import Data.Proxy (Proxy (..))
 import Sensei.Server.Auth.Types (Credentials(..), JWK, SerializedToken (..), createKeys, createToken, getKey, setPassword)
 import Sensei.TestHelper (matchHeaders, matchBody,
                           request,
-                          defaultHeaders, jsonBodyEquals, getSessionCookie, MatchHeader(..), putJSON_, postJSON, withApp, app,shouldRespondWith,shouldNotThrow, withTempDir)
+                          defaultHeaders, jsonBodyEquals, MatchHeader(..), putJSON_, postJSON,postJSON_,
+                          withApp, clearCookies, app,shouldRespondWith,shouldNotThrow, withTempDir)
 import System.FilePath ((</>))
 import Sensei.API(UserProfile(..), defaultProfile)
 import Test.Hspec
@@ -56,18 +56,6 @@ spec = describe "Authentication Operations" $ do
 
         let credentials = Credentials (userName profile) "password"
         postJSON "/login" credentials `shouldRespondWith` 200 { matchHeaders = [ has2Cookies ], matchBody = jsonBodyEquals profile }
-
-      it "POST /api/flows/<user> returns 200 given user authenticates with JWT contained in cookie" $ do
-        profile <- liftIO $ setPassword defaultProfile "password"
-        putJSON_ "/api/users/arnaud" profile
-        let credentials = Credentials (userName profile) "password"
-        resp <- postJSON "/login" credentials
-      
-        let authCookie = fromJust $ getSessionCookie resp
-            headers = filter ((/= "Authorization") . fst) defaultHeaders <> [("Cookie" ,"JWT-Cookie=" <> authCookie)]
-
-        request "GET" "/api/flows/arnaud" headers mempty `shouldRespondWith` 200
-
         
       it "POST /login returns 401 given user authenticates with invalid password" $ do
         profile <- liftIO $ setPassword defaultProfile "password"
@@ -76,6 +64,27 @@ spec = describe "Authentication Operations" $ do
 
         let credentials = Credentials (userName profile) "wrong password"
         postJSON "/login" credentials `shouldRespondWith` 401
+
+      it "POST /api/flows/<user> returns 200 given user authenticates with JWT contained in cookie" $ do
+        profile <- liftIO $ setPassword defaultProfile "password"
+        putJSON_ "/api/users/arnaud" profile
+        let credentials = Credentials (userName profile) "password"
+        postJSON_ "/login" credentials
+      
+        let headers = filter ((/= "Authorization") . fst) defaultHeaders
+
+        request "GET" "/api/flows/arnaud" headers mempty `shouldRespondWith` 200
+
+      it "POST /api/<XXX> returns 401 given user agent fails to provide Authorization header or JWT-Cookie" $ do
+        profile <- liftIO $ setPassword defaultProfile "password"
+        putJSON_ "/api/users/arnaud" profile
+        let credentials = Credentials (userName profile) "password"
+        postJSON_ "/login" credentials
+      
+        let headers = filter ((/= "Authorization") . fst) defaultHeaders
+        clearCookies
+        
+        request "GET" "/api/flows/arnaud" headers mempty `shouldRespondWith` 401
 
 has2Cookies :: MatchHeader
 has2Cookies = MatchHeader $ \ hdrs _ ->

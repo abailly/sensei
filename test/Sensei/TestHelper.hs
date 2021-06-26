@@ -28,6 +28,7 @@ module Sensei.TestHelper
     SResponse,
     shouldRespondJSONBody,
     shouldNotThrow,
+    clearCookies,
 
     -- * Useful data
     validAuthToken,
@@ -42,6 +43,7 @@ where
 import Control.Concurrent.MVar
 import Control.Exception.Safe (Exception, bracket, catch, finally)
 import Control.Monad (unless, when)
+import Control.Monad.Reader(ReaderT(..))
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
@@ -52,7 +54,7 @@ import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8)
 import GHC.Stack (HasCallStack)
 import qualified Network.HTTP.Types.Header as HTTP
-import Network.Wai.Test (SResponse, simpleHeaders)
+import Network.Wai.Test (SResponse, simpleHeaders, modifyClientCookies)
 import Preface.Log
 import Sensei.App (senseiApp)
 import Sensei.Server.Auth.Types
@@ -66,6 +68,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Temp (mkstemp)
 import Test.Hspec (ActionWith, Expectation, Spec, SpecWith, around, expectationFailure)
 import Test.Hspec.Wai as W (WaiExpectation, WaiSession, request, shouldRespondWith)
+import Test.Hspec.Wai.Internal(WaiSession(..))
 import Test.Hspec.Wai.Matcher as W
 import Web.Cookie(parseCookies)
 
@@ -182,3 +185,6 @@ getSessionCookie resp =
     in lookup "JWT-Cookie" $
        maybe [] (parseCookies . snd) $
        find (\h -> fst h == "Set-Cookie") headers
+
+clearCookies :: WaiSession st ()
+clearCookies = WaiSession $ ReaderT $ \ _ -> modifyClientCookies (const mempty)
