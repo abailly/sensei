@@ -34,13 +34,12 @@ import Sensei.Server
 import Sensei.Server.Auth.API (Protected)
 import Sensei.Server.Auth.Types
   ( AuthResult (..),
-    CookieSettings,
+    CookieSettings(..),
     JWTSettings,
     defaultCookieSettings,
     defaultJWTSettings,
     getKey,
     throwAll,
-    Credentials
   )
 import Sensei.Server.Config
 import Sensei.Server.OpenApi
@@ -53,7 +52,7 @@ import System.Posix.Daemonize
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
-    :<|> "login" :> ReqBody '[JSON]  Credentials :> Post '[JSON] NoContent
+    :<|> LoginAPI
     :<|> Protected :> (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI))
     :<|> Raw
 
@@ -108,7 +107,7 @@ senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv ->
 senseiApp env signal publicAuthKey output configDir logger = do
   runDB output configDir logger $ initLogStorage
   let jwtConfig = defaultJWTSettings publicAuthKey
-      cookieConfig = defaultCookieSettings
+      cookieConfig = defaultCookieSettings { cookieXsrfSetting = Nothing }
       contextConfig = jwtConfig :. cookieConfig :. EmptyContext
       contextProxy :: Proxy [JWTSettings, CookieSettings]
       contextProxy = Proxy
@@ -116,7 +115,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
     serveWithContext fullAPI contextConfig $
       hoistServerWithContext fullAPI contextProxy runApp $
         pure senseiSwagger
-          :<|> loginS
+          :<|> loginS jwtConfig cookieConfig
           :<|> validateAuth
           :<|> Tagged (userInterface env)
   where

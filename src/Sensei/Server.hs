@@ -14,14 +14,13 @@ import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
-import Data.Text.Encoding(encodeUtf8)
 import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
 import Sensei.Server.Links (nextDayLink, nextPageLink, periodLinks, previousDayLink, previousPageLink)
-import Preface.Codec(fromBase64)
-import Sensei.Server.Auth.Types(Credentials(..), encrypt)
+import Servant.Auth.Server as SAS
+import Sensei.Server.Auth.Types(Credentials(..), authenticateUser)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant
@@ -148,10 +147,17 @@ getVersionsS ::
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
 
 loginS ::
-  DB m => Credentials -> m NoContent
-loginS Credentials{credLogin,credPassword} = do
-  UserProfile{userPassword = (userSalt, hashedPassword) } <- getUserProfileS credLogin
-  let encryptedPassword = encrypt (fromBase64 userSalt) (encodeUtf8 credPassword)
-  if encryptedPassword == fromBase64 hashedPassword
-    then pure NoContent
-    else throwM err401
+  (MonadIO m, DB m) => JWTSettings -> CookieSettings -> Credentials -> m  (Headers
+             '[ Header "Set-Cookie" SetCookie,
+                Header "Set-Cookie" SetCookie
+              ]
+             NoContent)
+loginS js cs Credentials{credLogin,credPassword} = do
+  profile <- getUserProfileS credLogin
+  case authenticateUser credPassword profile of
+    SAS.Authenticated usr -> do
+      mApplyCookies <- liftIO $ acceptLogin cs js usr
+      case mApplyCookies of
+        Nothing -> throwM err401
+        Just applyCookies -> return $ applyCookies NoContent
+    _ -> throwM err401

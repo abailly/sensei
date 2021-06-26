@@ -7,6 +7,7 @@
 module Sensei.API
   ( SenseiAPI,
     KillServer,
+    LoginAPI,
     SetCurrentTime,
     GetCurrentTime,
     senseiAPI,
@@ -38,6 +39,7 @@ import Sensei.Time
 import Sensei.User
 import Sensei.Utils
 import Sensei.Version
+import Sensei.Server.Auth.Types(Credentials, SetCookie)
 import Servant
 
 -- * API
@@ -154,6 +156,20 @@ type PutUserProfile =
     :> Capture "user" Text
     :> ReqBody '[JSON] UserProfile
     :> Put '[JSON] NoContent
+
+type LoginAPI =
+  Summary "Allows users to login passing in credentials."
+    :> Description "If successful, this will set cookies containing user's data in the form of JWT token."
+    :> "login"
+    :> ReqBody '[JSON] Credentials
+    :> Post
+         '[JSON]
+         ( Headers
+             '[ Header "Set-Cookie" SetCookie,
+                Header "Set-Cookie" SetCookie
+              ]
+             NoContent
+         )
 
 type SenseiAPI =
   "api"

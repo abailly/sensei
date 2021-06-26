@@ -138,6 +138,7 @@ test-suite sensei-test
                      , case-insensitive
                      , colour
                      , containers
+                     , cookie
                      , directory
                      , filepath
                      , hspec

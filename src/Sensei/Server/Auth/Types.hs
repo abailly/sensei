@@ -24,6 +24,7 @@ module Sensei.Server.Auth.Types
     getKey,
     setPassword,
     encrypt,
+    authenticateUser,
     module Crypto.JOSE.JWK,
     module SAS,
   )
@@ -194,7 +195,13 @@ setPassword oldProfile newPassword = do
   g <- newStdGen
   let s = BS.pack $ take 16 $ randoms g
   pure $ oldProfile { userPassword = (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword) }
-  
+
+authenticateUser :: Text -> UserProfile -> AuthResult AuthenticationToken
+authenticateUser password UserProfile{userPassword = (userSalt, hashedPassword) }
+  | encrypt (fromBase64 userSalt) (encodeUtf8 password) == fromBase64 hashedPassword =
+    SAS.Authenticated $ AuthToken 1 1 -- TODO: associate a proper id to a user
+  | otherwise = SAS.BadPassword
+
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
   deriving (Eq, Show)
 
