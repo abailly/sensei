@@ -60,7 +60,7 @@ services:
         max-file: ${NGINX_LETSENCRYPT_LOG_MAX_FILE:-10}
 
   sensei:
-    image: pankzsoft/sensei:afce5c79b2a14ef6829ed973d17faa747503b283
+    image: pankzsoft/sensei:${IMAGE_ID}
     restart: always
     container_name: "sensei"
     environment:
@@ -69,6 +69,8 @@ services:
       LETSENCRYPT_EMAIL: arnaud@pankzsoft.com
       SENSEI_SERVER_NAME: sensei.app.pankzsoft.com
       SENSEI_SERVER_PORT: 8899
+      SENSEI_SERVER_CONFIG_DIR: /home/user/.config/sensei/
+      SENSEI_SERVER_KEY: ${SENSEI_SERVER_KEY}
       ENVIRONMENT: prod
     ports:
       - 8899:8899

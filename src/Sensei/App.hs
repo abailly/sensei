@@ -62,8 +62,8 @@ fullAPI = Proxy
   
 daemonizeServer :: IO ()
 daemonizeServer = do
-  setEnv "ENVIRONMENT" "Prod"
   configDir <- getConfigDirectory
+  setEnv "ENVIRONMENT" "Prod"
   setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
   getKey (configDir </> "sensei.jwk") >>= setEnv "SENSEI_SERVER_KEY" . unpack . decodeUtf8 . toStrict . encode
   daemonize $ startServer configDir
