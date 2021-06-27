@@ -20,7 +20,6 @@ import Sensei.CLI
 import qualified Sensei.Client as Client
 import Sensei.IO (readConfig, getConfigDirectory)
 import Sensei.API(userDefinedFlows)
-import Sensei.Server.Config(readServerConfig, defaultConfig)
 import Sensei.Wrapper
 import System.Directory
 import System.Environment
@@ -53,7 +52,10 @@ main = do
                     Right profile -> userDefinedFlows profile
       opts <- parseSenseiOptions flows
       ep config opts (pack curUser) st (pack currentDir)
-    "sensei-exe" -> getConfigDirectory >>= readServerConfig >>= startServer . fromMaybe defaultConfig
+    "sensei-exe" -> do
+      configDir <- getConfigDirectory
+      setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
+      startServer configDir
     _ -> do
       res <- tryWrapProg io curUser prog progArgs currentDir
       handleWrapperResult prog res

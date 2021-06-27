@@ -19,6 +19,7 @@ module Sensei.Server.Auth.Types
     TokenID (..),
     Bytes (..),
     makeNewKey,
+    readOrMakeKey,
     createKeys,
     createToken,
     getKey,
@@ -41,7 +42,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Proxy
 import Data.String (IsString (..))
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import GHC.Generics
 import GHC.TypeLits (KnownNat, Nat, natVal)
@@ -173,6 +174,15 @@ instance FromJSON UserRegistration where
 makeNewKey :: IO JWK
 makeNewKey = genJWK (RSAGenParam (4096 `div` 8))
 
+-- | Read a key or create a new one.
+-- May throw an 'error' if the input contains a string that's not a valid 'JWK'
+readOrMakeKey :: Maybe String -> IO JWK
+readOrMakeKey Nothing = makeNewKey
+readOrMakeKey (Just keyString) =
+  case eitherDecode (LBS.fromStrict $ encodeUtf8 $ pack keyString) of
+    Left err -> error err
+    Right k -> pure k
+    
 getKey :: FilePath -> IO JWK
 getKey jwkFile = do
   exists <- doesFileExist jwkFile

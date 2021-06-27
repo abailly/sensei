@@ -17,11 +17,12 @@ import Control.Exception.Safe (catch, throwM, try)
 import Control.Monad.Except
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Crypto.JOSE (JWK)
-import Data.ByteString.Lazy (fromStrict)
+import Data.Aeson(encode)
+import Data.ByteString.Lazy (toStrict, fromStrict)
 import Data.Maybe (fromMaybe)
 import Data.Swagger (Swagger)
-import Data.Text (pack)
-import Data.Text.Encoding (encodeUtf8)
+import Data.Text (pack, unpack)
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Network.CORS (WithCORS (..))
 import Preface.Log
 import Preface.Server
@@ -38,6 +39,7 @@ import Sensei.Server.Auth.Types
     defaultCookieSettings,
     defaultJWTSettings,
     getKey,
+    readOrMakeKey,
     throwAll,
   )
 import Sensei.Server.Config
@@ -46,7 +48,7 @@ import Sensei.Server.UI
 import Sensei.Version
 import Servant
 import System.Environment (lookupEnv, setEnv)
-import System.FilePath ((</>))
+import System.FilePath((</>))
 import System.Posix.Daemonize
 
 type FullAPI =
@@ -61,20 +63,20 @@ fullAPI = Proxy
 daemonizeServer :: IO ()
 daemonizeServer = do
   setEnv "ENVIRONMENT" "Prod"
-  config <- readServerConfig =<< getConfigDirectory
-  maybe raiseError (daemonize . startServer) config
-  where
-    raiseError = error $ "Server configuration file does not exist, not starting sensei daemon"
-
-startServer :: ServerConfig -> IO ()
-startServer serverConfig =
-  getConfigDirectory >>= getDataFile >>= sensei serverConfig
-
-sensei :: ServerConfig -> FilePath -> IO ()
-sensei _serverConfig output = do
-  signal <- newEmptyMVar
   configDir <- getConfigDirectory
-  key <- getKey (configDir </> "sensei.jwk")
+  setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
+  getKey (configDir </> "sensei.jwk") >>= setEnv "SENSEI_SERVER_KEY" . unpack . decodeUtf8 . toStrict . encode
+  daemonize $ startServer configDir
+
+startServer :: FilePath -> IO ()
+startServer configDir =
+  getDataFile configDir >>= sensei
+
+sensei :: FilePath -> IO ()
+sensei output = do
+  signal <- newEmptyMVar
+  configDir <- fromMaybe "." <$> lookupEnv "SENSEI_SERVER_CONFIG_DIR"
+  key <- readOrMakeKey =<< lookupEnv "SENSEI_SERVER_KEY"
   serverName <- pack . fromMaybe "" <$> lookupEnv "SENSEI_SERVER_NAME"
   serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
