@@ -16,7 +16,7 @@ import Data.Time
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
 import Numeric.Natural
-import Preface.Codec(Encoded, Base64)
+import Preface.Codec (Base64, Encoded)
 import Sensei.Color
 import Sensei.Flow
 

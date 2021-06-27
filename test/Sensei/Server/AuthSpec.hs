@@ -3,21 +3,34 @@
 module Sensei.Server.AuthSpec where
 
 import Control.Exception (ErrorCall)
+import Control.Monad.Trans (liftIO)
 import Data.Aeson (decode)
-import Data.Functor(void)
-import Control.Monad.Trans(liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
+import Data.Functor (void)
 import Data.Proxy (Proxy (..))
-import Sensei.Server.Auth.Types (Credentials(..), JWK, SerializedToken (..), createKeys, createToken, getKey, getPublicKey, setPassword)
-import Sensei.TestHelper (matchHeaders, matchBody,
-                          request,
-                          defaultHeaders, jsonBodyEquals, MatchHeader(..), putJSON_, postJSON,postJSON_,
-                          withApp, clearCookies, app,shouldRespondWith,shouldNotThrow, withTempDir)
+import Sensei.API (UserProfile (..), defaultProfile)
+import Sensei.Server.Auth.Types (Credentials (..), JWK, SerializedToken (..), createKeys, createToken, getKey, getPublicKey, setPassword)
+import Sensei.TestHelper
+  ( MatchHeader (..),
+    app,
+    clearCookies,
+    defaultHeaders,
+    jsonBodyEquals,
+    matchBody,
+    matchHeaders,
+    postJSON,
+    postJSON_,
+    putJSON_,
+    request,
+    shouldNotThrow,
+    shouldRespondWith,
+    withApp,
+    withTempDir,
+  )
 import System.FilePath ((</>))
-import Sensei.API(UserProfile(..), defaultProfile)
 import Test.Hspec
 
 spec :: Spec
@@ -36,7 +49,7 @@ spec = describe "Authentication Operations" $ do
       createKeys dir
 
       void $ getPublicKey dir
-      
+
   it "can create token given keys exist in given directory" $ do
     withTempDir $ \dir -> do
       createKeys dir
@@ -49,10 +62,9 @@ spec = describe "Authentication Operations" $ do
   it "can update profile with hashed password given cleartext password" $ do
     let profile = defaultProfile
 
-    newProfile <- setPassword profile "password" 
+    newProfile <- setPassword profile "password"
 
     userPassword newProfile `shouldNotBe` userPassword profile
-
 
   withApp app $
     describe "Authentication API" $ do
@@ -62,8 +74,8 @@ spec = describe "Authentication Operations" $ do
         putJSON_ "/api/users/arnaud" profile
 
         let credentials = Credentials (userName profile) "password"
-        postJSON "/login" credentials `shouldRespondWith` 200 { matchHeaders = [ has2Cookies ], matchBody = jsonBodyEquals profile }
-        
+        postJSON "/login" credentials `shouldRespondWith` 200 {matchHeaders = [has2Cookies], matchBody = jsonBodyEquals profile}
+
       it "POST /login returns 401 given user authenticates with invalid password" $ do
         profile <- liftIO $ setPassword defaultProfile "password"
 
@@ -77,7 +89,7 @@ spec = describe "Authentication Operations" $ do
         putJSON_ "/api/users/arnaud" profile
         let credentials = Credentials (userName profile) "password"
         postJSON_ "/login" credentials
-      
+
         let headers = filter ((/= "Authorization") . fst) defaultHeaders
 
         request "GET" "/api/flows/arnaud" headers mempty `shouldRespondWith` 200
@@ -87,14 +99,14 @@ spec = describe "Authentication Operations" $ do
         putJSON_ "/api/users/arnaud" profile
         let credentials = Credentials (userName profile) "password"
         postJSON_ "/login" credentials
-      
+
         let headers = filter ((/= "Authorization") . fst) defaultHeaders
         clearCookies
-        
+
         request "GET" "/api/flows/arnaud" headers mempty `shouldRespondWith` 401
 
 has2Cookies :: MatchHeader
-has2Cookies = MatchHeader $ \ hdrs _ ->
+has2Cookies = MatchHeader $ \hdrs _ ->
   if length (filter ((== "Set-Cookie") . fst) hdrs) == 2
-  then Nothing
-  else Just $ "Expected 2 Set-Cookie headers, got: " <> show hdrs
+    then Nothing
+    else Just $ "Expected 2 Set-Cookie headers, got: " <> show hdrs

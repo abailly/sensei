@@ -34,13 +34,13 @@ import Sensei.Duration
 import Sensei.Flow
 import Sensei.FlowView
 import Sensei.Group
+import Sensei.Server.Auth.Types (Auth, AuthenticationToken, Cookie, Credentials, JWT, SetCookie)
 import Sensei.Server.Tags
 import Sensei.Summary
 import Sensei.Time
 import Sensei.User
 import Sensei.Utils
 import Sensei.Version
-import Sensei.Server.Auth.Types (Credentials, SetCookie, Auth, JWT, Cookie, AuthenticationToken)
 import Servant
 
 -- * API
@@ -160,9 +160,9 @@ type PutUserProfile =
 
 type LoginAPI =
   Summary "Allows users to login passing in credentials."
-    :> Description "If successful, this will set cookies containing user's data in the form of JWT token.\
-                   \ It will also return the 'UserProfile' of the logged in user."
-    
+    :> Description
+         "If successful, this will set cookies containing user's data in the form of JWT token.\
+         \ It will also return the 'UserProfile' of the logged in user."
     :> "login"
     :> ReqBody '[JSON] Credentials
     :> Post

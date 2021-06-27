@@ -32,10 +32,10 @@ module Sensei.Server.Auth.Types
   )
 where
 
-import Control.Lens((^.))
-import Control.Monad(unless)
-import Crypto.KDF.BCrypt
+import Control.Lens ((^.))
+import Control.Monad (unless)
 import Crypto.JOSE.JWK
+import Crypto.KDF.BCrypt
 import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -47,12 +47,12 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import GHC.Generics
 import GHC.TypeLits (KnownNat, Nat, natVal)
 import Preface.Codec
-import Sensei.User(UserProfile(..))
+import Sensei.User (UserProfile (..))
 import Servant
 import Servant.Auth.Server as SAS
-import System.Directory(doesFileExist)
+import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-import System.Random(newStdGen, randoms)
+import System.Random (newStdGen, randoms)
 
 -- Tokens structure from AWS
 -- AWS ID Token structure
@@ -182,12 +182,12 @@ readOrMakeKey (Just keyString) =
   case eitherDecode (LBS.fromStrict $ encodeUtf8 $ pack keyString) of
     Left err -> error err
     Right k -> pure k
-    
+
 getKey :: FilePath -> IO JWK
 getKey jwkFile = do
   exists <- doesFileExist jwkFile
   unless exists $ error $ "JWK file " <> jwkFile <> " does not exist"
- 
+
   bytes <- BS.readFile jwkFile
   either (\err -> error ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
 
@@ -205,7 +205,7 @@ getPublicKey :: FilePath -> IO JWK
 getPublicKey directory = do
   key <- getKey (directory </> "sensei.jwk")
   maybe (error $ "Fail to get public key from private key in " <> directory) pure $ key ^. asPublicKey
-  
+
 encrypt :: ByteString -> ByteString -> ByteString
 encrypt = bcrypt cost
 
@@ -216,10 +216,10 @@ setPassword :: UserProfile -> Text -> IO UserProfile
 setPassword oldProfile newPassword = do
   g <- newStdGen
   let s = BS.pack $ take 16 $ randoms g
-  pure $ oldProfile { userPassword = (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword) }
+  pure $ oldProfile {userPassword = (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword)}
 
 authenticateUser :: Text -> UserProfile -> AuthResult AuthenticationToken
-authenticateUser password UserProfile{userPassword = (userSalt, hashedPassword) }
+authenticateUser password UserProfile {userPassword = (userSalt, hashedPassword)}
   | encrypt (fromBase64 userSalt) (encodeUtf8 password) == fromBase64 hashedPassword =
     SAS.Authenticated $ AuthToken 1 1 -- TODO: associate a proper id to a user
   | otherwise = SAS.BadPassword

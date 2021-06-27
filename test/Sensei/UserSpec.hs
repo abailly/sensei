@@ -8,11 +8,11 @@ import qualified Data.Map as Map
 import Data.Proxy
 import Data.Text (Text, pack)
 import Data.Time.LocalTime
+import Preface.Codec (Base64, Encoded (..), toBase64)
 import Sensei.API
 import Sensei.ColorSpec ()
 import Sensei.DB.Model ()
 import Sensei.TestHelper
-import Preface.Codec(Encoded(..), Base64, toBase64)
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Classes
@@ -98,7 +98,7 @@ spec = describe "Users Management" $ do
         getJSON "/api/users/arnaud" `shouldRespondJSONBody` profile
 
       it "PUT /api/users/<user> sets hashed user's password in profile" $ do
-        let profile = defaultProfile {userPassword = ("1234", "1234") }
+        let profile = defaultProfile {userPassword = ("1234", "1234")}
 
         putJSON_ "/api/users/arnaud" profile
 

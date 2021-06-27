@@ -43,18 +43,18 @@ where
 import Control.Concurrent.MVar
 import Control.Exception.Safe (Exception, bracket, catch, finally)
 import Control.Monad (unless, when)
-import Control.Monad.Reader(ReaderT(..))
+import Control.Monad.Reader (ReaderT (..))
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import Data.ByteString.Lazy (toStrict)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
-import Data.List(find)
+import Data.List (find)
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8)
 import GHC.Stack (HasCallStack)
 import qualified Network.HTTP.Types.Header as HTTP
-import Network.Wai.Test (SResponse, simpleHeaders, modifyClientCookies)
+import Network.Wai.Test (SResponse, modifyClientCookies, simpleHeaders)
 import Preface.Log
 import Sensei.App (senseiApp)
 import Sensei.Server.Auth.Types
@@ -68,9 +68,9 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Temp (mkstemp)
 import Test.Hspec (ActionWith, Expectation, Spec, SpecWith, around, expectationFailure)
 import Test.Hspec.Wai as W (WaiExpectation, WaiSession, request, shouldRespondWith)
-import Test.Hspec.Wai.Internal(WaiSession(..))
+import Test.Hspec.Wai.Internal (WaiSession (..))
 import Test.Hspec.Wai.Matcher as W
-import Web.Cookie(parseCookies)
+import Web.Cookie (parseCookies)
 
 data AppBuilder = AppBuilder {withStorage :: Bool, withFailingStorage :: Bool, withEnv :: Env}
 
@@ -181,10 +181,10 @@ Just wrongKey = A.decode "{\"qi\":\"XRuW-7mjE3A6EI_ZdnWQBFvrI02Xlesj7R1xwFDMk9GB
 
 getSessionCookie :: SResponse -> Maybe ByteString
 getSessionCookie resp =
-    let headers = simpleHeaders resp
-    in lookup "JWT-Cookie" $
-       maybe [] (parseCookies . snd) $
-       find (\h -> fst h == "Set-Cookie") headers
+  let headers = simpleHeaders resp
+   in lookup "JWT-Cookie" $
+        maybe [] (parseCookies . snd) $
+          find (\h -> fst h == "Set-Cookie") headers
 
 clearCookies :: WaiSession st ()
-clearCookies = WaiSession $ ReaderT $ \ _ -> modifyClientCookies (const mempty)
+clearCookies = WaiSession $ ReaderT $ \_ -> modifyClientCookies (const mempty)

@@ -17,8 +17,8 @@ import Control.Exception.Safe (catch, throwM, try)
 import Control.Monad.Except
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Crypto.JOSE (JWK)
-import Data.Aeson(encode)
-import Data.ByteString.Lazy (toStrict, fromStrict)
+import Data.Aeson (encode)
+import Data.ByteString.Lazy (fromStrict, toStrict)
 import Data.Maybe (fromMaybe)
 import Data.Swagger (Swagger)
 import Data.Text (pack, unpack)
@@ -34,7 +34,7 @@ import Sensei.IO
 import Sensei.Server
 import Sensei.Server.Auth.Types
   ( AuthResult (..),
-    CookieSettings(..),
+    CookieSettings (..),
     JWTSettings,
     defaultCookieSettings,
     defaultJWTSettings,
@@ -48,7 +48,7 @@ import Sensei.Server.UI
 import Sensei.Version
 import Servant
 import System.Environment (lookupEnv, setEnv)
-import System.FilePath((</>))
+import System.FilePath ((</>))
 import System.Posix.Daemonize
 
 type FullAPI =
@@ -59,7 +59,7 @@ type FullAPI =
 
 fullAPI :: Proxy FullAPI
 fullAPI = Proxy
-  
+
 daemonizeServer :: IO ()
 daemonizeServer = do
   configDir <- getConfigDirectory
@@ -108,7 +108,7 @@ senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv ->
 senseiApp env signal publicAuthKey output configDir logger = do
   runDB output configDir logger $ initLogStorage
   let jwtConfig = defaultJWTSettings publicAuthKey
-      cookieConfig = defaultCookieSettings { cookieXsrfSetting = Nothing }
+      cookieConfig = defaultCookieSettings {cookieXsrfSetting = Nothing}
       contextConfig = jwtConfig :. cookieConfig :. EmptyContext
       contextProxy :: Proxy [JWTSettings, CookieSettings]
       contextProxy = Proxy

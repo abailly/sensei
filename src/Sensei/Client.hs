@@ -32,13 +32,13 @@ where
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO)
-import Data.Maybe(fromMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Time
 import Network.HTTP.Client (defaultManagerSettings, newManager)
-import Network.HTTP.Client.TLS(tlsManagerSettings)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types.Status
-import Network.URI.Extra(uriToString')
+import Network.URI.Extra (uriToString')
 import Sensei.API
 import Sensei.App
 import Sensei.Client.Monad

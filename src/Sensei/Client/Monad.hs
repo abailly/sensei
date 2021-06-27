@@ -13,12 +13,12 @@ module Sensei.Client.Monad (ClientConfig (..), ClientMonad (..), module Control.
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Trans (MonadTrans (..))
-import Data.Aeson (FromJSON(..), ToJSON(..), object, (.=), withObject, (.:))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.=))
 import Data.CaseInsensitive
 import Data.Sequence
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
-import Network.URI.Extra (uriFromString, uriToString', uriAuthToString)
+import Network.URI.Extra (uriAuthToString, uriFromString, uriToString')
 import Sensei.Server.Auth.Types (SerializedToken (..))
 import Sensei.Version
 import Servant
@@ -32,22 +32,23 @@ data ClientConfig = ClientConfig
   deriving (Eq, Show)
 
 instance ToJSON ClientConfig where
-  toJSON ClientConfig{serverUri, authToken, startServerLocally} =
-    object [ "serverUri" .= uriToString' serverUri,
-             "authToken" .= authToken,
-             "startserverlocally" .= startServerLocally
-           ]
+  toJSON ClientConfig {serverUri, authToken, startServerLocally} =
+    object
+      [ "serverUri" .= uriToString' serverUri,
+        "authToken" .= authToken,
+        "startserverlocally" .= startServerLocally
+      ]
 
 instance FromJSON ClientConfig where
   parseJSON = withObject "ClientConfig" $ \o -> do
-    uri <- o .: "serverUri" >>= \ u -> case uriFromString u of
-                                         Nothing -> fail $ "Invalid uri:" <> u
-                                         Just uri -> pure uri
+    uri <-
+      o .: "serverUri" >>= \u -> case uriFromString u of
+        Nothing -> fail $ "Invalid uri:" <> u
+        Just uri -> pure uri
     token <- o .: "authToken"
     locally <- o .: "startServerLocally"
     pure $ ClientConfig uri token locally
-    
-    
+
 defaultConfig :: ClientConfig
 defaultConfig = ClientConfig "http://localhost:23456" Nothing True
 

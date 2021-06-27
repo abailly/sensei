@@ -8,8 +8,8 @@
 module Sensei.Server where
 
 import Control.Concurrent.MVar
-import Control.Monad (join)
 import Control.Exception.Safe (throwM)
+import Control.Monad (join)
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
@@ -18,12 +18,12 @@ import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Sensei.API
 import Sensei.DB
+import Sensei.Server.Auth.Types (Credentials (..), authenticateUser)
 import Sensei.Server.Links (nextDayLink, nextPageLink, periodLinks, previousDayLink, previousPageLink)
-import Servant.Auth.Server as SAS
-import Sensei.Server.Auth.Types(Credentials(..), authenticateUser)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant
+import Servant.Auth.Server as SAS
 
 killS ::
   MonadIO m => MVar () -> m ()
@@ -147,17 +147,23 @@ getVersionsS ::
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
 
 loginS ::
-  (MonadIO m, DB m) => JWTSettings -> CookieSettings -> Credentials -> m  (Headers
-             '[ Header "Set-Cookie" SetCookie,
-                Header "Set-Cookie" SetCookie
-              ]
-             UserProfile)
-loginS js cs Credentials{credLogin,credPassword} = do
+  (MonadIO m, DB m) =>
+  JWTSettings ->
+  CookieSettings ->
+  Credentials ->
+  m
+    ( Headers
+        '[ Header "Set-Cookie" SetCookie,
+           Header "Set-Cookie" SetCookie
+         ]
+        UserProfile
+    )
+loginS js cs Credentials {credLogin, credPassword} = do
   profile <- getUserProfileS credLogin
   case authenticateUser credPassword profile of
     SAS.Authenticated usr -> do
       mApplyCookies <- liftIO $ acceptLogin cs js usr
       case mApplyCookies of
-        Nothing -> throwM err401 { errBody = "Failed to generate cookies for user login" }
+        Nothing -> throwM err401 {errBody = "Failed to generate cookies for user login"}
         Just applyCookies -> return $ applyCookies profile
-    _ -> throwM err401 { errBody = "Fail to authenticate user" }
+    _ -> throwM err401 {errBody = "Fail to authenticate user"}

@@ -21,7 +21,7 @@ import Sensei.API
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
-import Sensei.Server.Auth.Types (createKeys, getPublicKey, createToken, setPassword)
+import Sensei.Server.Auth.Types (createKeys, createToken, getPublicKey, setPassword)
 import Sensei.Version
 import Servant (Headers (getResponse))
 import System.Exit
@@ -246,8 +246,9 @@ publicKeyParser =
     PublicKey
     ( long "public-key"
         <> short 'k'
-        <> help "Output a JWK representation of the public key from existing private key. \
-                \ This is useful for generating a public key from private key to put on a server."
+        <> help
+          "Output a JWK representation of the public key from existing private key. \
+          \ This is useful for generating a public key from private key to put on a server."
     )
 
 createTokenParser :: Parser AuthOptions
@@ -318,10 +319,10 @@ ep config (AuthOptions CreateToken) _ _ _ = do
   writeConfig config {authToken = Just token}
 ep config (AuthOptions SetPassword) userName _ _ = do
   oldProfile <- send config (getUserProfileC userName)
-  pwd <- readPassword 
+  pwd <- readPassword
   newProfile <- setPassword oldProfile pwd
-  void $ send config (setUserProfileC userName newProfile)    
-ep _config (AuthOptions NoOp)_  _ _ = pure ()
+  void $ send config (setUserProfileC userName newProfile)
+ep _config (AuthOptions NoOp) _ _ _ = pure ()
 
 println :: BS.ByteString -> IO ()
 println bs =
