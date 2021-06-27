@@ -158,6 +158,6 @@ loginS js cs Credentials{credLogin,credPassword} = do
     SAS.Authenticated usr -> do
       mApplyCookies <- liftIO $ acceptLogin cs js usr
       case mApplyCookies of
-        Nothing -> throwM err401
+        Nothing -> throwM err401 { errBody = "Failed to generate cookies for user login" }
         Just applyCookies -> return $ applyCookies profile
-    _ -> throwM err401
+    _ -> throwM err401 { errBody = "Fail to authenticate user" }
