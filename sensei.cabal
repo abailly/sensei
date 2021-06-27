@@ -57,6 +57,7 @@ library
                      , filepath
                      , hdaemonize
                      , http-client
+                     , http-client-tls
                      , http-link-header
                      , http-types
                      , insert-ordered-containers

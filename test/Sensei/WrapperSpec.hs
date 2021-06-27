@@ -23,7 +23,7 @@ io = WrapperIO {..}
   where
     runProcess _ _ = pure ExitSuccess
     getCurrentTime = pure $ UTCTime (toEnum 50000) 0
-    send (ClientMonad a) = runReaderT a (ClientConfig "localhost" 23456 (Just validSerializedToken) False)
+    send (ClientMonad a) = runReaderT a (ClientConfig "http://localhost:23456" (Just validSerializedToken) False)
     fileExists = const $ pure True
 
 spec :: Spec

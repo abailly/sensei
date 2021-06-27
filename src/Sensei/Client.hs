@@ -32,10 +32,13 @@ where
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO)
+import Data.Maybe(fromMaybe)
 import Data.Text (Text)
 import Data.Time
 import Network.HTTP.Client (defaultManagerSettings, newManager)
+import Network.HTTP.Client.TLS(tlsManagerSettings)
 import Network.HTTP.Types.Status
+import Network.URI.Extra(uriToString')
 import Sensei.API
 import Sensei.App
 import Sensei.Client.Monad
@@ -73,10 +76,12 @@ getVersionsC :: ClientMonad Versions
   :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
-send config@ClientConfig {serverHost, serverPort, startServerLocally} act = do
-  mgr <- newManager defaultManagerSettings
-  let base = BaseUrl Http serverHost serverPort ""
-      env = mkClientEnv mgr base
+send config@ClientConfig {serverUri, startServerLocally} act = do
+  let base = fromMaybe (BaseUrl Http "localhost" 23456 "") $ parseBaseUrl $ uriToString' serverUri
+  mgr <- case baseUrlScheme base of
+    Http -> newManager defaultManagerSettings
+    Https -> newManager tlsManagerSettings
+  let env = mkClientEnv mgr base
   res <- runClientM (runReaderT (unClient act) config) env
   case res of
     Left err ->

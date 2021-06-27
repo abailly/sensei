@@ -33,7 +33,7 @@ response = Response status200 (fromList [("Content-type", "application/json")]) 
 spec :: Spec
 spec = describe "ClientMonad" $ do
   it "sets Host, Origin and X-API-Version header from ClientConfig info" $ do
-    let config = ClientConfig "1.2.3.4" 1234 Nothing False
+    let config = ClientConfig "http://1.2.3.4:1234" Nothing False
         [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) config)
 
     toList (requestHeaders request)
@@ -43,7 +43,7 @@ spec = describe "ClientMonad" $ do
                       ]
 
   it "sets Authorization header from ClientConfig info given token is set" $ do
-    let config = ClientConfig "1.2.3.4" 1234 (Just validSerializedToken) False
+    let config = ClientConfig "http://1.2.3.4:1234" (Just validSerializedToken) False
         [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) config)
 
     toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict validAuthToken)]

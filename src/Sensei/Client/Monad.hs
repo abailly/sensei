@@ -13,27 +13,43 @@ module Sensei.Client.Monad (ClientConfig (..), ClientMonad (..), module Control.
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Trans (MonadTrans (..))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON(..), ToJSON(..), object, (.=), withObject, (.:))
 import Data.CaseInsensitive
 import Data.Sequence
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
-import GHC.Generics (Generic)
+import Network.URI.Extra (uriFromString, uriToString', uriAuthToString)
 import Sensei.Server.Auth.Types (SerializedToken (..))
 import Sensei.Version
 import Servant
 import Servant.Client.Core
 
 data ClientConfig = ClientConfig
-  { serverHost :: String,
-    serverPort :: Int,
+  { serverUri :: URI,
     authToken :: Maybe SerializedToken,
     startServerLocally :: Bool
   }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show)
 
+instance ToJSON ClientConfig where
+  toJSON ClientConfig{serverUri, authToken, startServerLocally} =
+    object [ "serverUri" .= uriToString' serverUri,
+             "authToken" .= authToken,
+             "startserverlocally" .= startServerLocally
+           ]
+
+instance FromJSON ClientConfig where
+  parseJSON = withObject "ClientConfig" $ \o -> do
+    uri <- o .: "serverUri" >>= \ u -> case uriFromString u of
+                                         Nothing -> fail $ "Invalid uri:" <> u
+                                         Just uri -> pure uri
+    token <- o .: "authToken"
+    locally <- o .: "startServerLocally"
+    pure $ ClientConfig uri token locally
+    
+    
 defaultConfig :: ClientConfig
-defaultConfig = ClientConfig "localhost" 23456 Nothing True
+defaultConfig = ClientConfig "http://localhost:23456" Nothing True
 
 newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => ReaderT ClientConfig m a}
 
@@ -54,8 +70,9 @@ instance MonadReader ClientConfig ClientMonad where
 
 instance RunClient ClientMonad where
   runRequestAcceptStatus st req = ClientMonad $ do
-    ClientConfig {serverHost, serverPort, authToken} <- ask
-    let hostPort = encodeUtf8 $ pack $ serverHost <> ":" <> show serverPort
+    ClientConfig {serverUri, authToken} <- ask
+    let hostPort = encodeUtf8 $ pack $ Prelude.drop 2 $ uriAuthToString id (uriAuthority serverUri) ""
+        -- TODO: Find a better way to handle URIs
         authorization rest =
           maybe rest (\tok -> (mk "Authorization", "Bearer " <> unToken tok) <| rest) authToken
 
@@ -63,7 +80,7 @@ instance RunClient ClientMonad where
           req
             { requestHeaders =
                 (mk "Host", hostPort)
-                  <| (mk "Origin", "http://" <> hostPort)
+                  <| (mk "Origin", encodeUtf8 $ pack $ uriToString' serverUri)
                   <| (mk "X-API-Version", toHeader senseiVersion)
                   <| authorization (requestHeaders req)
             }
