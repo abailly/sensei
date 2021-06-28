@@ -113,7 +113,7 @@ getLogS ::
   DB m => Text -> Maybe Natural -> m (Headers '[Header "Link" Text] [Event])
 getLogS userName page = do
   usrProfile <- getUserProfileS userName
-  EventsQueryResult {..} <- readEvents usrProfile (Page (fromMaybe 1 page) 50)
+  EventsQueryResult {..} <- readEvents usrProfile (maybe NoPagination (\ p -> Page p 50) page)
   let nextHeader =
         if endIndex < totalEvents
           then nextPageLink userName page

@@ -171,6 +171,14 @@ interpret (ReadEvents (Page pageNum size)) = do
       startIndex = min (fromIntegral $ (pageNum - 1) * size) totalEvents
       endIndex = min (fromIntegral $ pageNum * size) totalEvents
   pure EventsQueryResult {..}
+interpret (ReadEvents NoPagination) = do
+  es <- gets events
+  let totalEvents = fromIntegral $ Seq.length es
+      resultEvents = toList es
+      eventsCount = totalEvents
+      startIndex = 1
+      endIndex = totalEvents
+  pure EventsQueryResult {..}
 interpret (ReadNotes rge) = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- Seq.filter (inRange rge . eventTimestamp) <$> gets events

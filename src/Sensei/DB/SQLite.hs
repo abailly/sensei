@@ -396,12 +396,26 @@ readEventsSQL _ Page {pageNumber, pageSize} = do
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
         count = "select count(*) from event_log"
-    resultEvents <- query cnx logger q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
+        limit = SQLInteger $ fromIntegral pageSize
+        offset = SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize
+    resultEvents <- query cnx logger q [limit, offset]
     [[numEvents]] <- query_ cnx logger count
     let totalEvents = fromInteger numEvents
         eventsCount = fromIntegral $ length resultEvents
         startIndex = min ((pageNumber - 1) * pageSize) totalEvents
         endIndex = min (pageNumber * pageSize) totalEvents
+    pure $ EventsQueryResult {..}
+readEventsSQL _ NoPagination = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp asc"
+        count = "select count(*) from event_log"
+    resultEvents <- query_ cnx logger q
+    [[numEvents]] <- query_ cnx logger count
+    let totalEvents = fromInteger numEvents
+        eventsCount = totalEvents
+        startIndex = 1
+        endIndex = totalEvents
     pure $ EventsQueryResult {..}
 
 readNotesSQL ::

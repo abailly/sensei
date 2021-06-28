@@ -33,6 +33,7 @@ import Sensei.API
 import Sensei.Time
 
 data Pagination = Page {pageNumber :: Natural, pageSize :: Natural}
+  | NoPagination
   deriving (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 
