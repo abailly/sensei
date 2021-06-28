@@ -29,12 +29,17 @@ import System.IO
 import System.IO.Unsafe
 
 data Options
-  = QueryOptions {queryDay :: Day, summarize :: Bool, groups :: [Group]}
+  = QueryOptions QueryOptions
   | RecordOptions {recordType :: FlowType}
   | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
   | UserOptions {userAction :: UserAction}
   | AuthOptions AuthOptions
   deriving (Show, Eq)
+
+data QueryOptions =
+  FlowQuery {queryDay :: Day, summarize :: Bool, groups :: [Group]}
+  | GetAllLogs
+  deriving (Eq, Show)
 
 data NotesQuery = QueryDay Day | QuerySearch Text
   deriving (Show, Eq)
@@ -89,7 +94,9 @@ authOptions =
   AuthOptions <$> (createKeysParser <|> publicKeyParser <|> createTokenParser <|> setPasswordParser)
 
 queryOptions :: Parser Options
-queryOptions = QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
+queryOptions = QueryOptions <$>
+  (FlowQuery <$> dayParser <*> summarizeParser <*> many groupParser <|>
+  pure GetAllLogs <* allLogsParser)
 
 recordOptions :: Maybe [FlowType] -> Parser Options
 recordOptions flows = RecordOptions <$> flowTypeParser flows
@@ -154,6 +161,17 @@ groupParser =
         <> metavar "GROUP"
         <> help "groups for retrieving daily views, one of Week, Month, Quarter or Year"
     )
+
+allLogsParser :: Parser ()
+allLogsParser =
+  flag
+    ()
+    ()
+    ( long "all-logs"
+        <> short 'l'
+        <> help "retrieve the full log for the current user"
+    )
+
 
 notesParser :: Parser ()
 notesParser =
@@ -279,12 +297,14 @@ display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
 
 ep :: ClientConfig -> Options -> Text -> UTCTime -> Text -> IO ()
-ep config (QueryOptions day False []) usrName _ _ =
+ep config (QueryOptions (FlowQuery day False [])) usrName _ _ =
   send config (queryFlowDayC usrName day) >>= display
-ep config (QueryOptions day True []) usrName _ _ =
+ep config (QueryOptions (FlowQuery day True [])) usrName _ _ =
   send config (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day) Nothing) >>= display . getResponse
-ep config (QueryOptions _ _ grps) usrName _ _ =
+ep config (QueryOptions (FlowQuery _ _ grps)) usrName _ _ =
   send config (queryFlowC usrName grps) >>= display
+ep config (QueryOptions GetAllLogs) usrName _ _ =
+  send config (getLogC usrName Nothing) >>= display . getResponse
 ep config (NotesOptions (QueryDay day) noteFormat) usrName _ _ =
   send config (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
 ep config (NotesOptions (QuerySearch txt) noteFormat) usrName _ _ =
@@ -306,12 +326,10 @@ ep config (UserOptions (SetProfile file)) usrName _ _ = do
 ep config (UserOptions GetVersions) _ _ _ = do
   vs <- send config getVersionsC
   display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
-ep config (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
-  f <- send config (updateFlowC curUser diff)
-  display f
-ep config (UserOptions (GetFlow q)) curUser _ _ = do
-  f <- send config (getFlowC curUser q)
-  display f
+ep config (UserOptions (ShiftTimestamp diff)) curUser _ _ =
+  send config (updateFlowC curUser diff) >>= display
+ep config (UserOptions (GetFlow q)) curUser _ _ =
+  send config (getFlowC curUser q) >>= display
 ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
 ep _config (AuthOptions PublicKey) _ _ _ = getConfigDirectory >>= getPublicKey >>= display
 ep config (AuthOptions CreateToken) _ _ _ = do

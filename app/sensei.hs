@@ -18,7 +18,7 @@ import qualified Data.Time as Time
 import Sensei.App
 import Sensei.CLI
 import qualified Sensei.Client as Client
-import Sensei.IO (readConfig, getConfigDirectory)
+import Sensei.IO (readConfig)
 import Sensei.API(userDefinedFlows)
 import Sensei.Wrapper
 import System.Directory

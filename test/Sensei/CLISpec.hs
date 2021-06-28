@@ -44,8 +44,11 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses 'query -s' as a summary with default date" $ do
       runOptionsParser Nothing ["query", "-s"] `shouldSatisfy` \case
-        (Right (QueryOptions _ True [])) -> True
+        (Right (QueryOptions (FlowQuery _ True []))) -> True
         _ -> False
+
+    it "parses 'query -l' as a querying all logs" $ do
+      runOptionsParser Nothing ["query", "-l"] `shouldBe` Right (QueryOptions GetAllLogs)
 
     it "parses 'auth --create-keys' as creation of new key pair" $ do
       runOptionsParser Nothing ["auth", "--create-keys"] `shouldBe` Right (AuthOptions CreateKeys)
