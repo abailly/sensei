@@ -73,7 +73,7 @@ type DisplayVersions =
 
 type PostEvent =
   Summary "Record a new `Event` in the log."
-    :> ReqBody '[JSON] Event
+    :> ReqBody '[JSON] [Event]
     :> Post '[JSON] ()
 
 type PatchFlowTimeshift =

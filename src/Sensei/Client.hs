@@ -50,7 +50,7 @@ import Servant.Client.Core
 killC :: ClientMonad ()
 killC = clientIn (Proxy @KillServer) Proxy
 
-postEventC :: Event -> ClientMonad ()
+postEventC :: [Event] -> ClientMonad ()
 getFlowC :: Text -> Reference -> ClientMonad (Maybe Event)
 updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]

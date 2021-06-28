@@ -66,7 +66,7 @@ wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   st <- getCurrentTime
   ex <- runProcess realProg progArgs
   en <- getCurrentTime
-  send (postEventC $ EventTrace $ Trace (pack curUser) en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st))
+  send (postEventC [EventTrace $ Trace (pack curUser) en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
   pure ex
 
 toInt :: ExitCode -> Int

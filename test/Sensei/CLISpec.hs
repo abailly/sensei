@@ -12,16 +12,20 @@ spec :: Spec
 spec = describe "Command-Line Interface" $ do
   describe "Options parser" $ do
     it "parses 'record -e' as 'Experimenting' flow type given flows is Nothing" $ do
-      runOptionsParser Nothing ["record", "-e"] `shouldBe` Right (RecordOptions (FlowType "Experimenting"))
+      runOptionsParser Nothing ["record", "-e"] `shouldBe` Right (RecordOptions $ SingleFlow  (FlowType "Experimenting"))
 
     it "parses 'record -g' as an error given flows is Nothing" $ do
       runOptionsParser Nothing ["record", "-g"] `shouldSatisfy` isLeft
 
     it "parses 'record -r' as 'Refactoring' flow type given flows list contains 'Refactoring'" $ do
-      runOptionsParser (Just [FlowType "Refactoring"]) ["record", "-r"] `shouldBe` Right (RecordOptions (FlowType "Refactoring"))
+      runOptionsParser (Just [FlowType "Refactoring"]) ["record", "-r"] `shouldBe` Right (RecordOptions $ SingleFlow (FlowType "Refactoring"))
 
     it "parses 'record -n' as 'Note' flow type" $ do
-      runOptionsParser (Just [FlowType "Refactoring"]) ["record", "-n"] `shouldBe` Right (RecordOptions Note)
+      runOptionsParser (Just [FlowType "Refactoring"]) ["record", "-n"] `shouldBe` Right (RecordOptions $ SingleFlow Note)
+
+    it "parses 'record --from-file <somefile>' as recording events from raw json file" $ do
+      runOptionsParser (Just [FlowType "Refactoring"]) ["record", "--from-file", "somefile.json"]
+        `shouldBe` Right (RecordOptions $ FromFile "somefile.json")
 
     it "parses 'user -U' as user profile query" $ do
       runOptionsParser Nothing ["user", "-U"] `shouldBe` Right (UserOptions GetProfile)

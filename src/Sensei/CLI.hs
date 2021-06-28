@@ -30,7 +30,7 @@ import System.IO.Unsafe
 
 data Options
   = QueryOptions QueryOptions
-  | RecordOptions {recordType :: FlowType}
+  | RecordOptions RecordOptions
   | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
   | UserOptions {userAction :: UserAction}
   | AuthOptions AuthOptions
@@ -39,6 +39,11 @@ data Options
 data QueryOptions =
   FlowQuery {queryDay :: Day, summarize :: Bool, groups :: [Group]}
   | GetAllLogs
+  deriving (Eq, Show)
+
+data RecordOptions =
+  SingleFlow {recordType :: FlowType}
+  | FromFile FilePath
   deriving (Eq, Show)
 
 data NotesQuery = QueryDay Day | QuerySearch Text
@@ -99,7 +104,9 @@ queryOptions = QueryOptions <$>
   pure GetAllLogs <* allLogsParser)
 
 recordOptions :: Maybe [FlowType] -> Parser Options
-recordOptions flows = RecordOptions <$> flowTypeParser flows
+recordOptions flows = RecordOptions <$>
+  (SingleFlow <$> flowTypeParser flows <|>
+   FromFile <$> fromFileParser)
 
 notesOptions :: Parser Options
 notesOptions = NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> searchParser)) <*> formatParser
@@ -201,6 +208,12 @@ flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
       flag' End (short 'E' <> help "End previous period")
         <|> flag' Note (short 'n' <> help "Taking some note")
         <|> flag' Other (short 'o' <> help "Other period")
+
+fromFileParser :: Parser FilePath
+fromFileParser =
+  strOption ( long "from-file"
+              <> help "Read list of events to post from given JSON file"
+            )
 
 profileParser :: Parser ()
 profileParser =
@@ -309,13 +322,25 @@ ep config (NotesOptions (QueryDay day) noteFormat) usrName _ _ =
   send config (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
 ep config (NotesOptions (QuerySearch txt) noteFormat) usrName _ _ =
   send config (searchNotesC usrName (Just txt)) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
-ep config (RecordOptions ftype) curUser startDate curDir =
+ep config (RecordOptions (SingleFlow ftype)) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
-      send config $ postEventC (EventNote $ NoteFlow curUser startDate curDir txt)
+      send config $ postEventC [EventNote $ NoteFlow curUser startDate curDir txt]
     _ ->
-      send config $ postEventC (EventFlow $ Flow ftype curUser startDate curDir)
+      send config $ postEventC [EventFlow $ Flow ftype curUser startDate curDir]
+ep config (RecordOptions (FromFile fileName)) _ _ _ = do
+  decoded <- eitherDecode <$> LBS.readFile fileName
+  case decoded of
+    Left err -> hPutStrLn stderr ("failed to decode events from " <> fileName <> ": " <> err) >> exitWith (ExitFailure 1)
+    Right events -> do
+      let chunks [] = []
+          chunks xs =
+            let (chunk, rest) = splitAt 50 xs
+            in chunk : chunks rest
+      mapM_ (\ evs -> do
+                putStrLn $ "Sending " <> show (length evs) <> " events: " <> show evs
+                send config $ postEventC evs) $ chunks events
 ep config (UserOptions GetProfile) usrName _ _ =
   send config (getUserProfileC usrName) >>= display
 ep config (UserOptions (SetProfile file)) usrName _ _ = do
