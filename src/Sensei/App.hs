@@ -65,8 +65,11 @@ daemonizeServer = do
   configDir <- getConfigDirectory
   setEnv "ENVIRONMENT" "Prod"
   setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
-  getKey (configDir </> "sensei.jwk") >>= setEnv "SENSEI_SERVER_KEY" . unpack . decodeUtf8 . toStrict . encode
+  getKeyAsString configDir >>= setEnv "SENSEI_SERVER_KEY"
   daemonize $ startServer configDir
+
+getKeyAsString :: FilePath -> IO String
+getKeyAsString configDir = unpack . decodeUtf8 . toStrict . encode <$> getKey (configDir </> "sensei.jwk")
 
 startServer :: FilePath -> IO ()
 startServer configDir =

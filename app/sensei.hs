@@ -46,21 +46,21 @@ main = do
   let io = wrapperIO config
   case prog of
     "ep" -> do
-      res <- try @Client.ClientError $ send io $ (Client.getUserProfileC $ pack curUser)
+      res <- try @Client.ClientError $ send io (Client.getUserProfileC $ pack curUser)
       let flows = case res of
                     Left _err -> Nothing
                     Right profile -> userDefinedFlows profile
       opts <- parseSenseiOptions flows
       ep config opts (pack curUser) st (pack currentDir)
     "sensei-exe" -> do
-      configDir <- getConfigDirectory
-      setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
+      -- TODO this is clunky
+      configDir <- fromMaybe "." <$> lookupEnv "SENSEI_SERVER_CONFIG_DIR"
       startServer configDir
     _ -> do
       res <- tryWrapProg io curUser prog progArgs currentDir
       handleWrapperResult prog res
   where
-    wrapperIO config = WrapperIO {  
+    wrapperIO config = WrapperIO {
       runProcess =
         \realProg progArgs -> do
           (_, _, _, h) <-
