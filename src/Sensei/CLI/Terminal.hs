@@ -13,6 +13,7 @@ import System.Console.ANSI
 import System.IO
 import System.Directory(removeFile)
 import System.Environment
+import System.FilePath((<.>))
 import System.Process
   ( CreateProcess (std_err, std_in, std_out),
     StdStream (Inherit),
@@ -28,17 +29,18 @@ captureNote =
 
 captureInEditor :: String -> IO Text.Text
 captureInEditor editor = do
-  (fp, hdl) <- mkstemp "capture."
+  (fp, hdl) <- mkstemp "capture-"
+  let editFile = fp <.> "md" -- let editor try to be smart
   hClose hdl
   (_, _, _, h) <-
     createProcess
-    (proc editor [fp])
+    (proc editor [editFile])
     { std_in = Inherit,
       std_out = Inherit,
       std_err = Inherit
     }
   void $ waitForProcess h
-  decodeUtf8 <$> BS.readFile fp <* removeFile fp
+  decodeUtf8 <$> BS.readFile editFile <* removeFile editFile
 
 captureInTerminal :: IO Text.Text
 captureInTerminal = do
