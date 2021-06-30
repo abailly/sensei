@@ -64,7 +64,7 @@ instance DB FileDB where
   readNotes u _ = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
   searchNotes = undefined
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
-  readProfile = FileDB $ (asks configDir >>= liftIO . readProfileFile)
+  readProfile _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)
 
 -- | Initialise a log store at given path
 initLogStorageFile ::

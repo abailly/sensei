@@ -93,9 +93,9 @@ class (Exception (DBError m), MonadCatch m) => DB m where
   -- | Read all `Trace` from DB and construct appropriate `CommandView` from each of them
   readCommands :: UserProfile -> m [CommandView]
 
-  -- | Read the user's profile
-  -- This function may fail of there's no profile or the format is incorrect
-  readProfile :: m (Either Text UserProfile)
+  -- | Read a user's profile
+  -- This function may fail of there's no profile or the format is incorrect.
+  readProfile :: Text -> m (Either Text UserProfile)
 
 flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay flow =

@@ -33,7 +33,7 @@ data DBLog
   | SearchNotes {user :: Text, search :: Text}
   | ReadViews {user :: Text}
   | ReadCommands {user :: Text}
-  | ReadProfile
+  | ReadProfile {user :: Text}
   deriving (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -63,5 +63,5 @@ instance (DB m, MonadIO m) => DB (ReaderT LoggerEnv m) where
     ReaderT $ \l -> withLog l (ReadViews (userName u)) (readViews u)
   readCommands u =
     ReaderT $ \l -> withLog l (ReadCommands (userName u)) (readCommands u)
-  readProfile =
-    ReaderT $ \l -> withLog l (ReadProfile) readProfile
+  readProfile n =
+    ReaderT $ \l -> withLog l (ReadProfile n) (readProfile n)

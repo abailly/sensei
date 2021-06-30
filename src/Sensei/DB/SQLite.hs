@@ -244,7 +244,7 @@ instance DB SQLiteDB where
   searchNotes u txt = searchNotesSQL u txt
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
-  readProfile = SQLiteDB (asks configDir >>= liftIO . readProfileFile)
+  readProfile _ = SQLiteDB (asks configDir >>= liftIO . readProfileFile)
 
 data Events
   = StoragePathCreated {dbPath :: FilePath}

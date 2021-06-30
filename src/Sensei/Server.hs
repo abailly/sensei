@@ -130,8 +130,8 @@ getLogS userName page = do
 
 getUserProfileS ::
   (DB m) => Text -> m UserProfile
-getUserProfileS _ = do
-  prof <- readProfile
+getUserProfileS userName = do
+  prof <- readProfile userName
   case prof of
     Left _ -> pure defaultProfile
     Right prf -> pure prf

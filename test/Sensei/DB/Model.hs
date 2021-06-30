@@ -209,7 +209,7 @@ runDB ReadViews = readProfileOrDefault >>= readViews
 runDB ReadCommands = readProfileOrDefault >>= readCommands
 
 readProfileOrDefault :: DB db => db UserProfile
-readProfileOrDefault = fmap (either (const defaultProfile) id) readProfile
+readProfileOrDefault = fmap (either (const defaultProfile) id) (readProfile "user")
 
 runActions :: (DB db) => Actions -> db [String]
 runActions (Actions actions) =
