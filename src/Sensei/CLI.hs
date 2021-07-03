@@ -36,13 +36,13 @@ data Options
   | AuthOptions AuthOptions
   deriving (Show, Eq)
 
-data QueryOptions =
-  FlowQuery {queryDay :: Day, summarize :: Bool, groups :: [Group]}
+data QueryOptions
+  = FlowQuery {queryDay :: Day, summarize :: Bool, groups :: [Group]}
   | GetAllLogs
   deriving (Eq, Show)
 
-data RecordOptions =
-  SingleFlow {recordType :: FlowType}
+data RecordOptions
+  = SingleFlow {recordType :: FlowType}
   | FromFile FilePath
   deriving (Eq, Show)
 
@@ -99,14 +99,18 @@ authOptions =
   AuthOptions <$> (createKeysParser <|> publicKeyParser <|> createTokenParser <|> setPasswordParser)
 
 queryOptions :: Parser Options
-queryOptions = QueryOptions <$>
-  (FlowQuery <$> dayParser <*> summarizeParser <*> many groupParser <|>
-  pure GetAllLogs <* allLogsParser)
+queryOptions =
+  QueryOptions
+    <$> ( FlowQuery <$> dayParser <*> summarizeParser <*> many groupParser
+            <|> pure GetAllLogs <* allLogsParser
+        )
 
 recordOptions :: Maybe [FlowType] -> Parser Options
-recordOptions flows = RecordOptions <$>
-  (SingleFlow <$> flowTypeParser flows <|>
-   FromFile <$> fromFileParser)
+recordOptions flows =
+  RecordOptions
+    <$> ( SingleFlow <$> flowTypeParser flows
+            <|> FromFile <$> fromFileParser
+        )
 
 notesOptions :: Parser Options
 notesOptions = NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> searchParser)) <*> formatParser
@@ -179,7 +183,6 @@ allLogsParser =
         <> help "retrieve the full log for the current user"
     )
 
-
 notesParser :: Parser ()
 notesParser =
   flag
@@ -211,9 +214,10 @@ flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
 
 fromFileParser :: Parser FilePath
 fromFileParser =
-  strOption ( long "from-file"
-              <> help "Read list of events to post from given JSON file"
-            )
+  strOption
+    ( long "from-file"
+        <> help "Read list of events to post from given JSON file"
+    )
 
 profileParser :: Parser ()
 profileParser =
@@ -337,10 +341,13 @@ ep config (RecordOptions (FromFile fileName)) _ _ _ = do
       let chunks [] = []
           chunks xs =
             let (chunk, rest) = splitAt 50 xs
-            in chunk : chunks rest
-      mapM_ (\ evs -> do
-                putStrLn $ "Sending " <> show (length evs) <> " events: " <> show evs
-                send config $ postEventC evs) $ chunks events
+             in chunk : chunks rest
+      mapM_
+        ( \evs -> do
+            putStrLn $ "Sending " <> show (length evs) <> " events: " <> show evs
+            send config $ postEventC evs
+        )
+        $ chunks events
 ep config (UserOptions GetProfile) usrName _ _ =
   send config (getUserProfileC usrName) >>= display
 ep config (UserOptions (SetProfile file)) usrName _ _ = do
