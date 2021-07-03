@@ -14,7 +14,7 @@ import Network.HTTP.Types (http11, status200)
 import Sensei.API (currentVersion)
 import Sensei.Client (ClientConfig (..), getVersionsC, unClient)
 import Sensei.TestHelper (validAuthToken, validSerializedToken)
-import Sensei.Version (Versions (..), senseiVersion)
+import Sensei.Version (Versions (..), senseiVersion, senseiVersionLBS)
 import Servant.Client.Core (Request, Response, ResponseF (Response), requestHeaders)
 import Servant.Client.Core.RunClient (RunClient (..))
 import Test.Hspec
@@ -39,7 +39,7 @@ spec = describe "ClientMonad" $ do
     toList (requestHeaders request)
       `shouldContain` [ (mk "Host", "1.2.3.4:1234"),
                         (mk "Origin", "http://1.2.3.4:1234"),
-                        (mk "X-API-Version", "0.31.0")
+                        (mk "X-API-Version", senseiVersionLBS)
                       ]
 
   it "sets Authorization header from ClientConfig info given token is set" $ do

@@ -19,16 +19,19 @@ module Sensei.Version
     checkVersion,
     Versions (..),
     senseiVersion,
+    senseiVersionLBS,
     senseiVersionTH,
     module Data.Version,
   )
 where
 
 import Data.Aeson
+import qualified Data.ByteString as BS
 import qualified Data.List as List
 import qualified Data.Text as T
 import Data.Text.Lazy (fromStrict)
 import Data.Text.Lazy.Encoding (encodeUtf8)
+import qualified Data.Text.Encoding as LTE
 import Data.Version
 import GHC.Base (Symbol)
 import GHC.Generics
@@ -59,6 +62,9 @@ data Versions = Versions
 -- file.
 senseiVersion :: Version
 senseiVersion = version
+
+senseiVersionLBS :: BS.ByteString
+senseiVersionLBS = LTE.encodeUtf8 $ T.pack $ showVersion version
 
 senseiVersionTH :: Q Type
 senseiVersionTH = pure (LitT (StrTyLit $ showVersion senseiVersion))
