@@ -1,8 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.DB.SQLiteSpec where
 
+import Control.Exception.Safe (throwIO)
 import Control.Monad.Reader
+import Data.List (isInfixOf, isPrefixOf)
 import Data.Text (Text)
 import Preface.Log
 import Sensei.API
@@ -11,11 +14,11 @@ import qualified Sensei.DB.File as File
 import Sensei.DB.Log ()
 import Sensei.DB.Model (canReadFlowsAndTracesWritten)
 import qualified Sensei.DB.Model as Model
-import Sensei.DB.SQLite (SQLiteDBError (..), migrateFileDB, runDB)
+import Sensei.DB.SQLite (SQLiteDBError (..), migrateFileDB, runDB, withBackup)
 import Sensei.TestHelper
 import Sensei.Time hiding (getCurrentTime)
 import System.Directory
-import System.FilePath ((<.>))
+import System.FilePath (takeDirectory, takeFileName, (<.>))
 import Test.Hspec
 import Test.QuickCheck
 
@@ -95,3 +98,65 @@ spec =
           searchNotes defaultProfile "foo"
 
         res `shouldBe` [(utcToLocalTime (userTimezone defaultProfile) noteTime, content)]
+
+      describe "Backup files" $ do
+        let isBackupFileFor file fp =
+              file `isPrefixOf` takeFileName fp
+                && ".bak." `isInfixOf` takeFileName fp
+
+        it "backup file before running action" $ \tmp -> do
+          writeFile tmp "Foo"
+
+          withBackup tmp $ \file -> do
+            writeFile file "Bar"
+
+            let dir = takeDirectory file
+            backups <- filter (isBackupFileFor tmp) <$> listDirectory dir
+
+            backups `shouldNotBe` []
+            readFile (head backups) `shouldReturn` "Foo"
+
+        it "Delete backup file after action completes successfuly" $ \tmp -> do
+          withBackup tmp $ \file -> do
+            writeFile file "Bar"
+
+          let dir = takeDirectory tmp
+
+          files <- listDirectory dir
+          filter (isBackupFileFor tmp) files `shouldBe` []
+
+        it "Restore initial file from backup and delete backup after action throws SQLiteDBError" $ \tmp -> do
+          writeFile tmp "Foo"
+
+          withBackup
+            tmp
+            ( \file -> do
+                writeFile file "Bar"
+
+                void $ throwIO $ SQLiteDBError "select * from foo;" "some error"
+            )
+            `shouldThrow` \(_ :: SQLiteDBError) -> True
+
+          let dir = takeDirectory tmp
+
+          files <- listDirectory dir
+          filter (isBackupFileFor tmp) files `shouldBe` []
+          readFile tmp `shouldReturn` "Foo"
+
+        it "Do not remove backup file after action throws IOException" $ \tmp -> do
+          writeFile tmp "Foo"
+
+          withBackup
+            tmp
+            ( \file -> do
+                writeFile file "Bar"
+
+                void $ throwIO $ userError "some error"
+            )
+            `shouldThrow` anyIOException
+
+          let dir = takeDirectory tmp
+
+          files <- listDirectory dir
+          filter (isBackupFileFor tmp) files `shouldNotBe` []
+          mapM_ removeFile (filter (isBackupFileFor tmp) files)

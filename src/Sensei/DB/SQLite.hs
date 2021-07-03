@@ -13,15 +13,24 @@
 --
 -- The DB is expected to have the following schema:
 -- @@
+-- CREATE TABLE users (
+--    id integer primary key,
+--    uid text not null,
+--    user text not null,
+--    profile text not null);
+--
 -- CREATE TABLE schema_migrations ( id integer primary key,
 --                                  filename text not null,
 --                                  checksum text not null,
 --                                  executed_at integer default (strftime('%s','now')) not null);
+--
 -- CREATE TABLE event_log ( id integer primary key,
 --                          timestamp text not null,
 --                          version integer not null,
+--                          user text not null,
 --                          flow_type text not null,
 --                          flow_data text not null);
+--
 -- CREATE TABLE config_log ( id integer primary key,
 --                           timestamp text not null,
 --                           version integer not null,
@@ -29,11 +38,14 @@
 --                           key text not null,
 --                           value text not null);
 -- @@
+--
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB, SQLiteDBError (..)) where
+module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB, SQLiteDBError (..)
+                        , withBackup) where
 
 import Control.Exception (throwIO)
-import Control.Exception.Safe (Exception, Handler (Handler), IOException, MonadCatch, MonadThrow, catches, throwM, try)
+import Control.Exception.Safe (Exception,
+                               catch,  Handler (Handler), IOException, MonadCatch, MonadThrow, catches, throwM, try)
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
@@ -105,7 +117,10 @@ getDataFile configDir = do
       res <- migrateFileDB old configDir
       case res of
         Left err -> throwIO $ userError $ "failed to migrate File DB, aborting " <> unpack err
-        Right _ -> renameFile old new >> pure new
+        Right _ -> do
+          renameFile old new
+          pure new
+
 
 -- | Migrate an existing File-based event log to a SQLite-based one.
 --  The old database is preserved and copied to a new File with same name
@@ -256,12 +271,6 @@ data Events
 
 -- ** Orphan Instances
 
-instance A.ToJSON Query where
-  toJSON = A.String . fromQuery
-
-instance A.FromJSON Query where
-  parseJSON = A.withText "Query" $ pure . Query
-
 -- initializes the DB file
 -- if the file does not exist, it is created
 initSQLiteDB :: SQLiteDB ()
@@ -272,24 +281,37 @@ initSQLiteDB = do
     liftIO $ do
       openFile storagePath WriteMode >>= hClose
       logInfo logger (StoragePathCreated storagePath)
-  liftIO $ withLog logger (MigratingSQLiteDB storagePath) $ migrateSQLiteDB storagePath
+  liftIO $ withLog logger (MigratingSQLiteDB storagePath) $ migrateSQLiteDB logger storagePath
 
-migrateSQLiteDB :: FilePath -> IO ()
-migrateSQLiteDB sqliteFile =
-  SQLite.withConnection sqliteFile $ \cnx -> do
+migrateSQLiteDB :: LoggerEnv -> FilePath -> IO ()
+migrateSQLiteDB logger sqliteFile = 
+  withBackup sqliteFile $ \ file ->
+  SQLite.withConnection file $ \cnx -> do
     migResult <-
       runMigrations
+       logger
         cnx
         [ InitialMigration,
           createLog,
           createConfig,
           createNotesSearch,
-          populateSearch
+          populateSearch,
+          createUsers,
+          addUserInEventLog,
+          updateUserInEventLog
         ]
     case migResult of
       MigrationSuccessful -> pure ()
-      MigrationFailed err -> throwM $ SQLiteDBError "" err
+      MigrationFailed err -> throwIO $ SQLiteDBError "" err
 
+withBackup :: FilePath -> (FilePath -> IO a) -> IO a
+withBackup file action = do
+  timestamp <- Time.formatTime Time.defaultTimeLocale "%s" <$> Time.getCurrentTime
+  let backup = file <.> "bak" <.> timestamp
+  copyFile file backup
+  (action file <* removeFile backup)
+    `catch` \ (e :: SQLiteDBError) -> copyFile backup file >> removeFile backup >> throwIO e
+    
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
   SQLiteConfig {logger} <- ask
