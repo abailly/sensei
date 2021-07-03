@@ -158,6 +158,7 @@ test-suite sensei-test
                      , servant-client-core
                      , servant-server
                      , servant-server-base
+                     , sqlite-simple
                      , text
                      , time
                      , time-lens
