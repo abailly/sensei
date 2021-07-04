@@ -29,9 +29,9 @@ import Data.Aeson
 import qualified Data.ByteString as BS
 import qualified Data.List as List
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as LTE
 import Data.Text.Lazy (fromStrict)
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import qualified Data.Text.Encoding as LTE
 import Data.Version
 import GHC.Base (Symbol)
 import GHC.Generics

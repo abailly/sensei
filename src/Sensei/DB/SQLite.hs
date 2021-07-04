@@ -40,12 +40,28 @@
 -- @@
 --
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB, SQLiteDBError (..)
-                        , withBackup) where
+module Sensei.DB.SQLite
+  ( runDB,
+    getDataFile,
+    migrateFileDB,
+    SQLiteDB,
+    SQLiteDBError (..),
+    withBackup,
+  )
+where
 
 import Control.Exception (throwIO)
-import Control.Exception.Safe (Exception,
-                               catch,  Handler (Handler), IOException, MonadCatch, MonadThrow, catches, throwM, try)
+import Control.Exception.Safe
+  ( Exception,
+    Handler (Handler),
+    IOException,
+    MonadCatch,
+    MonadThrow,
+    catch,
+    catches,
+    throwM,
+    try,
+  )
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
@@ -120,7 +136,6 @@ getDataFile configDir = do
         Right _ -> do
           renameFile old new
           pure new
-
 
 -- | Migrate an existing File-based event log to a SQLite-based one.
 --  The old database is preserved and copied to a new File with same name
@@ -284,25 +299,25 @@ initSQLiteDB = do
   liftIO $ withLog logger (MigratingSQLiteDB storagePath) $ migrateSQLiteDB logger storagePath
 
 migrateSQLiteDB :: LoggerEnv -> FilePath -> IO ()
-migrateSQLiteDB logger sqliteFile = 
-  withBackup sqliteFile $ \ file ->
-  SQLite.withConnection file $ \cnx -> do
-    migResult <-
-      runMigrations
-       logger
-        cnx
-        [ InitialMigration,
-          createLog,
-          createConfig,
-          createNotesSearch,
-          populateSearch,
-          createUsers,
-          addUserInEventLog,
-          updateUserInEventLog
-        ]
-    case migResult of
-      MigrationSuccessful -> pure ()
-      MigrationFailed err -> throwIO $ SQLiteDBError "" err
+migrateSQLiteDB logger sqliteFile =
+  withBackup sqliteFile $ \file ->
+    SQLite.withConnection file $ \cnx -> do
+      migResult <-
+        runMigrations
+          logger
+          cnx
+          [ InitialMigration,
+            createLog,
+            createConfig,
+            createNotesSearch,
+            populateSearch,
+            createUsers,
+            addUserInEventLog,
+            updateUserInEventLog
+          ]
+      case migResult of
+        MigrationSuccessful -> pure ()
+        MigrationFailed err -> throwIO $ SQLiteDBError "" err
 
 withBackup :: FilePath -> (FilePath -> IO a) -> IO a
 withBackup file action = do
@@ -310,8 +325,8 @@ withBackup file action = do
   let backup = file <.> "bak" <.> timestamp
   copyFile file backup
   (action file <* removeFile backup)
-    `catch` \ (e :: SQLiteDBError) -> copyFile backup file >> removeFile backup >> throwIO e
-    
+    `catch` \(e :: SQLiteDBError) -> copyFile backup file >> removeFile backup >> throwIO e
+
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
   SQLiteConfig {logger} <- ask

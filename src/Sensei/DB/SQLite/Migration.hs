@@ -1,11 +1,11 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Handles migration of DB schema and data in SQLite.
 --  This is heavily inspired by <https://github.com/ameingast/postgresql-simple-migration postgressql-simple-migration>
@@ -15,16 +15,17 @@ module Sensei.DB.SQLite.Migration where
 
 import Control.Exception.Safe
 import Control.Monad.Reader
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text, pack)
 import qualified Data.Text as Text
 import Database.SQLite.Simple
-import Preface.Utils
+import GHC.Generics (Generic)
 import Preface.Log (LoggerEnv, logInfo)
-import GHC.Generics(Generic)
-import Data.Aeson(ToJSON, FromJSON)
+import Preface.Utils
 
 -- Orphans
 deriving newtype instance ToJSON Query
+
 deriving newtype instance FromJSON Query
 
 createMigrationTable :: Query
@@ -48,7 +49,7 @@ tableExists tblName cnx = do
 data MigrationResult
   = MigrationSuccessful
   | MigrationFailed {reason :: Text}
-  deriving (Eq, Show, Read,Generic, ToJSON, FromJSON)
+  deriving (Eq, Show, Read, Generic, ToJSON, FromJSON)
 
 initialMigration :: Connection -> IO MigrationResult
 initialMigration cnx = do
@@ -146,12 +147,12 @@ updateUserInEventLog :: Migration
 updateUserInEventLog =
   Migration
     "updateUserInEventLog"
-        [ "create table tmp_users ( id integer primary key, user text not null);",
-          "insert into tmp_users select l.id as id,  j.value  as user from event_log as l, json_each(l.flow_data,'$._flowUser') as j;",
-          "insert into tmp_users select l.id as id,  j.value  as user from event_log as l, json_each(l.flow_data,'$.traceUser') as j;",
-          "update event_log set user = (select user from tmp_users where tmp_users.id = id);",
-          "drop table tmp_users;"
-        ]
+    [ "create table tmp_users ( id integer primary key, user text not null);",
+      "insert into tmp_users select l.id as id,  j.value  as user from event_log as l, json_each(l.flow_data,'$._flowUser') as j;",
+      "insert into tmp_users select l.id as id,  j.value  as user from event_log as l, json_each(l.flow_data,'$.traceUser') as j;",
+      "update event_log set user = (select user from tmp_users where tmp_users.id = id);",
+      "drop table tmp_users;"
+    ]
     ""
 
 runMigration ::
@@ -187,8 +188,9 @@ applyMigration m@Migration {..} cnx = do
     execute cnx q (name, toText h)
   pure MigrationSuccessful
 
-data RunMigration = RunningMigration { migration :: Migration }
-  | RanMigration { migration :: Migration, result :: MigrationResult }
+data RunMigration
+  = RunningMigration {migration :: Migration}
+  | RanMigration {migration :: Migration, result :: MigrationResult}
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 runMigrations :: LoggerEnv -> Connection -> [Migration] -> IO MigrationResult

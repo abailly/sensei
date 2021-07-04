@@ -74,6 +74,7 @@ $  ep -U
 ```
 
 # Migration (prior to v 0.13.0)
+
 Before v 0.13.0, the data were handle into a plain json formated text file.
 In order to retrieve your flows and notes, you have to put your `.sensei.log` into the shared directory:
 ```bash
