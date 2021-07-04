@@ -5,8 +5,11 @@ module Sensei.DB.SQLiteSpec where
 
 import Control.Exception.Safe (throwIO)
 import Control.Monad.Reader
+import Data.Aeson(encode)
 import Data.List (isInfixOf, isPrefixOf)
 import Data.Text (Text)
+import Data.Text.Encoding(decodeUtf8)
+import Data.ByteString.Lazy(toStrict)
 import qualified Database.SQLite.Simple as SQLite
 import Preface.Log
 import Sensei.API
@@ -173,3 +176,15 @@ spec = describe "SQLite DB" $ do
           SQLite.query_ cnx "select user from event_log;"
 
         head res `shouldBe` ["arnaud" :: String]
+
+      it "adds existing file-based user profile to DB with uid" $ \tmp ->
+        withTempDir $ \ dir -> do
+          File.writeProfileFile defaultProfile dir
+
+          runDB tmp dir fakeLogger initLogStorage
+
+          rows <- SQLite.withConnection tmp $ \cnx ->
+            SQLite.query_ cnx "select id,user,profile from users;"
+
+          rows `shouldBe` [(1 :: Int, "arnaud" :: String, decodeUtf8 $ toStrict $ encode defaultProfile)]
+

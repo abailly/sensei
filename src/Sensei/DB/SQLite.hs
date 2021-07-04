@@ -67,6 +67,7 @@ import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as A
 import Data.Bifunctor (Bifunctor (first))
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor ((<&>))
 import Data.Int (Int64)
@@ -80,17 +81,20 @@ import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
+import Preface.Codec (toHex)
 import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
 import Sensei.DB
 import Sensei.DB.File (readProfileFile, writeProfileFile)
 import qualified Sensei.DB.File as File
+import Sensei.DB.Log (DBLog (..))
 import Sensei.DB.SQLite.Migration
 import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
+import System.Random (newStdGen, randoms)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -290,13 +294,16 @@ data Events
 -- if the file does not exist, it is created
 initSQLiteDB :: SQLiteDB ()
 initSQLiteDB = do
-  SQLiteConfig {storagePath, logger} <- ask
+  SQLiteConfig {storagePath, logger, configDir} <- ask
   storagePathExists <- liftIO $ doesFileExist storagePath
   unless storagePathExists $
     liftIO $ do
       openFile storagePath WriteMode >>= hClose
       logInfo logger (StoragePathCreated storagePath)
-  liftIO $ withLog logger (MigratingSQLiteDB storagePath) $ migrateSQLiteDB logger storagePath
+  liftIO $
+    withLog logger (MigratingSQLiteDB storagePath) $ do
+      migrateSQLiteDB logger storagePath
+      migrateFileBasedProfile logger storagePath configDir
 
 migrateSQLiteDB :: LoggerEnv -> FilePath -> IO ()
 migrateSQLiteDB logger sqliteFile =
@@ -326,6 +333,18 @@ withBackup file action = do
   copyFile file backup
   (action file <* removeFile backup)
     `catch` \(e :: SQLiteDBError) -> copyFile backup file >> removeFile backup >> throwIO e
+
+migrateFileBasedProfile :: LoggerEnv -> FilePath -> FilePath -> IO ()
+migrateFileBasedProfile logger storagePath config = do
+  eitherProfile <- readProfileFile config
+  case eitherProfile of
+    Left _ -> pure ()
+    Right profile ->
+      withLog logger (CreateUserProfile profile) $
+        SQLite.withConnection storagePath $ \cnx -> do
+          let q = "insert into users (uid, user, profile) values (?,?,?);"
+          uid <- toText . toHex . BS.pack . take 16 . randoms <$> newStdGen
+          SQLite.execute cnx q [toField uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do

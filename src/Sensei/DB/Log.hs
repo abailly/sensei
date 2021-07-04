@@ -26,6 +26,7 @@ data DBLog
   | GetCurrentTime {user :: Text}
   | WriteEvent {event :: Event}
   | UpdateLatestFlow {setTimeShift :: NominalDiffTime}
+  | CreateUserProfile {profile :: UserProfile}
   | WriteProfile {user :: Text}
   | ReadFlow {user :: Text, reference :: Reference}
   | ReadEvents {user :: Text, pagination :: Pagination}
