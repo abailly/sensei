@@ -6,44 +6,12 @@ module Sensei.UserSpec where
 import Data.Aeson
 import qualified Data.Map as Map
 import Data.Proxy
-import Data.Text (Text, pack)
-import Data.Time.LocalTime
-import Preface.Codec (Base64, Encoded (..), toBase64)
 import Sensei.API
 import Sensei.ColorSpec ()
-import Sensei.DB.Model ()
+import Sensei.Generators ()
 import Sensei.TestHelper
 import Test.Hspec
-import Test.QuickCheck
 import Test.QuickCheck.Classes
-
--- * Orphan Instances
-
-generateUser :: Gen Text
-generateUser = resize 20 (pack . getASCIIString <$> arbitrary)
-
-genTimeOfDay :: Gen TimeOfDay
-genTimeOfDay = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger <$> choose (0, 59))
-
-genTimeZone :: Gen TimeZone
-genTimeZone = hoursToTimeZone <$> choose (- 12, 12)
-
-genPassword :: Gen (Encoded Base64, Encoded Base64)
-genPassword = (,) <$> genBase64 <*> genBase64
-
-genBase64 :: Gen (Encoded Base64)
-genBase64 = toBase64 <$> arbitrary
-
-instance Arbitrary UserProfile where
-  arbitrary =
-    UserProfile
-      <$> generateUser
-      <*> genTimeZone
-      <*> genTimeOfDay
-      <*> genTimeOfDay
-      <*> arbitrary
-      <*> arbitrary
-      <*> genPassword
 
 spec :: Spec
 spec = describe "Users Management" $ do

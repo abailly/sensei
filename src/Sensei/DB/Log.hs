@@ -66,3 +66,5 @@ instance (DB m, MonadIO m) => DB (ReaderT LoggerEnv m) where
     ReaderT $ \l -> withLog l (ReadCommands (userName u)) (readCommands u)
   readProfile n =
     ReaderT $ \l -> withLog l (ReadProfile n) (readProfile n)
+  newUser u =
+    ReaderT $ \l -> withLog l (CreateUserProfile u) (newUser u)

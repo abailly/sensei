@@ -29,6 +29,7 @@ import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Time
 import GHC.Generics (Generic)
+import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.Time
 
@@ -71,9 +72,6 @@ class (Exception (DBError m), MonadCatch m) => DB m where
   -- | Update the latest's flow start time by given time difference.
   updateLatestFlow :: NominalDiffTime -> m Event
 
-  -- | Write user's profile to the DB
-  writeProfile :: UserProfile -> m ()
-
   -- | Read a single `Flow` from the storage, pointed at by given `Reference`.
   readFlow :: UserProfile -> Reference -> m (Maybe Event)
 
@@ -97,6 +95,14 @@ class (Exception (DBError m), MonadCatch m) => DB m where
   -- | Read a user's profile
   -- This function may fail of there's no profile or the format is incorrect.
   readProfile :: Text -> m (Either Text UserProfile)
+
+  -- | Write user's profile to the DB
+  writeProfile :: UserProfile -> m ()
+
+  -- | Register a new user in the DB
+  -- This function fails if a user with same name already exists, otherwise it reutnrs
+  -- a fresh identifier.
+  newUser :: UserProfile -> m (Either Text (Encoded Hex))
 
 flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay flow =

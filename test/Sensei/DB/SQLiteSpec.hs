@@ -16,6 +16,7 @@ import Sensei.API
 import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.Log ()
+import Sensei.Generators(startTime)
 import Sensei.DB.Model (canReadFlowsAndTracesWritten)
 import qualified Sensei.DB.Model as Model
 import Sensei.DB.SQLite (SQLiteDBError (..), migrateFileDB, runDB, withBackup)
@@ -142,7 +143,7 @@ spec = describe "SQLite DB" $ do
             checks =
               (,,)
                 <$> readViews defaultProfile
-                <*> readNotes defaultProfile (TimeRange Model.startTime (addUTCTime 1000000 Model.startTime))
+                <*> readNotes defaultProfile (TimeRange startTime (addUTCTime 1000000 startTime))
                 <*> readCommands defaultProfile
         actions <- generate $ resize 100 arbitrary
         void $ File.runDB tempdb "." $ initLogStorage >> Model.runActions actions

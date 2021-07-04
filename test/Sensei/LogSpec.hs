@@ -8,7 +8,7 @@ import Data.Time
 import Network.HTTP.Link
 import Network.URI.Extra (URI)
 import Sensei.Builder
-import Sensei.DB.Model hiding (events)
+import Sensei.Generators (generateEvent)
 import Sensei.TestHelper
 import Test.Hspec
 import Test.Hspec.Wai

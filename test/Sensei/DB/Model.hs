@@ -14,23 +14,20 @@ import Data.Foldable (toList)
 import Data.Function (on)
 import Data.Maybe (isNothing)
 import Data.Sequence as Seq
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text)
 import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
+import Sensei.Generators (genNatural, generateEvent, generateUserProfile, shiftTime, startTime)
 import Test.Hspec (HasCallStack)
 import Test.QuickCheck
-  ( ASCIIString (getASCIIString),
-    Arbitrary (arbitrary),
+  ( Arbitrary (arbitrary, shrink),
     Gen,
     Positive (getPositive),
     Property,
     choose,
     counterexample,
-    elements,
     frequency,
-    listOf,
-    oneof,
   )
 import Test.QuickCheck.Monadic
 
@@ -42,6 +39,7 @@ data Action a where
   ReadNotes :: TimeRange -> Action [(LocalTime, Text)]
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
+  NewUser :: UserProfile -> Action ()
 
 instance Show (Action a) where
   show (WriteEvent f) = "WriteEvent " <> show f
@@ -50,6 +48,7 @@ instance Show (Action a) where
   show (ReadNotes range) = "ReadNotes " <> show range
   show ReadViews = "ReadViews"
   show ReadCommands = "ReadCommands"
+  show (NewUser u) = "NewUser " <> show u
 
 -- | Abstract state against which `Action`s are interpreted and
 -- to which underlying storage should conform
@@ -69,18 +68,15 @@ instance Show SomeAction where
 instance Eq SomeAction where
   _ == _ = False
 
-data Actions = Actions {actions :: [SomeAction]}
+newtype Actions = Actions {actions :: Seq SomeAction}
   deriving (Eq, Show)
 
 instance Arbitrary Actions where
   arbitrary =
-    Actions <$> (arbitrary >>= sequence . map (generateAction startTime) . enumFromTo 1 . getPositive)
+    Actions <$> (arbitrary >>= sequence . fromList . map (generateAction startTime) . enumFromTo 1 . getPositive)
 
-genNatural :: Gen Natural
-genNatural = fromInteger . getPositive <$> arbitrary
-
-startTime :: UTCTime
-startTime = UTCTime (toEnum 50000) 10000
+  shrink (Actions (as :|> _)) = [Actions as]
+  shrink _ = []
 
 generateAction :: UTCTime -> Integer -> Gen SomeAction
 generateAction baseTime k =
@@ -90,73 +86,16 @@ generateAction baseTime k =
       (1, (,) <$> genNatural <*> genNatural >>= \(n, s) -> pure (SomeAction (ReadEvents (Page n s)))),
       (1, choose (0, k) >>= \n -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime n)))),
       (1, pure $ SomeAction ReadViews),
+      (1, SomeAction . NewUser <$> generateUserProfile),
       (1, pure $ SomeAction ReadCommands)
     ]
-
-instance Arbitrary FlowType where
-  arbitrary =
-    frequency
-      [ (4, elements defaultFlowTypes),
-        (3, pure Note),
-        (1, pure End),
-        (2, pure Other)
-      ]
-
-generateFlow :: UTCTime -> Integer -> Gen Event
-generateFlow baseTime k = do
-  typ <- arbitrary
-  case typ of
-    Note -> EventNote <$> generateNote baseTime k
-    _ -> EventFlow <$> generateState typ baseTime k
-
-shiftTime :: UTCTime -> Integer -> UTCTime
-shiftTime baseTime k = addUTCTime (fromInteger $ k * 1000) baseTime
-
-generateNote :: UTCTime -> Integer -> Gen NoteFlow
-generateNote baseTime k = do
-  let st = shiftTime baseTime k
-  dir <- generateDir
-  note <- generateNoteText
-  pure $ NoteFlow "arnaud" st dir note
-
-generateState :: FlowType -> UTCTime -> Integer -> Gen Flow
-generateState ftype baseTime k = do
-  let st = shiftTime baseTime k
-  dir <- generateDir
-  pure $ Flow ftype "arnaud" st dir -- TODO: remove user from Flow definition
-
-generateDir :: Gen Text
-generateDir = pack . getASCIIString <$> arbitrary
-
-generateNoteText :: Gen Text
-generateNoteText = pack . getASCIIString <$> arbitrary
-
-generateTrace :: UTCTime -> Integer -> Gen Event
-generateTrace baseTime k = do
-  let st = shiftTime baseTime k
-  dir <- generateDir
-  pr <- generateProcess
-  args <- generateArgs
-  ex <- arbitrary
-  el <- fromInteger <$> choose (0, 100)
-  pure $ EventTrace $ Trace "arnaud" st (unpack dir) pr args ex el
-
-generateArgs :: Gen [Text]
-generateArgs = listOf $ pack . getASCIIString <$> arbitrary
-
-generateProcess :: Gen Text
-generateProcess = pack . getASCIIString <$> arbitrary
-
-generateEvent :: UTCTime -> Integer -> Gen Event
-generateEvent baseTime offset =
-  oneof [generateTrace baseTime offset, generateFlow baseTime offset]
 
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
 interpret (WriteEvent f) = modify $ \m@Model {events} -> m {events = events |> f}
 interpret (ReadFlow Latest) = do
-  fs <- Seq.filter (not . isTrace) <$> gets events
+  fs <- gets (Seq.filter (not . isTrace) . events)
   case viewr fs of
     _ :> f@EventFlow {} -> pure $ Just f
     _ :> n@EventNote {} -> pure $ Just n
@@ -191,6 +130,8 @@ interpret ReadCommands = do
   UserProfile {userTimezone} <- gets currentProfile
   ts <- gets events
   pure $ foldr (commandViewBuilder userTimezone) [] ts
+interpret (NewUser u) =
+  modify $ \m -> m {currentProfile = u}
 
 eventTimestampDesc ::
   Event -> Event -> Ordering
@@ -207,17 +148,18 @@ runDB (ReadFlow r) = readProfileOrDefault >>= \u -> readFlow u r
 runDB (ReadNotes rge) = readProfileOrDefault >>= \u -> readNotes u rge
 runDB ReadViews = readProfileOrDefault >>= readViews
 runDB ReadCommands = readProfileOrDefault >>= readCommands
+runDB (NewUser u) = void $ newUser u
 
 readProfileOrDefault :: DB db => db UserProfile
 readProfileOrDefault = fmap (either (const defaultProfile) id) (readProfile "user")
 
-runActions :: (DB db) => Actions -> db [String]
+runActions :: (DB db) => Actions -> db (Seq String)
 runActions (Actions actions) =
   sequence $ runAction <$> actions
   where
     runAction (SomeAction act) = show <$> runDB act
 
-validateActions :: forall db. DB db => [SomeAction] -> StateT Model db [Maybe String]
+validateActions :: forall db. DB db => Seq SomeAction -> StateT Model db (Seq (Maybe String))
 validateActions acts = do
   sequence $ runAndCheck <$> acts
 

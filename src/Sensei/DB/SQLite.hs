@@ -15,8 +15,8 @@
 -- @@
 -- CREATE TABLE users (
 --    id integer primary key,
---    uid text not null,
---    user text not null,
+--    uid text unique not null,
+--    user text unique not null,
 --    profile text not null);
 --
 -- CREATE TABLE schema_migrations ( id integer primary key,
@@ -81,7 +81,7 @@ import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
-import Preface.Codec (toHex)
+import Preface.Codec (toHex, Encoded, Hex)
 import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
@@ -271,7 +271,6 @@ instance DB SQLiteDB where
   getCurrentTime u = getCurrentTimeSQL u
   writeEvent t = writeEventSQL t
   updateLatestFlow ts = updateLatestFlowSQL ts
-  writeProfile u = SQLiteDB (asks configDir >>= liftIO . writeProfileFile u)
   readFlow u r = readFlowSQL u r
   readEvents u p = readEventsSQL u p
   readNotes u rge = readNotesSQL u rge
@@ -279,7 +278,9 @@ instance DB SQLiteDB where
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
   readProfile _ = SQLiteDB (asks configDir >>= liftIO . readProfileFile)
-
+  writeProfile u = SQLiteDB (asks configDir >>= liftIO . writeProfileFile u)
+  newUser = newUserSQL
+  
 data Events
   = StoragePathCreated {dbPath :: FilePath}
   | MigratingSQLiteDB {dbPath :: FilePath}
@@ -341,10 +342,7 @@ migrateFileBasedProfile logger storagePath config = do
     Left _ -> pure ()
     Right profile ->
       withLog logger (CreateUserProfile profile) $
-        SQLite.withConnection storagePath $ \cnx -> do
-          let q = "insert into users (uid, user, profile) values (?,?,?);"
-          uid <- toText . toHex . BS.pack . take 16 . randoms <$> newStdGen
-          SQLite.execute cnx q [toField uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
+        SQLite.withConnection storagePath $ void . insertNewUser logger profile
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
@@ -519,3 +517,26 @@ readCommandsSQL UserProfile {..} = do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' order by timestamp"
     traces <- query_ cnx logger q
     pure $ foldr (commandViewBuilder userTimezone) [] traces
+
+newUserSQL ::
+  HasCallStack =>
+  UserProfile ->
+  SQLiteDB (Either Text (Encoded Hex))
+newUserSQL profile = do
+  SQLiteConfig {logger} <- ask  
+  withConnection $ insertNewUser logger profile  
+    
+insertNewUser ::
+  LoggerEnv ->
+  UserProfile ->
+  Connection ->
+  IO (Either Text (Encoded Hex))
+insertNewUser logger profile cnx = do
+  [[count :: Int]] <- query cnx logger "select count(*) from users where user = ?" [toField $ userName profile]
+  if (count /= 0)
+    then pure $ Left "User already exists"
+    else do
+    let q = "insert into users (uid, user, profile) values (?,?,?);"
+    uid <- toHex . BS.pack . take 16 . randoms <$> newStdGen
+    execute cnx logger q [toField $ toText uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
+    pure $ Right uid

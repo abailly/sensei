@@ -130,6 +130,7 @@ test-suite sensei-test
                      , Sensei.WrapperSpec
                      , Sensei.DB.Model
                      , Sensei.DB.SQLiteSpec
+                     , Sensei.Generators
   build-depends:       aeson
                      , base
                      , binary
