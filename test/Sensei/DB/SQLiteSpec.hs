@@ -7,7 +7,6 @@ import Control.Exception.Safe (throwIO)
 import Control.Monad.Reader
 import Data.Aeson(encode)
 import Data.List (isInfixOf, isPrefixOf)
-import Data.Text (Text)
 import Data.Text.Encoding(decodeUtf8)
 import Data.ByteString.Lazy(toStrict)
 import qualified Database.SQLite.Simple as SQLite
@@ -16,14 +15,12 @@ import Sensei.API
 import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.Log ()
-import Sensei.Generators(startTime)
 import Sensei.DB.Model (canReadFlowsAndTracesWritten)
-import qualified Sensei.DB.Model as Model
-import Sensei.DB.SQLite (SQLiteDBError (..), migrateFileDB, runDB, withBackup)
+import Sensei.DB.SQLite (SQLiteDBError (..), runDB, withBackup)
 import Sensei.TestHelper
 import Sensei.Time hiding (getCurrentTime)
 import System.Directory
-import System.FilePath (takeDirectory, takeFileName, (<.>))
+import System.FilePath (takeDirectory, takeFileName)
 import Test.Hspec
 import Test.QuickCheck
 
@@ -93,7 +90,7 @@ spec = describe "SQLite DB" $ do
         mapM_ removeFile (filter (isBackupFileFor tmp) files)
   around withTempFile $
     describe "Basic Operations" $ do
-      it "matches DB model" $ \tempdb -> property $ canReadFlowsAndTracesWritten (runDB tempdb "." fakeLogger)
+      it "matches DB model" $ \tempdb -> property $ canReadFlowsAndTracesWritten tempdb (runDB tempdb "." fakeLogger)
 
       it "gets IO-based current time when time is not set" $ \tempdb -> do
         res <- runDB tempdb "." fakeLogger $ do
@@ -138,23 +135,6 @@ spec = describe "SQLite DB" $ do
 
         res `shouldBe` time2
 
-      it "can migrate a File-based log to SQLite-based one" $ \tempdb -> do
-        let checks :: DB db => db ([FlowView], [(LocalTime, Text)], [CommandView])
-            checks =
-              (,,)
-                <$> readViews defaultProfile
-                <*> readNotes defaultProfile (TimeRange startTime (addUTCTime 1000000 startTime))
-                <*> readCommands defaultProfile
-        actions <- generate $ resize 100 arbitrary
-        void $ File.runDB tempdb "." $ initLogStorage >> Model.runActions actions
-        expected <- File.runDB tempdb "." checks
-
-        res <- migrateFileDB tempdb "."
-
-        res `shouldBe` Right (tempdb <.> "old")
-        actual <- runDB tempdb "." fakeLogger checks
-        actual `shouldBe` expected
-
       it "indexes newly inserted note on the fly" $ \tempdb -> do
         let noteTime = UTCTime (toEnum 50000) 1000
             content = "foo bar baz cat"
@@ -188,4 +168,3 @@ spec = describe "SQLite DB" $ do
             SQLite.query_ cnx "select id,user,profile from users;"
 
           rows `shouldBe` [(1 :: Int, "arnaud" :: String, decodeUtf8 $ toStrict $ encode defaultProfile)]
-

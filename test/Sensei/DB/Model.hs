@@ -21,7 +21,8 @@ import Sensei.DB
 import Sensei.Generators (genNatural, generateEvent, generateUserProfile, shiftTime, startTime)
 import Test.Hspec (HasCallStack)
 import Test.QuickCheck
-  ( Arbitrary (arbitrary, shrink),
+  ( Arbitrary (arbitrary),
+    forAllShrink,
     Gen,
     Positive (getPositive),
     Property,
@@ -29,6 +30,7 @@ import Test.QuickCheck
     counterexample,
     frequency,
   )
+import System.Directory(removeFile, doesFileExist)
 import Test.QuickCheck.Monadic
 
 -- | Relevant commands issued to the underlying DB
@@ -71,24 +73,35 @@ instance Eq SomeAction where
 newtype Actions = Actions {actions :: Seq SomeAction}
   deriving (Eq, Show)
 
-instance Arbitrary Actions where
-  arbitrary =
-    Actions <$> (arbitrary >>= sequence . fromList . map (generateAction startTime) . enumFromTo 1 . getPositive)
+generateActions :: Model -> Gen Actions
+generateActions model =
+  Actions <$> (arbitrary >>= generateAction startTime model . getPositive)
 
-  shrink (Actions (as :|> _)) = [Actions as]
-  shrink _ = []
+shrinkActions :: Actions -> [Actions]
+shrinkActions (Actions (as :|> _)) = [Actions as]
+shrinkActions _ = []
 
-generateAction :: UTCTime -> Integer -> Gen SomeAction
-generateAction baseTime k =
-  frequency
-    [ (9, SomeAction . WriteEvent <$> generateEvent baseTime k),
-      (2, pure $ SomeAction (ReadFlow Latest)),
-      (1, (,) <$> genNatural <*> genNatural >>= \(n, s) -> pure (SomeAction (ReadEvents (Page n s)))),
-      (1, choose (0, k) >>= \n -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime n)))),
-      (1, pure $ SomeAction ReadViews),
-      (1, SomeAction . NewUser <$> generateUserProfile),
-      (1, pure $ SomeAction ReadCommands)
-    ]
+generateAction :: UTCTime -> Model -> Integer -> Gen (Seq SomeAction)
+generateAction baseTime model count =
+  go model mempty count
+  where
+    go :: Model -> Seq SomeAction -> Integer -> Gen (Seq SomeAction)
+    go _ acts 0 = pure acts
+    go m acts n = do
+      act <- frequency
+        [ (9, SomeAction . WriteEvent <$> generateEvent baseTime (count - n)),
+          (2, pure $ SomeAction (ReadFlow Latest)),
+          (1, (,) <$> genNatural <*> genNatural >>= \(p, s) -> pure (SomeAction (ReadEvents (Page p s)))),
+          (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k)))),
+          (1, pure $ SomeAction ReadViews),
+          (1, SomeAction . NewUser <$> generateUserProfile),
+          (1, pure $ SomeAction ReadCommands)
+        ]
+      m' <- step m act
+      go m' (acts :|> act) (n - 1)
+
+    step m (SomeAction a) =
+      execStateT (interpret a) m
 
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
@@ -182,11 +195,16 @@ runAndCheck (SomeAction act) = do
             <> show actual
 
 canReadFlowsAndTracesWritten ::
-  (DB db, HasCallStack) => (forall x. db x -> IO x) -> Actions -> Property
-canReadFlowsAndTracesWritten nt (Actions actions) = monadicIO $ do
-  let start = Model startTime defaultProfile mempty
-      monitorErrors Nothing = pure ()
+  (DB db, HasCallStack) => FilePath -> (forall x. db x -> IO x) -> Property
+canReadFlowsAndTracesWritten dbFile nt =
+  forAllShrink (generateActions start) shrinkActions $ \ (Actions actions) -> monadicIO $ do
+  let monitorErrors Nothing = pure ()
       monitorErrors (Just s) = monitor (counterexample s)
-  res <- run $ nt $ initLogStorage >> evalStateT (validateActions actions) start
+  res <- run $ do
+    hasDB <- doesFileExist dbFile
+    when hasDB $ removeFile dbFile
+    nt $ initLogStorage >> evalStateT (validateActions actions) start
   forM_ res monitorErrors
   assert $ all isNothing res
+  where
+    start = Model startTime defaultProfile mempty
