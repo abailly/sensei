@@ -88,9 +88,11 @@ spec = describe "SQLite DB" $ do
         files <- listDirectory dir
         filter (isBackupFileFor tmp) files `shouldNotBe` []
         mapM_ removeFile (filter (isBackupFileFor tmp) files)
+        
   around withTempFile $
     describe "Basic Operations" $ do
-      it "matches DB model" $ \tempdb -> property $ canReadFlowsAndTracesWritten tempdb (runDB tempdb "." fakeLogger)
+      it "matches DB model" $ \tempdb ->
+        property $ withMaxSuccess 400 $ canReadFlowsAndTracesWritten tempdb (runDB tempdb "." fakeLogger)
 
       it "gets IO-based current time when time is not set" $ \tempdb -> do
         res <- runDB tempdb "." fakeLogger $ do

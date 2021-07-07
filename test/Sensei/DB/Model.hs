@@ -95,7 +95,7 @@ generateAction baseTime model count =
           (1, (,) <$> genNatural <*> genNatural >>= \(p, s) -> pure (SomeAction (ReadEvents (Page p s)))),
           (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k)))),
           (1, pure $ SomeAction ReadViews),
-          (5, SomeAction . NewUser <$> generateUserProfile),
+          (1, SomeAction . NewUser <$> generateUserProfile),
           (1, pure $ SomeAction ReadCommands)
         ]
       m' <- step m act
@@ -113,7 +113,8 @@ generateAction baseTime model count =
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
 interpret (WriteEvent f) = modify $ \m@Model {events} -> m {events = events |> f}
 interpret (ReadFlow Latest) = do
-  fs <- gets (Seq.filter (not . isTrace) . events)
+  es <- getEvents
+  let fs = Seq.filter (not . isTrace) es
   case viewr fs of
     _ :> f@EventFlow {} -> pure $ Just f
     _ :> n@EventNote {} -> pure $ Just n
@@ -165,23 +166,23 @@ eventTimestampDesc e e' = desc $ (compare `on` eventTimestamp) e e'
     desc EQ = EQ
     desc GT = LT
 
-runDB :: (DB db) => Action a -> db a
-runDB (WriteEvent f) = writeEvent f
-runDB (ReadEvents p) = readProfileOrDefault >>= \u -> readEvents u p
-runDB (ReadFlow r) = readProfileOrDefault >>= \u -> readFlow u r
-runDB (ReadNotes rge) = readProfileOrDefault >>= \u -> readNotes u rge
-runDB ReadViews = readProfileOrDefault >>= readViews
-runDB ReadCommands = readProfileOrDefault >>= readCommands
-runDB (NewUser u) = void $ newUser u
+runDB :: (DB db) => Text -> Action a -> db a
+runDB _ (WriteEvent f) = writeEvent f
+runDB user (ReadEvents p) = readProfileOrDefault user >>= \u -> readEvents u p
+runDB user (ReadFlow r) = readProfileOrDefault user >>= \u -> readFlow u r
+runDB user (ReadNotes rge) = readProfileOrDefault user >>= \u -> readNotes u rge
+runDB user ReadViews = readProfileOrDefault user >>= readViews
+runDB user ReadCommands = readProfileOrDefault user >>= readCommands
+runDB _ (NewUser u) = void $ newUser u
 
-readProfileOrDefault :: DB db => db UserProfile
-readProfileOrDefault = fmap (either (const defaultProfile) id) (readProfile "user")
+readProfileOrDefault :: DB db => Text -> db UserProfile
+readProfileOrDefault user = fmap (either (const defaultProfile) id) (readProfile user)
 
-runActions :: (DB db) => Actions -> db (Seq String)
-runActions (Actions actions) =
+runActions :: (DB db) => Text -> Actions -> db (Seq String)
+runActions user (Actions actions) =
   sequence $ runAction <$> actions
   where
-    runAction (SomeAction act) = show <$> runDB act
+    runAction (SomeAction act) = show <$> runDB user act
 
 validateActions :: forall db. DB db => Seq SomeAction -> StateT Model db (Seq (Maybe String))
 validateActions acts = do
@@ -189,7 +190,8 @@ validateActions acts = do
 
 runAndCheck :: DB db => SomeAction -> StateT Model db (Maybe String)
 runAndCheck (SomeAction act) = do
-  actual <- lift $ runDB act
+  UserProfile{userName} <- gets currentProfile
+  actual <- lift $ runDB userName act
   expected <- interpret act
   if actual == expected
     then pure Nothing

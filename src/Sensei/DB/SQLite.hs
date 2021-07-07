@@ -62,7 +62,7 @@ import Control.Exception.Safe
     throwM,
     try,
   )
-import Control.Lens((^.))
+import Control.Lens ((^.))
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
@@ -82,7 +82,7 @@ import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
-import Preface.Codec (toHex, Encoded, Hex)
+import Preface.Codec (Encoded, Hex, toHex)
 import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
@@ -279,10 +279,10 @@ instance DB SQLiteDB where
   searchNotes u txt = searchNotesSQL u txt
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
-  readProfile = readProfileSQL 
+  readProfile = readProfileSQL
   writeProfile u = SQLiteDB (asks configDir >>= liftIO . writeProfileFile u)
   newUser = newUserSQL
-  
+
 data Events
   = StoragePathCreated {dbPath :: FilePath}
   | MigratingSQLiteDB {dbPath :: FilePath}
@@ -432,7 +432,7 @@ readFlowSQL ::
   UserProfile ->
   Reference ->
   SQLiteDB (Maybe Event)
-readFlowSQL UserProfile{userName} ref = do
+readFlowSQL UserProfile {userName} ref = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and user = ? order by timestamp desc limit 1 offset ?"
@@ -447,7 +447,7 @@ readEventsSQL ::
   UserProfile ->
   Pagination ->
   SQLiteDB EventsQueryResult
-readEventsSQL UserProfile{userName} Page {pageNumber, pageSize} = do
+readEventsSQL UserProfile {userName} Page {pageNumber, pageSize} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp desc limit ? offset ?"
@@ -461,13 +461,13 @@ readEventsSQL UserProfile{userName} Page {pageNumber, pageSize} = do
         startIndex = min ((pageNumber - 1) * pageSize) totalEvents
         endIndex = min (pageNumber * pageSize) totalEvents
     pure $ EventsQueryResult {..}
-readEventsSQL UserProfile{userName} NoPagination = do
+readEventsSQL UserProfile {userName} NoPagination = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp asc"
         count = "select count(*) from event_log where user = ?"
     resultEvents <- query cnx logger q (Only userName)
-    [[numEvents]] <- query cnx logger count  (Only userName)
+    [[numEvents]] <- query cnx logger count (Only userName)
     let totalEvents = fromInteger numEvents
         eventsCount = totalEvents
         startIndex = 1
@@ -482,8 +482,8 @@ readNotesSQL ::
 readNotesSQL UserProfile {..} TimeRange {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
-    notesFlow <- query cnx logger q [rangeStart, rangeEnd]
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and user = ? and datetime(timestamp) between ? and ? order by timestamp"
+    notesFlow <- query cnx logger q (userName, rangeStart, rangeEnd)
     pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
 
 searchNotesSQL ::
@@ -516,8 +516,8 @@ readCommandsSQL ::
 readCommandsSQL UserProfile {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' order by timestamp"
-    traces <- query_ cnx logger q
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' and user = ? order by timestamp"
+    traces <- query cnx logger q (Only userName)
     pure $ foldr (commandViewBuilder userTimezone) [] traces
 
 newUserSQL ::
@@ -525,15 +525,15 @@ newUserSQL ::
   UserProfile ->
   SQLiteDB (Either Text (Encoded Hex))
 newUserSQL profile = do
-  SQLiteConfig {logger} <- ask  
-  withConnection $ insertNewUser logger profile  
+  SQLiteConfig {logger} <- ask
+  withConnection $ insertNewUser logger profile
 
 readProfileSQL ::
   HasCallStack =>
   Text ->
   SQLiteDB (Either Text UserProfile)
 readProfileSQL userName = do
-  SQLiteConfig {logger} <- ask  
+  SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select profile from users where user = ?"
     res <- query cnx logger q (Only userName)
@@ -541,7 +541,7 @@ readProfileSQL userName = do
       [[profile]] -> pure $ first pack . eitherDecode . encodeUtf8 $ profile
       [] -> pure $ Left ("No user " <> userName)
       _ -> pure $ Left ("Several users with " <> userName <> ", this is a bug")
-  
+
 insertNewUser ::
   LoggerEnv ->
   UserProfile ->
@@ -552,7 +552,7 @@ insertNewUser logger profile cnx = do
   if (count /= 0)
     then pure $ Left "User already exists"
     else do
-    let q = "insert into users (uid, user, profile) values (?,?,?);"
-    uid <- toHex . BS.pack . take 16 . randoms <$> newStdGen
-    execute cnx logger q [toField $ toText uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
-    pure $ Right uid
+      let q = "insert into users (uid, user, profile) values (?,?,?);"
+      uid <- toHex . BS.pack . take 16 . randoms <$> newStdGen
+      execute cnx logger q [toField $ toText uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
+      pure $ Right uid

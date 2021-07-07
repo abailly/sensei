@@ -66,7 +66,7 @@ instance DB FileDB where
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
   readProfile _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)
   newUser = undefined
-  
+
 -- | Initialise a log store at given path
 initLogStorageFile ::
   FilePath -> IO ()

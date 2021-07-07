@@ -14,6 +14,7 @@ import Test.QuickCheck
     choose,
     elements,
     frequency,
+    getPrintableString,
     getASCIIString,
     getPositive,
     listOf,
@@ -24,7 +25,7 @@ import Test.QuickCheck
 -- * Orphan Instances
 
 generateUser :: Gen Text
-generateUser = resize 20 (pack . getASCIIString <$> arbitrary)
+generateUser = resize 20 (pack . getPrintableString <$> arbitrary)
 
 genTimeOfDay :: Gen TimeOfDay
 genTimeOfDay = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger <$> choose (0, 59))
