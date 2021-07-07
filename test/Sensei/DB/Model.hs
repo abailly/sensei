@@ -10,6 +10,7 @@
 module Sensei.DB.Model where
 
 import Control.Monad.State
+import Control.Lens(set, (^.))
 import Data.Foldable (toList)
 import Data.Function (on)
 import Data.Maybe (isNothing)
@@ -89,12 +90,12 @@ generateAction baseTime model count =
     go _ acts 0 = pure acts
     go m acts n = do
       act <- frequency
-        [ (9, SomeAction . WriteEvent <$> generateEvent baseTime (count - n)),
+        [ (9, SomeAction <$> genEvent m n),
           (2, pure $ SomeAction (ReadFlow Latest)),
           (1, (,) <$> genNatural <*> genNatural >>= \(p, s) -> pure (SomeAction (ReadEvents (Page p s)))),
           (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k)))),
           (1, pure $ SomeAction ReadViews),
-          (1, SomeAction . NewUser <$> generateUserProfile),
+          (5, SomeAction . NewUser <$> generateUserProfile),
           (1, pure $ SomeAction ReadCommands)
         ]
       m' <- step m act
@@ -103,6 +104,10 @@ generateAction baseTime model count =
     step m (SomeAction a) =
       execStateT (interpret a) m
 
+    genEvent m n = do
+      e <- generateEvent baseTime (count - n)
+      pure $ WriteEvent $ set user' (userName $ currentProfile m) e
+    
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
@@ -115,7 +120,7 @@ interpret (ReadFlow Latest) = do
     _ -> pure Nothing
 interpret (ReadFlow _) = error "not implemented"
 interpret (ReadEvents (Page pageNum size)) = do
-  es <- gets events
+  es <- getEvents
   let evs = Seq.sortBy eventTimestampDesc es
       totalEvents = fromIntegral $ Seq.length evs
       resultEvents = toList $ Seq.take (fromIntegral size) $ Seq.drop (fromIntegral $ (pageNum - 1) * size) evs
@@ -124,7 +129,7 @@ interpret (ReadEvents (Page pageNum size)) = do
       endIndex = min (fromIntegral $ pageNum * size) totalEvents
   pure EventsQueryResult {..}
 interpret (ReadEvents NoPagination) = do
-  es <- gets events
+  es <- getEvents
   let totalEvents = fromIntegral $ Seq.length es
       resultEvents = toList es
       eventsCount = totalEvents
@@ -133,18 +138,24 @@ interpret (ReadEvents NoPagination) = do
   pure EventsQueryResult {..}
 interpret (ReadNotes rge) = do
   UserProfile {userName, userTimezone} <- gets currentProfile
-  fs <- Seq.filter (inRange rge . eventTimestamp) <$> gets events
+  fs <- Seq.filter (inRange rge . eventTimestamp) <$> getEvents
   pure $ foldr (notesViewBuilder userName userTimezone) [] fs
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
-  fs <- gets events
+  fs <- getEvents
   pure $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] fs
 interpret ReadCommands = do
   UserProfile {userTimezone} <- gets currentProfile
-  ts <- gets events
+  ts <- getEvents
   pure $ foldr (commandViewBuilder userTimezone) [] ts
 interpret (NewUser u) =
   modify $ \m -> m {currentProfile = u}
+
+getEvents :: Monad m => StateT Model m (Seq Event)
+getEvents = do
+  es <- gets events
+  UserProfile {userName} <- gets currentProfile
+  pure $ Seq.filter ((== userName) . (^. user')) es
 
 eventTimestampDesc ::
   Event -> Event -> Ordering

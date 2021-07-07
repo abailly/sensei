@@ -26,7 +26,7 @@ module Sensei.Flow
     parseNoteFormat,
     defaultFlowTypes,
     currentVersion,
-    eventUser,
+    eventUser, setUser, user',
     eventTimestamp,
     isTrace,
     parseEventFromv4,
@@ -45,10 +45,15 @@ module Sensei.Flow
     traceProcess,
     traceTimestamp,
     traceUser,
+    noteUser,
+    noteTimestamp,
+    noteDir,
+    noteContent
   )
 where
 
 import Control.Applicative
+import Control.Lens(Lens', set)
 import Control.Lens.TH (makeLenses)
 import Data.Aeson hiding (Options)
 import Data.Aeson.Types
@@ -113,6 +118,8 @@ data NoteFlow = NoteFlow
   }
   deriving (Eq, Show, Generic)
 
+makeLenses ''NoteFlow
+
 instance FromJSON NoteFlow where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
 
@@ -130,6 +137,16 @@ eventUser ::
 eventUser (EventFlow f) = _flowUser f
 eventUser (EventTrace t) = _traceUser t
 eventUser (EventNote n) = _noteUser n
+
+setUser :: Text -> Event -> Event
+setUser u (EventFlow f) = EventFlow $ f { _flowUser = u }
+setUser u (EventTrace t) = EventTrace $ t { _traceUser = u }
+setUser u (EventNote n) = EventNote $ n { _noteUser = u }
+
+user' :: Lens' Event Text
+user' fu (EventFlow f@Flow{_flowUser}) = (\ u -> EventFlow (set flowUser u f)) <$>  fu _flowUser
+user' fu (EventTrace t@Trace{_traceUser}) = (\ u -> EventTrace (set traceUser u t))  <$> fu _traceUser
+user' fu (EventNote n@NoteFlow{_noteUser}) = (\ u -> EventNote (set noteUser u n))  <$> fu _noteUser
 
 -- | Supported rendering formats for notes
 data NoteFormat

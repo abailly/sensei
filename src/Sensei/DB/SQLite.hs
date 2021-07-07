@@ -62,6 +62,7 @@ import Control.Exception.Safe
     throwM,
     try,
   )
+import Control.Lens((^.))
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
@@ -167,9 +168,10 @@ migrateFileDB dbFile configDir = do
 instance ToRow Event where
   toRow e =
     let ts = toField (eventTimestamp e)
+        u = e ^. user'
         payload = toField $ decodeUtf8' $ LBS.toStrict $ encode e
         typ = typeOf e
-     in [ts, SQLInteger (fromIntegral currentVersion), toField (typ :: Text), payload]
+     in [ts, SQLInteger (fromIntegral currentVersion), toField u, toField (typ :: Text), payload]
 
 typeOf :: Event -> Text
 typeOf EventTrace {} = "__TRACE__"
@@ -277,7 +279,7 @@ instance DB SQLiteDB where
   searchNotes u txt = searchNotesSQL u txt
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
-  readProfile _ = SQLiteDB (asks configDir >>= liftIO . readProfileFile)
+  readProfile = readProfileSQL 
   writeProfile u = SQLiteDB (asks configDir >>= liftIO . writeProfileFile u)
   newUser = newUserSQL
   
@@ -400,7 +402,7 @@ insert ::
   q ->
   IO Int
 insert cnx logger event = do
-  let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
+  let q = "insert into event_log (timestamp, version, user, flow_type, flow_data) values (?, ?, ?, ?, ?)"
   execute cnx logger q event
   [[r]] <- query_ cnx logger "SELECT last_insert_rowid()"
   pure r
@@ -430,11 +432,11 @@ readFlowSQL ::
   UserProfile ->
   Reference ->
   SQLiteDB (Maybe Event)
-readFlowSQL _ ref = do
+readFlowSQL UserProfile{userName} ref = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1 offset ?"
-    res <- query cnx logger q (Only ref)
+    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and user = ? order by timestamp desc limit 1 offset ?"
+    res <- query cnx logger q (userName, ref)
     case res of
       [flow] -> pure $ Just flow
       [] -> pure Nothing
@@ -445,27 +447,27 @@ readEventsSQL ::
   UserProfile ->
   Pagination ->
   SQLiteDB EventsQueryResult
-readEventsSQL _ Page {pageNumber, pageSize} = do
+readEventsSQL UserProfile{userName} Page {pageNumber, pageSize} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
-        count = "select count(*) from event_log"
+    let q = "select timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp desc limit ? offset ?"
+        count = "select count(*) from event_log where user = ?"
         limit = SQLInteger $ fromIntegral pageSize
         offset = SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize
-    resultEvents <- query cnx logger q [limit, offset]
-    [[numEvents]] <- query_ cnx logger count
+    resultEvents <- query cnx logger q (userName, limit, offset)
+    [[numEvents]] <- query cnx logger count (Only userName)
     let totalEvents = fromInteger numEvents
         eventsCount = fromIntegral $ length resultEvents
         startIndex = min ((pageNumber - 1) * pageSize) totalEvents
         endIndex = min (pageNumber * pageSize) totalEvents
     pure $ EventsQueryResult {..}
-readEventsSQL _ NoPagination = do
+readEventsSQL UserProfile{userName} NoPagination = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp asc"
-        count = "select count(*) from event_log"
-    resultEvents <- query_ cnx logger q
-    [[numEvents]] <- query_ cnx logger count
+    let q = "select timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp asc"
+        count = "select count(*) from event_log where user = ?"
+    resultEvents <- query cnx logger q (Only userName)
+    [[numEvents]] <- query cnx logger count  (Only userName)
     let totalEvents = fromInteger numEvents
         eventsCount = totalEvents
         startIndex = 1
@@ -525,7 +527,21 @@ newUserSQL ::
 newUserSQL profile = do
   SQLiteConfig {logger} <- ask  
   withConnection $ insertNewUser logger profile  
-    
+
+readProfileSQL ::
+  HasCallStack =>
+  Text ->
+  SQLiteDB (Either Text UserProfile)
+readProfileSQL userName = do
+  SQLiteConfig {logger} <- ask  
+  withConnection $ \cnx -> do
+    let q = "select profile from users where user = ?"
+    res <- query cnx logger q (Only userName)
+    case res of
+      [[profile]] -> pure $ first pack . eitherDecode . encodeUtf8 $ profile
+      [] -> pure $ Left ("No user " <> userName)
+      _ -> pure $ Left ("Several users with " <> userName <> ", this is a bug")
+  
 insertNewUser ::
   LoggerEnv ->
   UserProfile ->
