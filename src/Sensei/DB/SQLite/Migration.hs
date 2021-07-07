@@ -155,6 +155,24 @@ updateUserInEventLog =
     ]
     ""
 
+addUniqueConstraintToUsers :: Migration
+addUniqueConstraintToUsers =
+  Migration
+    "addUniqueConstraintToUsers"
+    [ mconcat
+        [ "create table if not exists tmp_users ",
+          "( id integer primary key",
+          ", uid text unique not null",
+          ", user text unique not null",
+          ", profile text not null",
+          ");"
+        ],
+      "insert into tmp_users select * from users;",
+      "drop table users;",
+      "alter table tmp_users rename to users;"
+    ]
+    ""
+
 runMigration ::
   Connection -> MigrationResult -> Migration -> IO MigrationResult
 runMigration _ f@MigrationFailed {} _ = pure f -- shortcut execution when failing

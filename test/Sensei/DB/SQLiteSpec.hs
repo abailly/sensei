@@ -162,7 +162,7 @@ spec = describe "SQLite DB" $ do
 
       it "adds existing file-based user profile to DB with uid" $ \tmp ->
         withTempDir $ \ dir -> do
-          File.writeProfileFile defaultProfile dir
+          void $ File.writeProfileFile defaultProfile dir
 
           runDB tmp dir fakeLogger initLogStorage
 

@@ -8,7 +8,7 @@ import Control.Lens
 import Data.Swagger hiding (Reference)
 import Data.Text (pack)
 import Data.Time
-import Preface.Codec (Base64, Encoded)
+import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.API
 import Sensei.Server.Auth.Types (SerializedToken)
 import Sensei.Version
@@ -100,6 +100,15 @@ instance ToSchema (Encoded Base64) where
         mempty
           & description
             ?~ "A base64-encoded bytestring."
+          & type_ ?~ SwaggerString
+
+instance ToSchema (Encoded Hex) where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Hex") $
+        mempty
+          & description
+            ?~ "A hex-encoded bytestring."
           & type_ ?~ SwaggerString
 
 senseiSwagger :: Swagger

@@ -26,6 +26,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text, pack)
 import Data.Time
+import Preface.Codec (Encoded, Hex, toHex)
 import Sensei.API
 import Sensei.DB
 import Sensei.IO
@@ -65,7 +66,6 @@ instance DB FileDB where
   searchNotes = undefined
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
   readProfile _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)
-  newUser = undefined
 
 -- | Initialise a log store at given path
 initLogStorageFile ::
@@ -129,10 +129,11 @@ readProfileFile home = do
     else first pack . eitherDecode <$> LBS.readFile configFile
 
 writeProfileFile ::
-  UserProfile -> FilePath -> IO ()
+  UserProfile -> FilePath -> IO (Encoded Hex)
 writeProfileFile profile home = do
   let configFile = home </> "config.json"
   LBS.writeFile configFile (encode profile)
+  pure $ toHex "1"
 
 {-# DEPRECATED senseiLog "this will be removed in favor of XDG data directory storage" #-}
 senseiLog :: IO FilePath

@@ -97,12 +97,7 @@ class (Exception (DBError m), MonadCatch m) => DB m where
   readProfile :: Text -> m (Either Text UserProfile)
 
   -- | Write user's profile to the DB
-  writeProfile :: UserProfile -> m ()
-
-  -- | Register a new user in the DB
-  -- This function fails if a user with same name already exists, otherwise it reutnrs
-  -- a fresh identifier.
-  newUser :: UserProfile -> m (Either Text (Encoded Hex))
+  writeProfile :: UserProfile -> m (Encoded Hex)
 
 flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay flow =

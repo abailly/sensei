@@ -87,9 +87,7 @@ import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API
 import Sensei.DB
-import Sensei.DB.File (readProfileFile, writeProfileFile)
 import qualified Sensei.DB.File as File
-import Sensei.DB.Log (DBLog (..))
 import Sensei.DB.SQLite.Migration
 import Sensei.IO
 import System.Directory
@@ -280,8 +278,7 @@ instance DB SQLiteDB where
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
   readProfile = readProfileSQL
-  writeProfile u = SQLiteDB (asks configDir >>= liftIO . writeProfileFile u)
-  newUser = newUserSQL
+  writeProfile = writeProfileSQL
 
 data Events
   = StoragePathCreated {dbPath :: FilePath}
@@ -323,7 +320,8 @@ migrateSQLiteDB logger sqliteFile =
             populateSearch,
             createUsers,
             addUserInEventLog,
-            updateUserInEventLog
+            updateUserInEventLog,
+            addUniqueConstraintToUsers
           ]
       case migResult of
         MigrationSuccessful -> pure ()
@@ -339,12 +337,10 @@ withBackup file action = do
 
 migrateFileBasedProfile :: LoggerEnv -> FilePath -> FilePath -> IO ()
 migrateFileBasedProfile logger storagePath config = do
-  eitherProfile <- readProfileFile config
+  eitherProfile <- File.readProfileFile config
   case eitherProfile of
     Left _ -> pure ()
-    Right profile ->
-      withLog logger (CreateUserProfile profile) $
-        SQLite.withConnection storagePath $ void . insertNewUser logger profile
+    Right profile -> void $ runDB storagePath config logger $ writeProfileSQL profile
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
@@ -520,14 +516,6 @@ readCommandsSQL UserProfile {..} = do
     traces <- query cnx logger q (Only userName)
     pure $ foldr (commandViewBuilder userTimezone) [] traces
 
-newUserSQL ::
-  HasCallStack =>
-  UserProfile ->
-  SQLiteDB (Either Text (Encoded Hex))
-newUserSQL profile = do
-  SQLiteConfig {logger} <- ask
-  withConnection $ insertNewUser logger profile
-
 readProfileSQL ::
   HasCallStack =>
   Text ->
@@ -542,17 +530,16 @@ readProfileSQL userName = do
       [] -> pure $ Left ("No user " <> userName)
       _ -> pure $ Left ("Several users with " <> userName <> ", this is a bug")
 
-insertNewUser ::
-  LoggerEnv ->
+writeProfileSQL ::
+  HasCallStack =>
   UserProfile ->
-  Connection ->
-  IO (Either Text (Encoded Hex))
-insertNewUser logger profile cnx = do
-  [[count :: Int]] <- query cnx logger "select count(*) from users where user = ?" [toField $ userName profile]
-  if (count /= 0)
-    then pure $ Left "User already exists"
-    else do
-      let q = "insert into users (uid, user, profile) values (?,?,?);"
-      uid <- toHex . BS.pack . take 16 . randoms <$> newStdGen
-      execute cnx logger q [toField $ toText uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
-      pure $ Right uid
+  SQLiteDB (Encoded Hex)
+writeProfileSQL profile = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q =
+          "insert into users (uid, user, profile) values (?,?,?) \
+          \ on conflict(user) do update set profile = excluded.profile;"
+    uid <- toHex . BS.pack . take 16 . randoms <$> newStdGen
+    execute cnx logger q [toField $ toText uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
+    pure uid

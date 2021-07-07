@@ -39,6 +39,7 @@ import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types.Status
 import Network.URI.Extra (uriToString')
+import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.App
 import Sensei.Client.Monad
@@ -61,7 +62,7 @@ commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
 getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [Event])
 getUserProfileC :: Text -> ClientMonad UserProfile
-setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
+setUserProfileC :: Text -> UserProfile -> ClientMonad (Encoded Hex)
 getVersionsC :: ClientMonad Versions
 ( getFlowC :<|> updateFlowC
     :<|> queryFlowPeriodSummaryC

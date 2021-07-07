@@ -29,6 +29,7 @@ where
 
 import Data.Text (Text)
 import Data.Time
+import Preface.Codec (Encoded, Hex)
 import Sensei.Color
 import Sensei.Duration
 import Sensei.Flow
@@ -156,7 +157,7 @@ type PutUserProfile =
   Summary "Define current user's profile."
     :> Capture "user" Text
     :> ReqBody '[JSON] UserProfile
-    :> Put '[JSON] NoContent
+    :> Put '[JSON] (Encoded Hex)
 
 type LoginAPI =
   Summary "Allows users to login passing in credentials."

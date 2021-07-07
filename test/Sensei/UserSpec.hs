@@ -4,6 +4,7 @@
 module Sensei.UserSpec where
 
 import Data.Aeson
+import qualified Data.ByteString as BS
 import qualified Data.Map as Map
 import Data.Proxy
 import Sensei.API
@@ -58,12 +59,26 @@ spec = describe "Users Management" $ do
       it "GET /api/users/<user> returns default profile" $ do
         getJSON "/api/users/arnaud" `shouldRespondJSONBody` defaultProfile
 
+      it "PUT /api/users/<user> sets user profile returns user id" $ do
+        let profile = defaultProfile {userName = "robert"}
+
+        putJSON "/api/users/robert" profile
+          `shouldRespondWith` ResponseMatcher 200 [] (bodySatisfies $ \ bs -> BS.length bs == 32 + 2)
+          
       it "PUT /api/users/<user> sets user profile" $ do
         let profile = defaultProfile {userName = "robert"}
 
-        putJSON_ "/api/users/arnaud" profile
+        putJSON_ "/api/users/robert" profile
 
-        getJSON "/api/users/arnaud" `shouldRespondJSONBody` profile
+        getJSON "/api/users/robert" `shouldRespondJSONBody` profile
+
+      it "PUT /api/users/<user> sets user profile depending on profile's userName" $ do
+        let profile = defaultProfile {userName = "robert"}
+
+        putJSON_ "/api/users/alice" profile
+
+        getJSON "/api/users/robert" `shouldRespondJSONBody` profile
+        getJSON "/api/users/alice" `shouldRespondJSONBody` defaultProfile
 
       it "PUT /api/users/<user> sets hashed user's password in profile" $ do
         let profile = defaultProfile {userPassword = ("1234", "1234")}

@@ -190,7 +190,7 @@ runDB user (ReadFlow r) = readProfileOrDefault user >>= \u -> readFlow u r
 runDB user (ReadNotes rge) = readProfileOrDefault user >>= \u -> readNotes u rge
 runDB user ReadViews = readProfileOrDefault user >>= readViews
 runDB user ReadCommands = readProfileOrDefault user >>= readCommands
-runDB _ (NewUser u) = void $ newUser u
+runDB _ (NewUser u) = void $ writeProfile u
 runDB _ (SwitchUser _) = pure ()
 
 readProfileOrDefault :: DB db => Text -> db UserProfile

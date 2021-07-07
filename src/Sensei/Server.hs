@@ -16,6 +16,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Network.HTTP.Link as Link
 import Network.URI.Extra ()
+import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.DB
 import Sensei.Server.Auth.Types (Credentials (..), authenticateUser)
@@ -137,10 +138,9 @@ getUserProfileS userName = do
     Right prf -> pure prf
 
 putUserProfileS ::
-  (DB m) => Text -> UserProfile -> m NoContent
-putUserProfileS _ profile = do
+  (DB m) => Text -> UserProfile -> m (Encoded Hex)
+putUserProfileS _ profile =
   writeProfile profile
-  pure NoContent
 
 getVersionsS ::
   (Monad m) => m Versions
