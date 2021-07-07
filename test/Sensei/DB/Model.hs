@@ -9,10 +9,11 @@
 
 module Sensei.DB.Model where
 
+import Control.Lens (set, (^.))
 import Control.Monad.State
-import Control.Lens(set, (^.))
 import Data.Foldable (toList)
 import Data.Function (on)
+import qualified Data.Map as Map
 import Data.Maybe (isNothing)
 import Data.Sequence as Seq
 import Data.Text (Text)
@@ -20,18 +21,19 @@ import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
 import Sensei.Generators (genNatural, generateEvent, generateUserProfile, shiftTime, startTime)
+import System.Directory (doesFileExist, removeFile)
 import Test.Hspec (HasCallStack)
 import Test.QuickCheck
   ( Arbitrary (arbitrary),
-    forAllShrink,
     Gen,
     Positive (getPositive),
     Property,
     choose,
     counterexample,
+    elements,
+    forAllShrink,
     frequency,
   )
-import System.Directory(removeFile, doesFileExist)
 import Test.QuickCheck.Monadic
 
 -- | Relevant commands issued to the underlying DB
@@ -43,6 +45,7 @@ data Action a where
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
   NewUser :: UserProfile -> Action ()
+  SwitchUser :: Text -> Action ()
 
 instance Show (Action a) where
   show (WriteEvent f) = "WriteEvent " <> show f
@@ -52,13 +55,15 @@ instance Show (Action a) where
   show ReadViews = "ReadViews"
   show ReadCommands = "ReadCommands"
   show (NewUser u) = "NewUser " <> show u
+  show (SwitchUser u) = "SwitchUser " <> show u
 
 -- | Abstract state against which `Action`s are interpreted and
 -- to which underlying storage should conform
 data Model = Model
   { currentTimestamp :: UTCTime,
     currentProfile :: UserProfile,
-    events :: Seq Event
+    events :: Seq Event,
+    profiles :: Map.Map Text UserProfile
   }
   deriving (Eq, Show)
 
@@ -89,17 +94,21 @@ generateAction baseTime model count =
     go :: Model -> Seq SomeAction -> Integer -> Gen (Seq SomeAction)
     go _ acts 0 = pure acts
     go m acts n = do
-      act <- frequency
-        [ (9, SomeAction <$> genEvent m n),
-          (2, pure $ SomeAction (ReadFlow Latest)),
-          (1, (,) <$> genNatural <*> genNatural >>= \(p, s) -> pure (SomeAction (ReadEvents (Page p s)))),
-          (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k)))),
-          (1, pure $ SomeAction ReadViews),
-          (1, SomeAction . NewUser <$> generateUserProfile),
-          (1, pure $ SomeAction ReadCommands)
-        ]
+      act <-
+        frequency
+          [ (9, SomeAction <$> genEvent m n),
+            (2, pure $ SomeAction (ReadFlow Latest)),
+            (1, (,) <$> genNatural <*> genNatural >>= \(p, s) -> pure (SomeAction (ReadEvents (Page p s)))),
+            (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k)))),
+            (1, pure $ SomeAction ReadViews),
+            (1, SomeAction . NewUser <$> generateUserProfile),
+            (3, switchUser m),
+            (1, pure $ SomeAction ReadCommands)
+          ]
       m' <- step m act
       go m' (acts :|> act) (n - 1)
+
+    switchUser m = SomeAction . SwitchUser <$> elements (Map.keys $ profiles m)
 
     step m (SomeAction a) =
       execStateT (interpret a) m
@@ -107,7 +116,7 @@ generateAction baseTime model count =
     genEvent m n = do
       e <- generateEvent baseTime (count - n)
       pure $ WriteEvent $ set user' (userName $ currentProfile m) e
-    
+
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
@@ -151,6 +160,14 @@ interpret ReadCommands = do
   pure $ foldr (commandViewBuilder userTimezone) [] ts
 interpret (NewUser u) =
   modify $ \m -> m {currentProfile = u}
+interpret (SwitchUser u) =
+  modify $
+    \m ->
+      let changeProfile =
+            case Map.lookup u (profiles m) of
+              Nothing -> currentProfile m
+              Just p -> p
+       in m {currentProfile = changeProfile}
 
 getEvents :: Monad m => StateT Model m (Seq Event)
 getEvents = do
@@ -174,6 +191,7 @@ runDB user (ReadNotes rge) = readProfileOrDefault user >>= \u -> readNotes u rge
 runDB user ReadViews = readProfileOrDefault user >>= readViews
 runDB user ReadCommands = readProfileOrDefault user >>= readCommands
 runDB _ (NewUser u) = void $ newUser u
+runDB _ (SwitchUser _) = pure ()
 
 readProfileOrDefault :: DB db => Text -> db UserProfile
 readProfileOrDefault user = fmap (either (const defaultProfile) id) (readProfile user)
@@ -190,7 +208,7 @@ validateActions acts = do
 
 runAndCheck :: DB db => SomeAction -> StateT Model db (Maybe String)
 runAndCheck (SomeAction act) = do
-  UserProfile{userName} <- gets currentProfile
+  UserProfile {userName} <- gets currentProfile
   actual <- lift $ runDB userName act
   expected <- interpret act
   if actual == expected
@@ -210,14 +228,14 @@ runAndCheck (SomeAction act) = do
 canReadFlowsAndTracesWritten ::
   (DB db, HasCallStack) => FilePath -> (forall x. db x -> IO x) -> Property
 canReadFlowsAndTracesWritten dbFile nt =
-  forAllShrink (generateActions start) shrinkActions $ \ (Actions actions) -> monadicIO $ do
-  let monitorErrors Nothing = pure ()
-      monitorErrors (Just s) = monitor (counterexample s)
-  res <- run $ do
-    hasDB <- doesFileExist dbFile
-    when hasDB $ removeFile dbFile
-    nt $ initLogStorage >> evalStateT (validateActions actions) start
-  forM_ res monitorErrors
-  assert $ all isNothing res
+  forAllShrink (generateActions start) shrinkActions $ \(Actions actions) -> monadicIO $ do
+    let monitorErrors Nothing = pure ()
+        monitorErrors (Just s) = monitor (counterexample s)
+    res <- run $ do
+      hasDB <- doesFileExist dbFile
+      when hasDB $ removeFile dbFile
+      nt $ initLogStorage >> evalStateT (validateActions actions) start
+    forM_ res monitorErrors
+    assert $ all isNothing res
   where
-    start = Model startTime defaultProfile mempty
+    start = Model startTime defaultProfile mempty (Map.singleton (userName defaultProfile) defaultProfile)
