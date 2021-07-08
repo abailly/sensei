@@ -2,7 +2,7 @@
 
 module Sensei.Generators where
 
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, pack)
 import Data.Time (UTCTime (..), addUTCTime)
 import Data.Time.LocalTime
 import Preface.Codec (Base64, Encoded (..), toBase64)
@@ -105,7 +105,7 @@ generateTrace baseTime k = do
   args <- generateArgs
   ex <- arbitrary
   el <- fromInteger <$> choose (0, 100)
-  pure $ EventTrace $ Trace "arnaud" st (unpack dir) pr args ex el
+  pure $ EventTrace $ Trace "arnaud" st dir pr args ex el
 
 generateArgs :: Gen [Text]
 generateArgs = listOf $ pack . getASCIIString <$> arbitrary

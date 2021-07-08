@@ -23,6 +23,7 @@ import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
 import Sensei.Server.Auth.Types (createKeys, createToken, getPublicKey, setPassword)
 import Sensei.Version
+import Sensei.Wrapper(wrapperIO, tryWrapProg, handleWrapperResult)
 import Servant (Headers (getResponse))
 import System.Exit
 import System.IO
@@ -96,7 +97,9 @@ commandsParser flows =
         <> command "record" (info (recordOptions flows) (progDesc "Record flows"))
         <> command "notes" (info notesOptions (progDesc "Record and query notes"))
         <> command "user" (info userOptions (progDesc "Get and set user profile"))
-        <> command "command" (info commandOptions (progDesc "Wrap and record arbitrary commands execution"))
+        <> command "command" (info commandOptions (progDesc "Wrap and record arbitrary commands execution. To wrap any command, \
+                                                            \ pass '--' after the 'command' word, then the command executable \
+                                                            \ and the args."))
     )
 
 authOptions :: Parser Options
@@ -387,7 +390,11 @@ ep config (AuthOptions SetPassword) userName _ _ = do
   newProfile <- setPassword oldProfile pwd
   void $ send config (setUserProfileC userName newProfile)
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
-ep _config (CommandOptions _) _ _ _ = pure ()
+ep config (CommandOptions (Command exe args)) userName _ currentDir = do
+  let io = wrapperIO config
+  tryWrapProg io userName exe args currentDir >>= handleWrapperResult exe
+
+
 
 println :: BS.ByteString -> IO ()
 println bs =

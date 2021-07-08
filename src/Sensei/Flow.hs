@@ -96,7 +96,7 @@ instance ToJSON Flow where
 data Trace = Trace
   { _traceUser :: Text,
     _traceTimestamp :: UTCTime,
-    _traceDirectory :: FilePath,
+    _traceDirectory :: Text,
     _traceProcess :: Text,
     _traceArgs :: [Text],
     _traceExitCode :: Int,
