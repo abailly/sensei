@@ -44,20 +44,22 @@ main = do
   config <- readConfig
 
   let io = wrapperIO config
+      realUser = fromMaybe (pack curUser) (Client.configUser config)
+
   case prog of
     "ep" -> do
-      res <- try @Client.ClientError $ send io (Client.getUserProfileC $ pack curUser)
+      res <- try @Client.ClientError $ send io (Client.getUserProfileC $ realUser)
       let flows = case res of
                     Left _err -> Nothing
                     Right profile -> userDefinedFlows profile
       opts <- parseSenseiOptions flows
-      ep config opts (pack curUser) st (pack currentDir)
+      ep config opts realUser st (pack currentDir)
     "sensei-exe" -> do
       -- TODO this is clunky
       configDir <- fromMaybe "." <$> lookupEnv "SENSEI_SERVER_CONFIG_DIR"
       startServer configDir
     _ -> do
-      res <- tryWrapProg io curUser prog progArgs currentDir
+      res <- tryWrapProg io realUser prog progArgs currentDir
       handleWrapperResult prog res
   where
     wrapperIO config = WrapperIO {

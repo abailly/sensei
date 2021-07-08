@@ -5,7 +5,7 @@ module Sensei.Wrapper where
 
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
-import Data.Text (pack)
+import Data.Text (pack, Text)
 import Data.Time (UTCTime, diffUTCTime)
 import Sensei.Client (ClientMonad, getUserProfileC, postEventC)
 import Sensei.Flow
@@ -39,13 +39,13 @@ data WrapperError
 tryWrapProg ::
   (Monad m) =>
   WrapperIO m ->
-  String ->
+  Text ->
   String ->
   [String] ->
   FilePath ->
   m (Either WrapperError ExitCode)
 tryWrapProg io@WrapperIO {..} curUser prog args currentDir = do
-  commands <- fromMaybe defaultCommands . userCommands <$> send (getUserProfileC $ pack curUser)
+  commands <- fromMaybe defaultCommands . userCommands <$> send (getUserProfileC curUser)
   case Map.lookup prog commands of
     Just realPath -> do
       isFile <- fileExists realPath
@@ -57,7 +57,7 @@ tryWrapProg io@WrapperIO {..} curUser prog args currentDir = do
 wrapProg ::
   (Monad m) =>
   WrapperIO m ->
-  String ->
+  Text ->
   String ->
   [String] ->
   FilePath ->
@@ -66,7 +66,7 @@ wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   st <- getCurrentTime
   ex <- runProcess realProg progArgs
   en <- getCurrentTime
-  send (postEventC [EventTrace $ Trace (pack curUser) en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
+  send (postEventC [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
   pure ex
 
 toInt :: ExitCode -> Int
