@@ -34,6 +34,7 @@ data Options
   | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
   | UserOptions {userAction :: UserAction}
   | AuthOptions AuthOptions
+  | CommandOptions CommandOptions
   deriving (Show, Eq)
 
 data QueryOptions
@@ -65,6 +66,9 @@ data AuthOptions
   | NoOp
   deriving (Show, Eq)
 
+data CommandOptions = Command { exe :: String, args :: [String] }
+  deriving (Show, Eq)
+
 runOptionsParser ::
   Maybe [FlowType] -> [String] -> Either Text Options
 runOptionsParser flows arguments =
@@ -92,6 +96,7 @@ commandsParser flows =
         <> command "record" (info (recordOptions flows) (progDesc "Record flows"))
         <> command "notes" (info notesOptions (progDesc "Record and query notes"))
         <> command "user" (info userOptions (progDesc "Get and set user profile"))
+        <> command "command" (info commandOptions (progDesc "Wrap and record arbitrary commands execution"))
     )
 
 authOptions :: Parser Options
@@ -117,6 +122,9 @@ notesOptions = NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> se
 
 userOptions :: Parser Options
 userOptions = UserOptions <$> (profileParser *> userActionParser)
+
+commandOptions :: Parser Options
+commandOptions = CommandOptions <$> commandParser
 
 {-# NOINLINE today #-}
 today :: Day
@@ -306,6 +314,12 @@ setPasswordParser =
         <> help "Sets the password for the current user in his server's profile. Password is read from stdin."
     )
 
+commandParser :: Parser CommandOptions
+commandParser =
+  Command <$>
+  strArgument (help "command name") <*>
+  many (strArgument (help "command argument(s)"))
+
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options
 parseSenseiOptions flows = execParser (optionsParserInfo flows)
@@ -373,6 +387,7 @@ ep config (AuthOptions SetPassword) userName _ _ = do
   newProfile <- setPassword oldProfile pwd
   void $ send config (setUserProfileC userName newProfile)
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
+ep _config (CommandOptions _) _ _ _ = pure ()
 
 println :: BS.ByteString -> IO ()
 println bs =
