@@ -12,6 +12,7 @@ module Sensei.Client
   ( ClientMonad (..),
     ClientConfig (..),
     ClientError,
+    defaultConfig,
     killC,
     postEventC,
     getFlowC,

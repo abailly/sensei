@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -13,10 +14,13 @@ module Sensei.Client.Monad (ClientConfig (..), ClientMonad (..), module Control.
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Trans (MonadTrans (..))
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.=))
+import Control.Applicative((<|>))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.=), Object)
 import Data.CaseInsensitive
 import Data.Sequence
-import Data.Text (pack)
+import Numeric.Natural(Natural)
+import Data.Aeson.Types (Parser)
+import Data.Text (pack, Text)
 import Data.Text.Encoding (encodeUtf8)
 import Network.URI.Extra (uriAuthToString, uriFromString, uriToString')
 import Sensei.Server.Auth.Types (SerializedToken (..))
@@ -27,30 +31,45 @@ import Servant.Client.Core
 data ClientConfig = ClientConfig
   { serverUri :: URI,
     authToken :: Maybe SerializedToken,
-    startServerLocally :: Bool
+    startServerLocally :: Bool,
+    -- | Name to use for querying server and registering new flows, notes, and commands
+    -- If set to 'Nothing' the client will use the current (system) user name.
+    --
+    -- TODO: This should really not be here but handled as part of authentication and
+    -- be stored in the token. If one user should be able to register flows for other
+    -- users then this should be made an options somewhere.
+    configUser :: Maybe Text
   }
   deriving (Eq, Show)
 
 instance ToJSON ClientConfig where
-  toJSON ClientConfig {serverUri, authToken, startServerLocally} =
+  toJSON ClientConfig {serverUri, authToken, startServerLocally, configUser} =
     object
       [ "serverUri" .= uriToString' serverUri,
         "authToken" .= authToken,
-        "startserverlocally" .= startServerLocally
+        "startServerLocally" .= startServerLocally,
+        "configUser" .= configUser
       ]
 
 instance FromJSON ClientConfig where
   parseJSON = withObject "ClientConfig" $ \o -> do
-    uri <-
-      o .: "serverUri" >>= \u -> case uriFromString u of
-        Nothing -> fail $ "Invalid uri:" <> u
-        Just uri -> pure uri
-    token <- o .: "authToken"
-    locally <- o .: "startServerLocally"
-    pure $ ClientConfig uri token locally
+      version <- (o .: "configVersion") <|> pure 0
+      parseJSONFromVersion version o
+
+parseJSONFromVersion :: Natural -> Object -> Parser ClientConfig
+parseJSONFromVersion 0 obj = do
+  uri <- obj .: "serverUri" >>= \u ->
+         case uriFromString u of
+           Nothing -> fail $ "Invalid uri:" <> u
+           Just uri -> pure uri
+  token <- obj .: "authToken" <|> pure Nothing
+  locally <- obj .: "startServerLocally"
+  user <- obj .:  "configUser" <|> pure Nothing
+  pure $ ClientConfig uri token locally user
+parseJSONFromVersion n _ = fail $ "Unsupported version " <> show n
 
 defaultConfig :: ClientConfig
-defaultConfig = ClientConfig "http://localhost:23456" Nothing True
+defaultConfig = ClientConfig "http://localhost:23456" Nothing True Nothing
 
 newtype ClientMonad a = ClientMonad {unClient :: forall m. (RunClient m) => ReaderT ClientConfig m a}
 
