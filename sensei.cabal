@@ -80,6 +80,7 @@ library
                      , servant-auth-server
                      , servant-swagger
                      , sqlite-simple
+                     , stm
                      , swagger2
                      , template-haskell
                      , text

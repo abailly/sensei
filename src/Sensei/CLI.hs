@@ -35,7 +35,7 @@ import Sensei.CLI.Options
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
-import Sensei.Server.Auth.Types (createKeys, createToken, getPublicKey, setPassword)
+import Sensei.Server.Auth.Types (createKeys, createToken, getPublicKey, setPassword, Credentials(..))
 import Sensei.Version
 import Sensei.Wrapper (handleWrapperResult, tryWrapProg, wrapperIO)
 import Servant (Headers (getResponse))
@@ -104,7 +104,13 @@ ep config (AuthOptions SetPassword) userName _ _ = do
   pwd <- readPassword
   newProfile <- setPassword oldProfile pwd
   void $ send config (setUserProfileC userName newProfile)
-ep config (AuthOptions GetToken) _ _ _ = pure ()
+ep config (AuthOptions GetToken) userName _ _ = do
+  pwd <- readPassword
+  token <- send config $ do
+    -- authenticate with password
+    void $ loginC $ Credentials userName pwd
+    getFreshTokenC userName
+  writeConfig config {authToken = Just token}
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
 ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   let io = wrapperIO config
