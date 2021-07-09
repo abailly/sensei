@@ -13,7 +13,7 @@ module Sensei.Client
     ClientConfig (..),
     ClientError,
     defaultConfig,
-    killC,
+    killC, loginC,
     postEventC,
     getFlowC,
     updateFlowC,
@@ -33,11 +33,13 @@ module Sensei.Client
 where
 
 import Control.Concurrent (threadDelay)
+import Control.Concurrent.STM(newTVarIO)
 import Control.Exception (throwIO)
+import Data.Functor(void)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Time
-import Network.HTTP.Client (defaultManagerSettings, newManager)
+import Network.HTTP.Client (defaultManagerSettings, newManager, createCookieJar)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types.Status
 import Network.URI.Extra (uriToString')
@@ -45,7 +47,7 @@ import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.App
 import Sensei.Client.Monad
-import Sensei.Server.Auth.Types (SerializedToken)
+import Sensei.Server.Auth.Types (Credentials, SerializedToken)
 import Sensei.Version
 import Servant
 import Servant.Client
@@ -53,6 +55,9 @@ import Servant.Client.Core
 
 killC :: ClientMonad ()
 killC = clientIn (Proxy @KillServer) Proxy
+
+loginC :: Credentials -> ClientMonad ()
+loginC = void . clientIn (Proxy @LoginAPI) Proxy
 
 postEventC :: [Event] -> ClientMonad ()
 getFlowC :: Text -> Reference -> ClientMonad (Maybe Event)
@@ -86,7 +91,8 @@ send config@ClientConfig {serverUri, startServerLocally} act = do
   mgr <- case baseUrlScheme base of
     Http -> newManager defaultManagerSettings
     Https -> newManager tlsManagerSettings
-  let env = mkClientEnv mgr base
+  jar <- newTVarIO (createCookieJar [])
+  let env = (mkClientEnv mgr base) { cookieJar = Just jar }
   res <- runClientM (runReaderT (unClient act) config) env
   case res of
     Left err ->
