@@ -130,7 +130,7 @@ type GetFlow =
 
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."
-    :> Capture "user" Text
+    :> Capture "user" Text :? "User name to query timeline for"
     :> Capture "day" Day
     :> Get '[JSON] [FlowView]
 

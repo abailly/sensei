@@ -125,7 +125,7 @@ Retrieve timeline of flows for a given day.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
+| user | path | User name to query timeline for | Yes | string |
 | day | path |  | Yes | date |
 
 ##### Responses
