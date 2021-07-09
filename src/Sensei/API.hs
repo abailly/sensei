@@ -35,7 +35,7 @@ import Sensei.Duration
 import Sensei.Flow
 import Sensei.FlowView
 import Sensei.Group
-import Sensei.Server.Auth.Types (Auth, AuthenticationToken, Cookie, Credentials, JWT, SetCookie)
+import Sensei.Server.Auth.Types (Auth, AuthenticationToken, Cookie, Credentials, JWT, SetCookie, SerializedToken)
 import Sensei.Server.Tags
 import Sensei.Summary
 import Sensei.Time
@@ -148,6 +148,12 @@ type GetAllLog =
     :> QueryParam "page" Natural
     :> Get '[JSON] (Headers '[Header "Link" Text] [Event])
 
+type GetFreshToken =
+  Summary "Retrieve a fresh signed JWT token for given user."
+    :> Capture "user" Text
+    :> "token"
+    :> Get '[JSON] SerializedToken
+
 type GetUserProfile =
   Summary "Retrieve a user's profile."
     :> Capture "user" Text
@@ -201,7 +207,7 @@ type SenseiAPI =
                 )
            :<|> "users"
              :> Tags "User Profile"
-             :> (GetUserProfile :<|> PutUserProfile)
+             :> (GetFreshToken :<|> GetUserProfile :<|> PutUserProfile)
            :<|> Tags "Metadata" :> DisplayVersions
        )
 

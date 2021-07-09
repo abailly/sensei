@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.Server.AuthSpec where
 
 import Control.Exception (ErrorCall)
 import Control.Monad.Trans (liftIO)
-import Data.Aeson (decode)
+import Data.Aeson (decode, eitherDecode)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Lazy as LBS
@@ -12,18 +13,22 @@ import Data.Char (ord)
 import Data.Functor (void)
 import Data.Proxy (Proxy (..))
 import Sensei.API (UserProfile (..), defaultProfile)
-import Sensei.Server.Auth.Types (Credentials (..), JWK, SerializedToken (..), createKeys, createToken, getKey, getPublicKey, setPassword)
+import Sensei.Server.Auth.Types (Credentials (..),
+                                 decodeCompact,
+                                 JWK, Error, SignedJWT, SerializedToken (..), createKeys, createToken, getKey, getPublicKey, setPassword)
 import Sensei.TestHelper
   ( MatchHeader (..),
     app,
     clearCookies,
     defaultHeaders,
     jsonBodyEquals,
+    bodySatisfies,
     matchBody,
     matchHeaders,
     postJSON,
     postJSON_,
     putJSON_,
+    getJSON,
     request,
     shouldNotThrow,
     shouldRespondWith,
@@ -76,6 +81,9 @@ spec = describe "Authentication Operations" $ do
         let credentials = Credentials (userName profile) "password"
         postJSON "/login" credentials `shouldRespondWith` 200 {matchHeaders = [has2Cookies], matchBody = jsonBodyEquals profile}
 
+      it "GET /api/users/<user>/token returns fresh token given user is authenticated" $ do
+        getJSON "/api/users/arnaud/token" `shouldRespondWith` 200 {matchBody = bodySatisfies isSerializedToken}
+
       it "POST /login returns 401 given user authenticates with invalid password" $ do
         profile <- liftIO $ setPassword defaultProfile "password"
 
@@ -110,3 +118,9 @@ has2Cookies = MatchHeader $ \hdrs _ ->
   if length (filter ((== "Set-Cookie") . fst) hdrs) == 2
     then Nothing
     else Just $ "Expected 2 Set-Cookie headers, got: " <> show hdrs
+
+isSerializedToken :: BS.ByteString -> Bool
+isSerializedToken bytes =
+  case eitherDecode (LBS.fromStrict bytes) of
+    Right st -> either (const False) (const True) $ decodeCompact @SignedJWT @Error (LBS.fromStrict $ unToken st)
+    Left _ -> False

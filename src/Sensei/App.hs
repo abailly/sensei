@@ -88,9 +88,10 @@ sensei output = do
 
 baseServer ::
   (MonadIO m, DB m) =>
+  JWTSettings ->
   MVar () ->
   ServerT (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
-baseServer signal =
+baseServer jwtSettings signal =
   killS signal
     :<|> setCurrentTimeS
     :<|> getCurrentTimeS
@@ -104,7 +105,7 @@ baseServer signal =
          )
     :<|> searchNoteS
     :<|> (postEventS :<|> getLogS)
-    :<|> (getUserProfileS :<|> putUserProfileS)
+    :<|> (getFreshTokenS jwtSettings :<|> getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
 
 senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
@@ -120,11 +121,11 @@ senseiApp env signal publicAuthKey output configDir logger = do
       hoistServerWithContext fullAPI contextProxy runApp $
         pure senseiSwagger
           :<|> loginS jwtConfig cookieConfig
-          :<|> validateAuth
+          :<|> validateAuth jwtConfig
           :<|> Tagged (userInterface env)
   where
-    validateAuth (Authenticated _) = baseServer signal
-    validateAuth _ = throwAll err401 {errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
+    validateAuth jwtConfig (Authenticated _) = baseServer jwtConfig signal
+    validateAuth _ _ = throwAll err401 {errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
 
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
     runApp = (Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger)

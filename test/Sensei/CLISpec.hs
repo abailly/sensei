@@ -63,6 +63,9 @@ spec = describe "Command-Line Interface" $ do
     it "parses 'auth --set-password' as password creation" $ do
       runOptionsParser Nothing ["auth", "--set-password"] `shouldBe` Right (AuthOptions SetPassword)
 
+    it "parses 'auth --get-token' as token retrieval" $ do
+      runOptionsParser Nothing ["auth", "--get-token"] `shouldBe` Right (AuthOptions GetToken)
+
     it "parses 'command -- foo bar -x' as executing command 'foo' with arguments" $ do
       runOptionsParser Nothing ["command", "--", "foo", "bar", "-x"]
         `shouldBe` Right (CommandOptions $ Command "foo" [ "bar", "-x"])

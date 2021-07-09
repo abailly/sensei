@@ -103,6 +103,7 @@ ep config (AuthOptions SetPassword) userName _ _ = do
   pwd <- readPassword
   newProfile <- setPassword oldProfile pwd
   void $ send config (setUserProfileC userName newProfile)
+ep config (AuthOptions GetToken) _ _ _ = pure ()
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
 ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   let io = wrapperIO config
