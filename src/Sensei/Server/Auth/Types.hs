@@ -193,10 +193,10 @@ readOrMakeKey (Just keyString) =
 getKey :: FilePath -> IO JWK
 getKey jwkFile = do
   exists <- doesFileExist jwkFile
-  unless exists $ error $ "JWK file " <> jwkFile <> " does not exist"
+  unless exists $ ioError $ userError $ "JWK file " <> jwkFile <> " does not exist"
 
   bytes <- BS.readFile jwkFile
-  either (\err -> error ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
+  either (\err -> ioError $ userError ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
 
 createKeys :: FilePath -> IO ()
 createKeys directory = makeNewKey >>= \jwk -> BS.writeFile (directory </> "sensei.jwk") (LBS.toStrict $ encode jwk)

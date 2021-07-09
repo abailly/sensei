@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -19,6 +20,7 @@ import Control.Monad.Reader (ReaderT (runReaderT))
 import Crypto.JOSE (JWK)
 import Data.Aeson (encode)
 import Data.ByteString.Lazy (fromStrict, toStrict)
+import qualified Data.ByteString.Lazy as LBS
 import Data.Maybe (fromMaybe)
 import Data.Swagger (Swagger)
 import Data.Text (pack, unpack)
@@ -39,6 +41,7 @@ import Sensei.Server.Auth.Types
     defaultCookieSettings,
     defaultJWTSettings,
     getKey,
+    makeNewKey,
     readOrMakeKey,
     throwAll,
   )
@@ -69,7 +72,14 @@ daemonizeServer = do
   daemonize $ startServer configDir
 
 getKeyAsString :: FilePath -> IO String
-getKeyAsString configDir = unpack . decodeUtf8 . toStrict . encode <$> getKey (configDir </> "sensei.jwk")
+getKeyAsString configDir = do
+  let keyFile = configDir </> "sensei.jwk"
+  key <- getKey keyFile
+         `catch` (\ (_ :: IOError) -> do
+                     k <- makeNewKey
+                     LBS.writeFile keyFile $ encode k
+                     pure k)
+  pure $ unpack . decodeUtf8 . toStrict . encode $ key
 
 startServer :: FilePath -> IO ()
 startServer configDir =
