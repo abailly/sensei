@@ -13,22 +13,32 @@ import Data.Char (ord)
 import Data.Functor (void)
 import Data.Proxy (Proxy (..))
 import Sensei.API (UserProfile (..), defaultProfile)
-import Sensei.Server.Auth.Types (Credentials (..),
-                                 decodeCompact,
-                                 JWK, Error, SignedJWT, SerializedToken (..), createKeys, createToken, getKey, getPublicKey, setPassword)
+import Sensei.Server.Auth.Types
+  ( Credentials (..),
+    Error,
+    JWK,
+    SerializedToken (..),
+    SignedJWT,
+    createKeys,
+    createToken,
+    decodeCompact,
+    getKey,
+    getPublicKey,
+    setPassword,
+  )
 import Sensei.TestHelper
   ( MatchHeader (..),
     app,
+    bodySatisfies,
     clearCookies,
     defaultHeaders,
+    getJSON,
     jsonBodyEquals,
-    bodySatisfies,
     matchBody,
     matchHeaders,
     postJSON,
     postJSON_,
     putJSON_,
-    getJSON,
     request,
     shouldNotThrow,
     shouldRespondWith,

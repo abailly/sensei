@@ -44,8 +44,8 @@ import Network.URI.Extra (uriToString')
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.App
-import Sensei.Server.Auth.Types(SerializedToken)
 import Sensei.Client.Monad
+import Sensei.Server.Auth.Types (SerializedToken)
 import Sensei.Version
 import Servant
 import Servant.Client

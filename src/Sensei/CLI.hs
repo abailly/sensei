@@ -4,21 +4,22 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Sensei.CLI
-( -- * Options
-  Options(..),
-  RecordOptions(..),
-  QueryOptions(..),
-  UserOptions(..),
-  NotesOptions(..),
-  NotesQuery(..),
-  AuthOptions(..),
-  CommandOptions(..),
-  runOptionsParser,
-  parseSenseiOptions,
-  -- * Main entrypoint
-  ep
+  ( -- * Options
+    Options (..),
+    RecordOptions (..),
+    QueryOptions (..),
+    UserOptions (..),
+    NotesOptions (..),
+    NotesQuery (..),
+    AuthOptions (..),
+    CommandOptions (..),
+    runOptionsParser,
+    parseSenseiOptions,
+
+    -- * Main entrypoint
+    ep,
   )
-  where
+where
 
 import Data.Aeson hiding (Options, Success)
 import Data.Aeson.Encode.Pretty (encodePretty)
@@ -30,16 +31,16 @@ import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time
 import Sensei.API
+import Sensei.CLI.Options
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
 import Sensei.Server.Auth.Types (createKeys, createToken, getPublicKey, setPassword)
 import Sensei.Version
-import Sensei.Wrapper(wrapperIO, tryWrapProg, handleWrapperResult)
+import Sensei.Wrapper (handleWrapperResult, tryWrapProg, wrapperIO)
 import Servant (Headers (getResponse))
 import System.Exit
 import System.IO
-import Sensei.CLI.Options
 
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
@@ -108,8 +109,6 @@ ep _config (AuthOptions NoOp) _ _ _ = pure ()
 ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   let io = wrapperIO config
   tryWrapProg io userName exe args currentDir >>= handleWrapperResult exe
-
-
 
 println :: BS.ByteString -> IO ()
 println bs =

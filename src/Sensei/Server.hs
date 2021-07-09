@@ -19,7 +19,7 @@ import Network.URI.Extra ()
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.DB
-import Sensei.Server.Auth.Types (Credentials (..), authenticateUser, makeToken, AuthenticationToken(..), SerializedToken)
+import Sensei.Server.Auth.Types (AuthenticationToken (..), Credentials (..), SerializedToken, authenticateUser, makeToken)
 import Sensei.Server.Links (nextDayLink, nextPageLink, periodLinks, previousDayLink, previousPageLink)
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
@@ -145,7 +145,8 @@ putUserProfileS _ profile =
 getFreshTokenS ::
   MonadIO m =>
   JWTSettings ->
-  Text -> m SerializedToken
+  Text ->
+  m SerializedToken
 getFreshTokenS js _userName =
   liftIO $ makeToken js (AuthToken 1 1)
 

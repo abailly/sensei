@@ -12,7 +12,7 @@ spec :: Spec
 spec = describe "Command-Line Interface" $ do
   describe "Options parser" $ do
     it "parses 'record -e' as 'Experimenting' flow type given flows is Nothing" $ do
-      runOptionsParser Nothing ["record", "-e"] `shouldBe` Right (RecordOptions $ SingleFlow  (FlowType "Experimenting"))
+      runOptionsParser Nothing ["record", "-e"] `shouldBe` Right (RecordOptions $ SingleFlow (FlowType "Experimenting"))
 
     it "parses 'record -g' as an error given flows is Nothing" $ do
       runOptionsParser Nothing ["record", "-g"] `shouldSatisfy` isLeft
@@ -68,7 +68,7 @@ spec = describe "Command-Line Interface" $ do
 
     it "parses 'command -- foo bar -x' as executing command 'foo' with arguments" $ do
       runOptionsParser Nothing ["command", "--", "foo", "bar", "-x"]
-        `shouldBe` Right (CommandOptions $ Command "foo" [ "bar", "-x"])
+        `shouldBe` Right (CommandOptions $ Command "foo" ["bar", "-x"])
 
     it "fail to parse 'command foo bar -x' as it contains interpreted option" $ do
       runOptionsParser Nothing ["command", "foo", "bar", "-x"]

@@ -5,10 +5,10 @@ module Sensei.DB.SQLiteSpec where
 
 import Control.Exception.Safe (throwIO)
 import Control.Monad.Reader
-import Data.Aeson(encode)
+import Data.Aeson (encode)
+import Data.ByteString.Lazy (toStrict)
 import Data.List (isInfixOf, isPrefixOf)
-import Data.Text.Encoding(decodeUtf8)
-import Data.ByteString.Lazy(toStrict)
+import Data.Text.Encoding (decodeUtf8)
 import qualified Database.SQLite.Simple as SQLite
 import Preface.Log
 import Sensei.API
@@ -88,7 +88,7 @@ spec = describe "SQLite DB" $ do
         files <- listDirectory dir
         filter (isBackupFileFor tmp) files `shouldNotBe` []
         mapM_ removeFile (filter (isBackupFileFor tmp) files)
-        
+
   around withTempFile $
     describe "Basic Operations" $ do
       it "matches DB model" $ \tempdb ->
@@ -161,7 +161,7 @@ spec = describe "SQLite DB" $ do
         head res `shouldBe` ["arnaud" :: String]
 
       it "adds existing file-based user profile to DB with uid" $ \tmp ->
-        withTempDir $ \ dir -> do
+        withTempDir $ \dir -> do
           void $ File.writeProfileFile defaultProfile dir
 
           runDB tmp dir fakeLogger initLogStorage
