@@ -56,7 +56,7 @@ type SetCurrentTime =
   Summary "Set the current time of the server."
     :> Tags "Development"
     :> "time"
-    :> Capture "user" Text
+    :> Capture "user" Text :? "User name to set current time for"
     :> ReqBody '[JSON] Timestamp
     :> Put '[JSON] ()
 
@@ -64,7 +64,7 @@ type GetCurrentTime =
   Summary "Get the current time of the server."
     :> Tags "Development"
     :> "time"
-    :> Capture "user" Text
+    :> Capture "user" Text  :? "User name to get current time of"
     :> Get '[JSON] Timestamp
 
 type DisplayVersions =
@@ -83,7 +83,7 @@ type PatchFlowTimeshift =
     \If the resulting timestamp happens before the previous flow's start time, \
     \it raises an error. \
     \Returns the updated Flow."
-    :> Capture "user" Text
+    :> Capture "user" Text :? "User to patch latest flow timestamp"
     :> "latest"
     :> "timestamp"
     :> ReqBody '[JSON] TimeDifference
@@ -95,73 +95,77 @@ type GetPeriodSummary =
     \ The time period is given by query arguments `from` and `to`, with `from` being \
     \ inclusive lower bound and `to` being exclusive upper bound. \
     \ `from` must be a valid ISO8601 date _before_ `to`."
-    :> Capture "user" Text
+    :> Capture "user" Text :? "User to get summary for"
     :> "summary"
-    :> QueryParam "from" Day
-    :> QueryParam "to" Day
-    :> QueryParam "period" Group
+    :> QueryParam "from" Day :? "Starting date (in ISO8601 format) for period summary"
+    :> QueryParam "to" Day :? "End date (in ISO8601 format) for period summary"
+    :> QueryParam "period" Group :? "Granularity of summary period, to provide meaningful \
+                                    \ links to next and previous summaries."
     :> Get '[JSON] (Headers '[Header "Link" Text] FlowSummary)
 
 type GetNotes =
   Summary "Retrieve timestamped notes for some day, or all notes if no day is given."
-    :> Capture "user" Text
-    :> Capture "day" Day
+    :> Capture "user" Text :? "User to get notes for"
+    :> Capture "day" Day :? "The date to retrieve notes for, in ISO8601 format."
     :> "notes"
     :> Get '[JSON] (Headers '[Header "Link" Text] [NoteView])
 
 type SearchNotes =
   Summary "Run a full-text search on all notes, retrieving matching notes."
-    :> Capture "user" Text
-    :> QueryParam "search" Text
+    :> Capture "user" Text :? "User to search notes for"
+    :> QueryParam "search" Text :? "The search 'expression', ie. some word or sentence fragment"
     :> Get '[JSON] [NoteView]
 
 type GetCommands =
   Summary "Retrieve sequence of executed commands for some day."
-    :> Capture "user" Text
-    :> Capture "day" Day
+    :> Capture "user" Text :? "User to retrieve commands for"
+    :> Capture "day" Day :? "The date to retrieve commands, in ISO8601 format"
     :> "commands"
     :> Get '[JSON] [CommandView]
 
 type GetFlow =
   Summary "Query flows"
-    :> Capture "user" Text
-    :> Capture "ref" Reference
+    :> Capture "user" Text :? "User to query flows for"
+    :> Capture "ref" Reference :? "A 'reference' expression denoting the event to retrieve"
     :> Get '[JSON] (Maybe Event)
 
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."
     :> Capture "user" Text :? "User name to query timeline for"
-    :> Capture "day" Day
+    :> Capture "day" Day :? "The date to retrieve flows timeline, in ISO8601 format"
     :> Get '[JSON] [FlowView]
 
 type GetGroupedTimelines =
   Summary
     "Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...). \
     \ If no 'group' param is given, returns _all_ flows."
-    :> Capture "user" Text
-    :> QueryParams "group" Group
+    :> Capture "user" Text :? "User name to query timeline for"
+    :> QueryParams "group" Group :? "The periods to group summary. There may be several of them \
+                                    \ in which case the views will be grouped hierarchically (WIP)"
     :> Get '[JSON] [GroupViews FlowView]
 
 type GetAllLog =
   Summary "Retrieve the complete log of all events pertaining to a given user, most recent first"
-    :> Capture "user" Text
-    :> QueryParam "page" Natural
+    :> Capture "user" Text :? "User to retrieve log of events for"
+    :> QueryParam "page" Natural :? "Pagination parameter for retrieving events. Events are returned \
+                                    \ 50 by 50, most recent event first. The 'next' and 'prev' pages \
+                                    \ URLs are provided as 'Link' header"
     :> Get '[JSON] (Headers '[Header "Link" Text] [Event])
 
 type GetFreshToken =
   Summary "Retrieve a fresh signed JWT token for given user."
-    :> Capture "user" Text
+    :> Capture "user" Text :? "The user to retrieve a token for"
     :> "token"
     :> Get '[JSON] SerializedToken
 
 type GetUserProfile =
   Summary "Retrieve a user's profile."
-    :> Capture "user" Text
+    :> Capture "user" Text :? "The user to get profile of"
     :> Get '[JSON] UserProfile
 
 type PutUserProfile =
-  Summary "Define current user's profile."
-    :> Capture "user" Text
+  Summary "Define a user's profile. If the user does not exist, it is registered"
+    :> Capture "user" Text :? "User to set profile of"
     :> ReqBody '[JSON] UserProfile
     :> Put '[JSON] (Encoded Hex)
 

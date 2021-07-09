@@ -54,6 +54,40 @@ instance (KnownSymbol doc, KnownSymbol sym, ToParamSchema a, HasSwagger sub) => 
             & in_ .~ ParamPath
             & paramSchema .~ toParamSchema (Proxy :: Proxy a))
 
+instance (KnownSymbol doc, KnownSymbol sym, ToParamSchema a, HasSwagger sub) => HasSwagger (QueryParam' mods sym a :? doc :> sub) where
+  toSwagger _ = toSwagger (Proxy :: Proxy sub)
+    & addParam param
+    & addDefaultResponse400 tname
+    where
+      pname = symbolVal (Proxy :: Proxy sym)
+      tname = pack pname
+      param = mempty
+        & name .~ tname
+        & description ?~ pack (symbolVal (Proxy :: Proxy doc))
+        & required ?~ False
+        & schema .~ ParamOther sch
+      sch = mempty
+        & in_ .~ ParamQuery
+        & paramSchema .~ toParamSchema (Proxy :: Proxy a)
+
+instance (KnownSymbol doc, KnownSymbol sym, ToParamSchema a, HasSwagger sub) => HasSwagger (QueryParams  sym a :? doc :> sub) where
+ toSwagger _ = toSwagger (Proxy :: Proxy sub)
+    & addParam param
+    & addDefaultResponse400 tname
+    where
+      tname = pack (symbolVal (Proxy :: Proxy sym))
+      param = mempty
+        & name .~ tname
+        & description ?~ pack (symbolVal (Proxy :: Proxy doc))
+        & schema .~ ParamOther sch
+      sch = mempty
+        & in_ .~ ParamQuery
+        & paramSchema .~ pschema
+      pschema = mempty
+        & type_ ?~ SwaggerArray
+        & items ?~ SwaggerItemsPrimitive (Just CollectionMulti) (toParamSchema (Proxy :: Proxy a))
+
+
 data Tags (sym :: Symbol)
   deriving (Typeable)
 

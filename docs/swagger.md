@@ -16,8 +16,8 @@ Query flows
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
-| ref | path |  | Yes | string |
+| user | path | User to query flows for | Yes | string |
+| ref | path | A 'reference' expression denoting the event to retrieve | Yes | string |
 
 ##### Responses
 
@@ -37,7 +37,7 @@ Changes the latest recorded flow's start time by some amount of time. If the res
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
+| user | path | User to patch latest flow timestamp | Yes | string |
 | body | body |  | Yes | [TimeDifference](#timedifference) |
 
 ##### Responses
@@ -59,10 +59,10 @@ Retrieve flows summary, eg. time spend in flows by type, for a given time period
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
-| from | query |  | No | date |
-| to | query |  | No | date |
-| period | query |  | No | string |
+| user | path | User to get summary for | Yes | string |
+| from | query | Starting date (in ISO8601 format) for period summary | No | date |
+| to | query | End date (in ISO8601 format) for period summary | No | date |
+| period | query | Granularity of summary period, to provide meaningful  links to next and previous summaries. | No | string |
 
 ##### Responses
 
@@ -83,8 +83,8 @@ Retrieve timestamped notes for some day, or all notes if no day is given.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
-| day | path |  | Yes | date |
+| user | path | User to get notes for | Yes | string |
+| day | path | The date to retrieve notes for, in ISO8601 format. | Yes | date |
 
 ##### Responses
 
@@ -104,8 +104,8 @@ Retrieve sequence of executed commands for some day.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
-| day | path |  | Yes | date |
+| user | path | User to retrieve commands for | Yes | string |
+| day | path | The date to retrieve commands, in ISO8601 format | Yes | date |
 
 ##### Responses
 
@@ -126,7 +126,7 @@ Retrieve timeline of flows for a given day.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
 | user | path | User name to query timeline for | Yes | string |
-| day | path |  | Yes | date |
+| day | path | The date to retrieve flows timeline, in ISO8601 format | Yes | date |
 
 ##### Responses
 
@@ -146,8 +146,8 @@ Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...).  I
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
-| group | query |  | No | [ string ] |
+| user | path | User name to query timeline for | Yes | string |
+| group | query | The periods to group summary. There may be several of them  in which case the views will be grouped hierarchically (WIP) | No | [ string ] |
 
 ##### Responses
 
@@ -168,8 +168,8 @@ Run a full-text search on all notes, retrieving matching notes.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
-| search | query |  | No | string |
+| user | path | User to search notes for | Yes | string |
+| search | query | The search 'expression', ie. some word or sentence fragment | No | string |
 
 ##### Responses
 
@@ -210,8 +210,8 @@ Retrieve the complete log of all events pertaining to a given user, most recent 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
-| page | query |  | No | integer |
+| user | path | User to retrieve log of events for | Yes | string |
+| page | query | Pagination parameter for retrieving events. Events are returned  50 by 50, most recent event first. The 'next' and 'prev' pages  URLs are provided as 'Link' header | No | integer |
 
 ##### Responses
 
@@ -232,7 +232,7 @@ Retrieve a fresh signed JWT token for given user.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
+| user | path | The user to retrieve a token for | Yes | string |
 
 ##### Responses
 
@@ -252,7 +252,7 @@ Retrieve a user's profile.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
+| user | path | The user to get profile of | Yes | string |
 
 ##### Responses
 
@@ -264,13 +264,13 @@ Retrieve a user's profile.
 #### PUT
 ##### Summary
 
-Define current user's profile.
+Define a user's profile. If the user does not exist, it is registered
 
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
-| user | path |  | Yes | string |
+| user | path | User to set profile of | Yes | string |
 | body | body |  | Yes | [UserProfile](#userprofile) |
 
 ##### Responses
