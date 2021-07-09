@@ -43,8 +43,8 @@ spec = describe "Command-Line Interface" $ do
       runOptionsParser Nothing ["user", "-Q", "latest"] `shouldBe` Right (UserOptions $ GetFlow Latest)
 
     it "parses 'notes -N --search foo' as search query" $ do
-      runOptionsParser Nothing ["notes", "-N", "--search", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
-      runOptionsParser Nothing ["notes", "-N", "-s", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (QuerySearch "foo") Section)
+      runOptionsParser Nothing ["notes", "-N", "--search", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (NotesQuery (QuerySearch "foo") Section))
+      runOptionsParser Nothing ["notes", "-N", "-s", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (NotesQuery (QuerySearch "foo") Section))
 
     it "parses 'query -s' as a summary with default date" $ do
       runOptionsParser Nothing ["query", "-s"] `shouldSatisfy` \case
