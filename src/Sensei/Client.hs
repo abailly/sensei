@@ -24,6 +24,7 @@ module Sensei.Client
     commandsDayC,
     searchNotesC,
     getLogC,
+    getFreshTokenC,
     getUserProfileC,
     setUserProfileC,
     getVersionsC,
@@ -43,6 +44,7 @@ import Network.URI.Extra (uriToString')
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.App
+import Sensei.Server.Auth.Types(SerializedToken)
 import Sensei.Client.Monad
 import Sensei.Version
 import Servant
@@ -62,6 +64,7 @@ notesDayC :: Text -> Day -> ClientMonad (Headers '[Header "Link" Text] [NoteView
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
 getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [Event])
+getFreshTokenC :: Text -> ClientMonad SerializedToken
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad (Encoded Hex)
 getVersionsC :: ClientMonad Versions
@@ -74,7 +77,7 @@ getVersionsC :: ClientMonad Versions
   )
   :<|> searchNotesC
   :<|> (postEventC :<|> getLogC)
-  :<|> (getUserProfileC :<|> setUserProfileC)
+  :<|> (getFreshTokenC :<|> getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a

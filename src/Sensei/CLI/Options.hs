@@ -49,6 +49,7 @@ data UserOptions
 data AuthOptions
   = CreateKeys
   | CreateToken
+  | GetToken
   | SetPassword
   | PublicKey
   | NoOp
@@ -91,7 +92,7 @@ commandsParser flows =
 
 authOptions :: Parser Options
 authOptions =
-  AuthOptions <$> (createKeysParser <|> publicKeyParser <|> createTokenParser <|> setPasswordParser)
+  AuthOptions <$> (createKeysParser <|> publicKeyParser <|> createTokenParser <|> getTokenParser <|> setPasswordParser)
 
 queryOptions :: Parser Options
 queryOptions =
@@ -292,6 +293,16 @@ createTokenParser =
     ( long "create-token"
         <> short 't'
         <> help "Create a new token using existing key, and update 'client.json' configuration file"
+    )
+
+getTokenParser :: Parser AuthOptions
+getTokenParser =
+  flag
+    NoOp
+    GetToken
+    ( long "get-token"
+        <> short 'g'
+        <> help "Retrieve a fresh token from the server, authenticating user with password, and update 'client.json' configuration file"
     )
 
 setPasswordParser :: Parser AuthOptions

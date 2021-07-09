@@ -169,7 +169,7 @@ bodySatisfies p =
     \_ body ->
       if p (toStrict body)
         then Nothing
-        else Just ("String " <> unpack (decodeUtf8 $ toStrict body) <> " does not satisfy predicate")
+        else Just ("String '" <> unpack (decodeUtf8 $ toStrict body) <> "' does not satisfy predicate")
 
 shouldNotThrow :: forall e a. (Exception e, HasCallStack) => IO a -> Proxy e -> Expectation
 shouldNotThrow action _ = void action `catch` \(err :: e) -> expectationFailure ("Expected action to not throw " <> show err)

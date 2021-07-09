@@ -22,12 +22,16 @@ module Sensei.Server.Auth.Types
     readOrMakeKey,
     createKeys,
     createToken,
+    makeToken,
     getKey,
     getPublicKey,
     setPassword,
     encrypt,
     authenticateUser,
     module Crypto.JOSE.JWK,
+    decodeCompact,
+    Error(..),
+    SignedJWT,
     module SAS,
   )
 where
@@ -35,6 +39,9 @@ where
 import Control.Lens ((^.))
 import Control.Monad (unless)
 import Crypto.JOSE.JWK
+import Crypto.JOSE.Compact(decodeCompact)
+import Crypto.JOSE.Error(Error(..))
+import Crypto.JWT(SignedJWT)
 import Crypto.KDF.BCrypt
 import Data.Aeson
 import Data.ByteString (ByteString)
@@ -197,7 +204,11 @@ createKeys directory = makeNewKey >>= \jwk -> BS.writeFile (directory </> "sense
 createToken :: FilePath -> IO SerializedToken
 createToken directory = do
   key <- getKey (directory </> "sensei.jwk")
-  makeJWT (AuthToken 1 1) (defaultJWTSettings key) Nothing >>= \case
+  makeToken (defaultJWTSettings key) (AuthToken 1 1)
+
+makeToken :: JWTSettings -> AuthenticationToken -> IO SerializedToken
+makeToken settings authId =
+  makeJWT authId settings Nothing >>= \case
     Left err -> error $ "Failed to create token :" <> show err
     Right jwt -> pure $ SerializedToken $ LBS.toStrict jwt
 
