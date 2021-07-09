@@ -45,4 +45,43 @@ $ ep query
 
 The daemon will be launched on port 23456 and available at [localhost:23456](http://localhost:23456).
 
-See the [API Documentation](swagger.md) for more details.
+# API
+
+_sensei_ exposes a REST-like API that is used by the `ep` command-line client but can be accessed by any other HTTP client. See the [API Documentation](swagger.md) for more details.
+
+## Authentication
+
+All calls to the API (except for the `/login` endpoint, obviously) must be authenticated. Authentication can be provided by two different means:
+
+* Using a [Bearer token](https://datatracker.ietf.org/doc/html/rfc6750): The user must provide an `Authorization` header with a `Bearer XXX` content, where `XXX` is a valid JSON Web Token. See [Configuraiton](#configuration) section for a simple way to generate such a token,
+* Using a [Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies): The cookie is named `JWT-Cookie` and its content is simply a JWT.
+
+The latter is used with login-based authentication: When the user logs in through the [Web page](#web-application), the cookie is set by the server.
+
+### Retrieving a token
+
+A token can be created either locally, using the previously mentioned `--create-token` option, but it can also be fetched from the server:
+
+The command
+
+```
+$ ep auth --get-token
+Enter password:
+```
+
+will update the client's configuration with a freshly generated token signed by ther server. The user is asked to enter her password because the client will obviosly *not use* an existing token to authenticate with the server.
+
+### Setting or changing password
+
+To set or change one's password, run the following command:
+
+```
+$ ep auth --set-password
+Enter password:
+```
+
+This will update the user's profile with the given password, using the client's configured token for authenticating with the server.
+
+# Web application
+
+TBD
