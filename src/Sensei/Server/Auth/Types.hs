@@ -30,7 +30,7 @@ module Sensei.Server.Auth.Types
     authenticateUser,
     module Crypto.JOSE.JWK,
     decodeCompact,
-    Error(..),
+    Error (..),
     SignedJWT,
     module SAS,
   )
@@ -38,10 +38,10 @@ where
 
 import Control.Lens ((^.))
 import Control.Monad (unless)
+import Crypto.JOSE.Compact (decodeCompact)
+import Crypto.JOSE.Error (Error (..))
 import Crypto.JOSE.JWK
-import Crypto.JOSE.Compact(decodeCompact)
-import Crypto.JOSE.Error(Error(..))
-import Crypto.JWT(SignedJWT)
+import Crypto.JWT (SignedJWT)
 import Crypto.KDF.BCrypt
 import Data.Aeson
 import Data.ByteString (ByteString)

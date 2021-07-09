@@ -63,8 +63,8 @@ spec = describe "Users Management" $ do
         let profile = defaultProfile {userName = "robert"}
 
         putJSON "/api/users/robert" profile
-          `shouldRespondWith` ResponseMatcher 200 [] (bodySatisfies $ \ bs -> BS.length bs == 32 + 2)
-          
+          `shouldRespondWith` ResponseMatcher 200 [] (bodySatisfies $ \bs -> BS.length bs == 32 + 2)
+
       it "PUT /api/users/<user> sets user profile" $ do
         let profile = defaultProfile {userName = "robert"}
 

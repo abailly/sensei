@@ -1,7 +1,7 @@
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Sensei.CLI.Options where
+{-# LANGUAGE ViewPatterns #-}
 
+module Sensei.CLI.Options where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -55,7 +55,7 @@ data AuthOptions
   | NoOp
   deriving (Show, Eq)
 
-data CommandOptions = Command { exe :: String, args :: [String] }
+data CommandOptions = Command {exe :: String, args :: [String]}
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -85,9 +85,16 @@ commandsParser flows =
         <> command "record" (info (recordOptions flows) (progDesc "Record flows"))
         <> command "notes" (info notesOptions (progDesc "Record and query notes"))
         <> command "user" (info userOptions (progDesc "Get and set user profile"))
-        <> command "command" (info commandOptions (progDesc "Wrap and record arbitrary commands execution. To wrap any command, \
-                                                            \ pass '--' after the 'command' word, then the command executable \
-                                                            \ and the args."))
+        <> command
+          "command"
+          ( info
+              commandOptions
+              ( progDesc
+                  "Wrap and record arbitrary commands execution. To wrap any command, \
+                  \ pass '--' after the 'command' word, then the command executable \
+                  \ and the args."
+              )
+          )
     )
 
 authOptions :: Parser Options
@@ -317,9 +324,9 @@ setPasswordParser =
 
 commandParser :: Parser CommandOptions
 commandParser =
-  Command <$>
-  strArgument (help "command name") <*>
-  many (strArgument (help "command argument(s)"))
+  Command
+    <$> strArgument (help "command name")
+    <*> many (strArgument (help "command argument(s)"))
 
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options

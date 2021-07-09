@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -12,17 +12,17 @@
 
 module Sensei.Client.Monad (ClientConfig (..), ClientMonad (..), module Control.Monad.Reader, defaultConfig) where
 
+import Control.Applicative ((<|>))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Trans (MonadTrans (..))
-import Control.Applicative((<|>))
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.=), Object)
+import Data.Aeson (FromJSON (..), Object, ToJSON (..), object, withObject, (.:), (.=))
+import Data.Aeson.Types (Parser)
 import Data.CaseInsensitive
 import Data.Sequence
-import Numeric.Natural(Natural)
-import Data.Aeson.Types (Parser)
-import Data.Text (pack, Text)
+import Data.Text (Text, pack)
 import Data.Text.Encoding (encodeUtf8)
 import Network.URI.Extra (uriAuthToString, uriFromString, uriToString')
+import Numeric.Natural (Natural)
 import Sensei.Server.Auth.Types (SerializedToken (..))
 import Sensei.Version
 import Servant
@@ -53,18 +53,19 @@ instance ToJSON ClientConfig where
 
 instance FromJSON ClientConfig where
   parseJSON = withObject "ClientConfig" $ \o -> do
-      version <- (o .: "configVersion") <|> pure 0
-      parseJSONFromVersion version o
+    version <- (o .: "configVersion") <|> pure 0
+    parseJSONFromVersion version o
 
 parseJSONFromVersion :: Natural -> Object -> Parser ClientConfig
 parseJSONFromVersion 0 obj = do
-  uri <- obj .: "serverUri" >>= \u ->
-         case uriFromString u of
-           Nothing -> fail $ "Invalid uri:" <> u
-           Just uri -> pure uri
+  uri <-
+    obj .: "serverUri" >>= \u ->
+      case uriFromString u of
+        Nothing -> fail $ "Invalid uri:" <> u
+        Just uri -> pure uri
   token <- obj .: "authToken" <|> pure Nothing
   locally <- obj .: "startServerLocally"
-  user <- obj .:  "configUser" <|> pure Nothing
+  user <- obj .: "configUser" <|> pure Nothing
   pure $ ClientConfig uri token locally user
 parseJSONFromVersion n _ = fail $ "Unsupported version " <> show n
 

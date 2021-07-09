@@ -5,16 +5,16 @@ module Sensei.Wrapper where
 
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
-import Data.Text (pack, Text)
+import Data.Text (Text, pack)
 import Data.Time (UTCTime, diffUTCTime)
 import qualified Data.Time as Time
-import Sensei.Client (ClientMonad, getUserProfileC, ClientConfig, postEventC)
+import Sensei.Client (ClientConfig, ClientMonad, getUserProfileC, postEventC)
 import qualified Sensei.Client as Client
 import Sensei.Flow
 import Sensei.User
-import System.Directory(doesFileExist)
+import System.Directory (doesFileExist)
 import System.Exit (ExitCode (..), exitWith)
-import System.IO(hPutStrLn, stderr)
+import System.IO (hPutStrLn, stderr)
 import System.Process
   ( CreateProcess (std_err, std_in, std_out),
     StdStream (Inherit),
@@ -32,8 +32,9 @@ data WrapperIO m = WrapperIO
   }
 
 wrapperIO :: ClientConfig -> WrapperIO IO
-wrapperIO config = WrapperIO {
-      runProcess =
+wrapperIO config =
+  WrapperIO
+    { runProcess =
         \realProg progArgs -> do
           (_, _, _, h) <-
             createProcess
@@ -43,11 +44,8 @@ wrapperIO config = WrapperIO {
                   std_err = Inherit
                 }
           waitForProcess h,
-
       getCurrentTime = Time.getCurrentTime,
-
       send = Client.send config,
-
       fileExists = doesFileExist
     }
 
