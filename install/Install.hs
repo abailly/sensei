@@ -135,4 +135,4 @@ runShake pwd uid = shakeArgs options $ do
     cmd (Cwd "ui") "npm" ["run", "build"]
 
 needDirectoryFiles dir patterns =
-  need =<< getDirectoryFiles "" ((dir <>) <$> patterns)
+  need =<< getDirectoryFiles "" ((dir </>) <$> patterns)

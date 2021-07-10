@@ -8,17 +8,18 @@ import markdown from "./markdown";
 
 
 export function formatNote(note) {
-  return "<div class='note'>" + markdown(note.noteContent, note.nodeStart) + "</div>";
+  return "<div class='note'>" + markdown(note.noteView, note.nodeStart) + "</div>";
 }
 
 function formatNoteDiv(note) {
   const noteDiv = <div class='note-full'>
     <h3>{formatISODateTime(LocalDateTime.parse(note.noteStart))} </h3>
   </div>;
+
   const content = <div class='note-content'>
   </div>;
 
-  content.innerHTML = markdown(note.noteContent);
+  content.innerHTML = markdown(note.noteView);
   noteDiv.appendChild(content);
   return noteDiv;
 }
