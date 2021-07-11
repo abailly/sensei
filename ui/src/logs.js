@@ -18,7 +18,7 @@ function formatNoteEntry(entry) {
     <td>{entry.noteTimestamp}</td>
     <td>Note</td>
     <td>{entry.noteDir}</td>
-    <td>{entry.noteContent}</td>
+    <td>{entry.noteView}</td>
   </tr>;
 }
 
