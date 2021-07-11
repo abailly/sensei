@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Sensei.Server.Auth.Types
+module Sensei.Server.Auth
   ( AuthenticationToken (..),
     RegistrationToken (..),
     Credentials (..),

@@ -5,7 +5,30 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Sensei.Server where
+module Sensei.Server
+( -- * Endpoints
+  killS, setCurrentTimeS, getCurrentTimeS,
+  updateFlowStartTimeS, postEventS,
+  notesDayS, searchNoteS, commandsDayS,
+  queryFlowDayS, queryFlowPeriodSummaryS,
+  getFlowS, queryFlowS, getLogS, getUserProfileS,
+  putUserProfileS,
+  getFreshTokenS, getVersionsS, loginS,
+
+  module Sensei.Server.OpenApi,
+  
+  -- * Links
+  module Sensei.Server.Links,
+
+  -- * Configuration
+  module Sensei.Server.Config,
+
+  -- * Authentication
+  module Sensei.Server.Auth,
+
+  -- * Server-side HTML
+  module Sensei.Server.UI
+  )  where
 
 import Control.Concurrent.MVar
 import Control.Exception.Safe (throwM)
@@ -19,8 +42,11 @@ import Network.URI.Extra ()
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.DB
-import Sensei.Server.Auth.Types (AuthenticationToken (..), Credentials (..), SerializedToken, authenticateUser, makeToken)
-import Sensei.Server.Links (nextDayLink, nextPageLink, periodLinks, previousDayLink, previousPageLink)
+import Sensei.Server.Auth
+import Sensei.Server.Links
+import Sensei.Server.Config
+import Sensei.Server.OpenApi
+import Sensei.Server.UI
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant

@@ -7,7 +7,7 @@ import Data.Maybe (mapMaybe)
 import Data.Text (isInfixOf, pack)
 import Data.Time.Calendar as Date
 import Sensei.Group (Group (..))
-import Sensei.Server.Links (LinkParam (..), href, linkParams, periodLinks, uriToText)
+import Sensei.Server(LinkParam (..), href, linkParams, periodLinks, uriToText)
 import Test.Hspec (Spec, describe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Gen, Property, arbitrary, counterexample, forAll)

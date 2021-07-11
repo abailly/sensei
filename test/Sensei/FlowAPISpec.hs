@@ -10,7 +10,7 @@ import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Lens (modL)
 import Sensei.API
 import Sensei.Builder
-import Sensei.Server.Links hiding (Other)
+import Sensei.Server hiding (Other)
 import Sensei.TestHelper
 import Sensei.Time
 import Test.Hspec

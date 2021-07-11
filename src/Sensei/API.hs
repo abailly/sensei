@@ -35,7 +35,7 @@ import Sensei.Duration
 import Sensei.Flow
 import Sensei.FlowView
 import Sensei.Group
-import Sensei.Server.Auth.Types (Auth, AuthenticationToken, Cookie, Credentials, JWT, SerializedToken, SetCookie)
+import Sensei.Server.Auth (Auth, AuthenticationToken, Cookie, Credentials, JWT, SerializedToken, SetCookie)
 import Sensei.Server.Tags
 import Sensei.Summary
 import Sensei.Time

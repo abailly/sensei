@@ -23,7 +23,7 @@ import Data.Text (Text, pack)
 import Data.Text.Encoding (encodeUtf8)
 import Network.URI.Extra (uriAuthToString, uriFromString, uriToString')
 import Numeric.Natural (Natural)
-import Sensei.Server.Auth.Types (SerializedToken (..))
+import Sensei.Server.Auth (SerializedToken (..))
 import Sensei.Version
 import Servant
 import Servant.Client.Core

@@ -47,7 +47,7 @@ import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.App
 import Sensei.Client.Monad
-import Sensei.Server.Auth.Types (Credentials, SerializedToken)
+import Sensei.Server.Auth (Credentials, SerializedToken)
 import Sensei.Version
 import Servant
 import Servant.Client

@@ -13,7 +13,7 @@ import Data.Char (ord)
 import Data.Functor (void)
 import Data.Proxy (Proxy (..))
 import Sensei.API (UserProfile (..), defaultProfile)
-import Sensei.Server.Auth.Types
+import Sensei.Server
   ( Credentials (..),
     Error,
     JWK,

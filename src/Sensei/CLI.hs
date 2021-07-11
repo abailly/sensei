@@ -35,10 +35,11 @@ import Sensei.CLI.Options
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
-import Sensei.Server.Auth.Types (createKeys, createToken, getPublicKey, setPassword, Credentials(..))
+import Sensei.Server.Auth (createKeys, createToken, getPublicKey, setPassword, Credentials(..))
 import Sensei.Version
-import Sensei.Wrapper (handleWrapperResult, tryWrapProg, wrapperIO)
+import Sensei.Wrapper (handleWrapperResult, tryWrapProg, wrapProg, wrapperIO)
 import Servant (Headers (getResponse))
+import System.Directory(findExecutable)
 import System.Exit
 import System.IO
 
@@ -114,8 +115,11 @@ ep config (AuthOptions GetToken) userName _ _ = do
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
 ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   let io = wrapperIO config
-  tryWrapProg io userName exe args currentDir >>= handleWrapperResult exe
-
+  maybeExePath <- findExecutable exe
+  handleWrapperResult exe =<< case maybeExePath of
+    Just exePath -> Right <$> wrapProg io userName exePath args currentDir
+    Nothing -> tryWrapProg io userName exe args currentDir
+    
 println :: BS.ByteString -> IO ()
 println bs =
   BS.putStr bs >> BS.putStr "\n"

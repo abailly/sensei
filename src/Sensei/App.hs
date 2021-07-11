@@ -1,11 +1,11 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
@@ -17,7 +17,6 @@ import Control.Concurrent.MVar
 import Control.Exception.Safe (catch, throwM, try)
 import Control.Monad.Except
 import Control.Monad.Reader (ReaderT (runReaderT))
-import Crypto.JOSE (JWK)
 import Data.Aeson (encode)
 import Data.ByteString.Lazy (fromStrict, toStrict)
 import qualified Data.ByteString.Lazy as LBS
@@ -34,20 +33,6 @@ import Sensei.DB.Log ()
 import Sensei.DB.SQLite
 import Sensei.IO
 import Sensei.Server
-import Sensei.Server.Auth.Types
-  ( AuthResult (..),
-    CookieSettings (..),
-    JWTSettings,
-    defaultCookieSettings,
-    defaultJWTSettings,
-    getKey,
-    makeNewKey,
-    readOrMakeKey,
-    throwAll,
-  )
-import Sensei.Server.Config
-import Sensei.Server.OpenApi
-import Sensei.Server.UI
 import Sensei.Version
 import Servant
 import System.Environment (lookupEnv, setEnv)
@@ -74,11 +59,13 @@ daemonizeServer = do
 getKeyAsString :: FilePath -> IO String
 getKeyAsString configDir = do
   let keyFile = configDir </> "sensei.jwk"
-  key <- getKey keyFile
-         `catch` (\ (_ :: IOError) -> do
-                     k <- makeNewKey
-                     LBS.writeFile keyFile $ encode k
-                     pure k)
+  key <-
+    getKey keyFile
+      `catch` ( \(_ :: IOError) -> do
+                  k <- makeNewKey
+                  LBS.writeFile keyFile $ encode k
+                  pure k
+              )
   pure $ unpack . decodeUtf8 . toStrict . encode $ key
 
 startServer :: FilePath -> IO ()

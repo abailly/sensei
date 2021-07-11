@@ -58,8 +58,7 @@ import qualified Network.HTTP.Types.Header as HTTP
 import Network.Wai.Test (SResponse, modifyClientCookies, simpleHeaders)
 import Preface.Log
 import Sensei.App (senseiApp)
-import Sensei.Server.Auth.Types
-import Sensei.Server.Config
+import Sensei.Server
 import Sensei.Version
 import Servant
 import System.Directory

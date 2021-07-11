@@ -23,10 +23,6 @@ library
                      , Sensei.Client
                      , Sensei.App
                      , Sensei.Server
-                     , Sensei.Server.Auth.Types
-                     , Sensei.Server.Links
-                     , Sensei.Server.UI
-                     , Sensei.Server.Config
                      , Sensei.Group
                      , Sensei.CLI
                      , Sensei.IO
@@ -39,6 +35,7 @@ library
                      , Sensei.DB.Log
                      , Sensei.DB.SQLite
   other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
+                 Sensei.Server.Auth, Sensei.Server.Links, Sensei.Server.UI, Sensei.Server.Config,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags, Sensei.CLI.Options
   ghc-options:         -Wall -Werror -fno-warn-orphans

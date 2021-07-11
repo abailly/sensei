@@ -10,7 +10,7 @@ import Data.Text (pack)
 import Data.Time
 import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.API
-import Sensei.Server.Auth.Types (SerializedToken)
+import Sensei.Server.Auth (SerializedToken)
 import Sensei.Version
 import Servant.Swagger
 import System.Exit

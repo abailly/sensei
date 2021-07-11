@@ -2,7 +2,7 @@
 
 module Sensei.ServerSpec where
 
-import Sensei.Server.Config
+import Sensei.Server
 import Sensei.TestHelper
 import Sensei.Time
 import Test.Hspec
