@@ -31,17 +31,18 @@ captureInEditor :: String -> IO Text.Text
 captureInEditor editor = do
   (fp, hdl) <- mkstemp "capture-"
   let editFile = fp <.> "md" -- let editor try to be smart
+      (exe:args) = words editor
   hClose hdl
   (_, _, _, h) <-
     createProcess
-      (proc editor [editFile])
+      (proc exe (args <> [editFile]))
         { std_in = Inherit,
           std_out = Inherit,
           std_err = Inherit
         }
   void $ waitForProcess h
   decodeUtf8 <$> BS.readFile editFile <* removeFile editFile
-
+    
 captureInTerminal :: IO Text.Text
 captureInTerminal = do
   setSGR

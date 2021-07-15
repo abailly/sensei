@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 397dde4f24ee941b4e291c486710aa80362e71eacf756d7e1c5711fdc62e929d
+-- hash: c171806c26e5aa749f0d6130c2bdff51407fcc50c86882c23126c937ba84c98a
 
 name:           install
 version:        0.1.0.0
@@ -26,7 +26,7 @@ library
   other-modules:
       Paths_install
   hs-source-dirs:
-      ./.
+      ./
   build-depends:
       base >=4.7 && <5
     , directory
