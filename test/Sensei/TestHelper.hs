@@ -42,7 +42,7 @@ module Sensei.TestHelper
 where
 
 import Control.Concurrent.MVar
-import Control.Exception.Safe (Exception, bracket, catch, finally)
+import Control.Exception.Safe (Exception, bracket, catch)
 import Control.Monad (unless, when)
 import Control.Monad.Reader (ReaderT (..))
 import qualified Data.Aeson as A
@@ -92,17 +92,14 @@ withTempDir =
   bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
 buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
-buildApp AppBuilder {..} act = do
-  file <- mkTempFile
+buildApp AppBuilder {..} act =
+  withTempFile $ \ file -> do
   unless withStorage $ removePathForcibly file
-  config <- mkTempDir
-  signal <- newEmptyMVar
-  application <- senseiApp Nothing signal sampleKey file config fakeLogger
-  when withFailingStorage $ removePathForcibly file
-  act ((), application)
-    `finally` removePathForcibly config >> removePathForcibly file
-  where
-    mkTempDir = mkstemp "config-sensei" >>= \(fp, h) -> hClose h >> removePathForcibly fp >> createDirectory fp >> pure fp
+  withTempDir $ \ config -> do
+    signal <- newEmptyMVar
+    application <- senseiApp Nothing signal sampleKey file config fakeLogger
+    when withFailingStorage $ removePathForcibly file
+    act ((), application)
 
 mkTempFile :: HasCallStack => IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
@@ -137,7 +134,7 @@ defaultHeaders =
   ]
 
 shouldRespondJSONBody ::
-  (Eq a, Show a, A.FromJSON a) =>
+  (HasCallStack, Eq a, Show a, A.FromJSON a) =>
   WaiSession st SResponse ->
   a ->
   WaiExpectation st
@@ -145,7 +142,7 @@ shouldRespondJSONBody action expected =
   action `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
 jsonBodyEquals ::
-  (Eq a, Show a, A.FromJSON a) => a -> MatchBody
+  (HasCallStack, Eq a, Show a, A.FromJSON a) => a -> MatchBody
 jsonBodyEquals expected = MatchBody $ \_ body ->
   case A.eitherDecode body of
     Right actual ->
@@ -154,7 +151,7 @@ jsonBodyEquals expected = MatchBody $ \_ body ->
         else Nothing
     Left err -> Just ("expected " <> show expected <> ", got " <> show body <> " with error " <> err)
 
-bodyContains :: ByteString -> MatchBody
+bodyContains :: HasCallStack => ByteString -> MatchBody
 bodyContains fragment =
   MatchBody $
     \_ body ->
@@ -162,7 +159,7 @@ bodyContains fragment =
         then Nothing
         else Just ("String " <> unpack (decodeUtf8 fragment) <> " not found in " <> unpack (decodeUtf8 $ toStrict body))
 
-bodySatisfies :: (ByteString -> Bool) -> MatchBody
+bodySatisfies :: HasCallStack => (ByteString -> Bool) -> MatchBody
 bodySatisfies p =
   MatchBody $
     \_ body ->

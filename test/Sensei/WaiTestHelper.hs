@@ -67,6 +67,7 @@ fromClientRequest inReq =
         pure $ req chunks
 
 toClientResponse ::
+  HasCallStack =>
   SResponse -> Response
 toClientResponse SResponse {..} =
   Response simpleStatus (fromList simpleHeaders) http11 simpleBody
@@ -78,7 +79,7 @@ instance RunClient (WaiSession st) where
   throwClientError err = error (show err)
 
 isExpectedToBe ::
-  (Eq a, Show a) => a -> a -> WaiSession st ()
+  (Eq a, Show a, HasCallStack) => a -> a -> WaiSession st ()
 isExpectedToBe actual expected =
   if actual /= expected
     then liftIO $ expectationFailure $ show actual <> " is not " <> show expected
