@@ -71,7 +71,6 @@ library
                      , servant-auth
                      , servant-client
                      , servant-client-core
-                     , servant-mock
                      , servant-server
                      , servant-server-base
                      , servant-auth-server

@@ -15,30 +15,9 @@ packages:
   original:
     git: https://github.com/pankzsoft/servant-server-base.git
     commit: 6ad315372262aba52df07b577eb2a965458861c6
-- completed:
-    hackage: sqlite-simple-0.4.18.0@sha256:3ceea56375c0a3590c814e411a4eb86943f8d31b93b110ca159c90689b6b39e5,3002
-    pantry-tree:
-      size: 1930
-      sha256: e58b9955e483d51ee0966f8ba4384305d871480e2a38b32ee0fcd4573d74cf95
-  original:
-    hackage: sqlite-simple-0.4.18.0@sha256:3ceea56375c0a3590c814e411a4eb86943f8d31b93b110ca159c90689b6b39e5,3002
-- completed:
-    hackage: servant-mock-0.8.7@sha256:64cb3e52bbd51ab6cb25e3f412a99ea712c6c26f1efd117f01a8d1664df49c67,2306
-    pantry-tree:
-      size: 555
-      sha256: b263e932ec6b151e52987054ec0a4cd692fa787f856c79e51498302eb0d6c388
-  original:
-    hackage: servant-mock-0.8.7@sha256:64cb3e52bbd51ab6cb25e3f412a99ea712c6c26f1efd117f01a8d1664df49c67,2306
-- completed:
-    hackage: direct-sqlite-2.3.26@sha256:04e835402f1508abca383182023e4e2b9b86297b8533afbd4e57d1a5652e0c23,3718
-    pantry-tree:
-      size: 770
-      sha256: 11874ab21e10c5b54cd1e02a037b677dc1e2ee9986f38c599612c56654dc01c3
-  original:
-    hackage: direct-sqlite-2.3.26@sha256:04e835402f1508abca383182023e4e2b9b86297b8533afbd4e57d1a5652e0c23,3718
 snapshots:
 - completed:
-    size: 585393
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/0.yaml
-    sha256: c632012da648385b9fa3c29f4e0afd56ead299f1c5528ee789058be410e883c0
-  original: lts-18.0
+    size: 585392
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/2.yaml
+    sha256: 7abb45c0cc5eb349448b66d8753655542d45d387ad26970419282eab3d860724
+  original: lts-18.2

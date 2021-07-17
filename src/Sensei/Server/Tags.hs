@@ -17,7 +17,6 @@ import Data.Typeable (Typeable)
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import Servant hiding (Context)
 import Servant.Client.Core
-import Servant.Mock
 import Servant.Swagger
 import Servant.Swagger.Internal
 
@@ -100,9 +99,6 @@ instance (KnownSymbol tags, HasSwagger api) => HasSwagger (Tags tags :> api) whe
   toSwagger _ =
     toSwagger (Proxy :: Proxy api)
       & allOperations . tags %~ union (fromList [pack (symbolVal (Proxy :: Proxy tags))])
-
-instance HasMock api context => HasMock (Tags t :> api) context where
-  mock _ = mock (Proxy :: Proxy api)
 
 instance (RunClient m, HasClient m api) => HasClient m (Tags t :> api) where
   type Client m (Tags t :> api) = Client m api
