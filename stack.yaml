@@ -5,5 +5,5 @@ ghc-options:
   "$locals": -fwrite-ide-info
 extra-deps:
 - git: https://github.com/pankzsoft/servant-server-base.git
-  commit: 6ad315372262aba52df07b577eb2a965458861c6
+  commit: f20e1cbcc314963c43b11d7f9b3ff2e6922e45c5
 allow-newer: true

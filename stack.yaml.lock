@@ -10,11 +10,11 @@ packages:
     git: https://github.com/pankzsoft/servant-server-base.git
     pantry-tree:
       size: 1898
-      sha256: 5544764273409796ceca47d645994a615468c0564eaaaa1039b2767858713e9d
-    commit: 6ad315372262aba52df07b577eb2a965458861c6
+      sha256: 5fba29309787038ea1fd787c6d72c8ed959e6e6b2675385e8f23d11472401f98
+    commit: f20e1cbcc314963c43b11d7f9b3ff2e6922e45c5
   original:
     git: https://github.com/pankzsoft/servant-server-base.git
-    commit: 6ad315372262aba52df07b577eb2a965458861c6
+    commit: f20e1cbcc314963c43b11d7f9b3ff2e6922e45c5
 snapshots:
 - completed:
     size: 585392
