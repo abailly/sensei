@@ -13,7 +13,8 @@ module Sensei.Client
     ClientConfig (..),
     ClientError,
     defaultConfig,
-    killC, loginC,
+    killC,
+    loginC,
     postEventC,
     getFlowC,
     updateFlowC,
@@ -25,6 +26,7 @@ module Sensei.Client
     searchNotesC,
     getLogC,
     getFreshTokenC,
+    createUserProfileC,
     getUserProfileC,
     setUserProfileC,
     getVersionsC,
@@ -33,13 +35,13 @@ module Sensei.Client
 where
 
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.STM(newTVarIO)
+import Control.Concurrent.STM (newTVarIO)
 import Control.Exception (throwIO)
-import Data.Functor(void)
+import Data.Functor (void)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Time
-import Network.HTTP.Client (defaultManagerSettings, newManager, createCookieJar)
+import Network.HTTP.Client (createCookieJar, defaultManagerSettings, newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types.Status
 import Network.URI.Extra (uriToString')
@@ -70,8 +72,9 @@ commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
 getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [Event])
 getFreshTokenC :: Text -> ClientMonad SerializedToken
+createUserProfileC :: UserProfile -> ClientMonad (Encoded Hex)
 getUserProfileC :: Text -> ClientMonad UserProfile
-setUserProfileC :: Text -> UserProfile -> ClientMonad (Encoded Hex)
+setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
 ( getFlowC :<|> updateFlowC
     :<|> queryFlowPeriodSummaryC
@@ -82,7 +85,7 @@ getVersionsC :: ClientMonad Versions
   )
   :<|> searchNotesC
   :<|> (postEventC :<|> getLogC)
-  :<|> (getFreshTokenC :<|> getUserProfileC :<|> setUserProfileC)
+  :<|> (getFreshTokenC :<|> createUserProfileC :<|> getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
@@ -92,7 +95,7 @@ send config@ClientConfig {serverUri, startServerLocally} act = do
     Http -> newManager defaultManagerSettings
     Https -> newManager tlsManagerSettings
   jar <- newTVarIO (createCookieJar [])
-  let env = (mkClientEnv mgr base) { cookieJar = Just jar }
+  let env = (mkClientEnv mgr base) {cookieJar = Just jar}
   res <- runClientM (runReaderT (unClient act) config) env
   case res of
     Left err ->

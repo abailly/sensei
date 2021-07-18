@@ -64,7 +64,7 @@ type GetCurrentTime =
   Summary "Get the current time of the server."
     :> Tags "Development"
     :> "time"
-    :> Capture "user" Text  :? "User name to get current time of"
+    :> Capture "user" Text :? "User name to get current time of"
     :> Get '[JSON] Timestamp
 
 type DisplayVersions =
@@ -99,8 +99,9 @@ type GetPeriodSummary =
     :> "summary"
     :> QueryParam "from" Day :? "Starting date (in ISO8601 format) for period summary"
     :> QueryParam "to" Day :? "End date (in ISO8601 format) for period summary"
-    :> QueryParam "period" Group :? "Granularity of summary period, to provide meaningful \
-                                    \ links to next and previous summaries."
+    :> QueryParam "period" Group
+      :? "Granularity of summary period, to provide meaningful \
+         \ links to next and previous summaries."
     :> Get '[JSON] (Headers '[Header "Link" Text] FlowSummary)
 
 type GetNotes =
@@ -140,16 +141,18 @@ type GetGroupedTimelines =
     "Retrieve timeline of flows, grouped by some time slice (Day, Week, Month...). \
     \ If no 'group' param is given, returns _all_ flows."
     :> Capture "user" Text :? "User name to query timeline for"
-    :> QueryParams "group" Group :? "The periods to group summary. There may be several of them \
-                                    \ in which case the views will be grouped hierarchically (WIP)"
+    :> QueryParams "group" Group
+      :? "The periods to group summary. There may be several of them \
+         \ in which case the views will be grouped hierarchically (WIP)"
     :> Get '[JSON] [GroupViews FlowView]
 
 type GetAllLog =
   Summary "Retrieve the complete log of all events pertaining to a given user, most recent first"
     :> Capture "user" Text :? "User to retrieve log of events for"
-    :> QueryParam "page" Natural :? "Pagination parameter for retrieving events. Events are returned \
-                                    \ 50 by 50, most recent event first. The 'next' and 'prev' pages \
-                                    \ URLs are provided as 'Link' header"
+    :> QueryParam "page" Natural
+      :? "Pagination parameter for retrieving events. Events are returned \
+         \ 50 by 50, most recent event first. The 'next' and 'prev' pages \
+         \ URLs are provided as 'Link' header"
     :> Get '[JSON] (Headers '[Header "Link" Text] [Event])
 
 type GetFreshToken =
@@ -163,11 +166,20 @@ type GetUserProfile =
     :> Capture "user" Text :? "The user to get profile of"
     :> Get '[JSON] UserProfile
 
-type PutUserProfile =
-  Summary "Define a user's profile. If the user does not exist, it is registered"
-    :> Capture "user" Text :? "User to set profile of"
+type UpdateUserProfile =
+  Summary "Update an existing user's profile. If the user does not exist, an error is thrown"
+    :> Capture "user" Text :? "User to update profile of"
     :> ReqBody '[JSON] UserProfile
-    :> Put '[JSON] (Encoded Hex)
+    :> Put '[JSON] NoContent
+
+type CreateUserProfile =
+  Summary
+    "Create a new user, setting his or her initial profile. The name of \
+    \ the user is inferred from the profile's content. \
+    \ If the user already exists, returns a 400, otherwise, return the user's \
+    \ unique identifier as an hex-encoded string."
+    :> ReqBody '[JSON] UserProfile
+    :> Post '[JSON] (Encoded Hex)
 
 type LoginAPI =
   Summary "Allows users to login passing in credentials."
@@ -211,7 +223,7 @@ type SenseiAPI =
                 )
            :<|> "users"
              :> Tags "User Profile"
-             :> (GetFreshToken :<|> GetUserProfile :<|> PutUserProfile)
+             :> (GetFreshToken :<|> CreateUserProfile :<|> GetUserProfile :<|> UpdateUserProfile)
            :<|> Tags "Metadata" :> DisplayVersions
        )
 

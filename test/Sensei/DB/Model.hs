@@ -6,9 +6,11 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.DB.Model where
 
+import Control.Exception.Safe (try)
 import Control.Lens (set, (^.))
 import Control.Monad.State
 import Data.Foldable (toList)
@@ -20,7 +22,7 @@ import Data.Text (Text)
 import Data.Time
 import Sensei.API hiding ((|>))
 import Sensei.DB
-import Sensei.Generators (genNatural, generateEvent, generateUserProfile, shiftTime, startTime)
+import Sensei.Generators (generateEvent, generateUserProfile, shiftTime, shrinkEvent, startTime)
 import System.Directory (doesFileExist, removeFile)
 import Test.Hspec (HasCallStack)
 import Test.QuickCheck
@@ -33,6 +35,7 @@ import Test.QuickCheck
     elements,
     forAllShrink,
     frequency,
+    shrink,
   )
 import Test.QuickCheck.Monadic
 
@@ -84,8 +87,18 @@ generateActions model =
   Actions <$> (arbitrary >>= generateAction startTime model . getPositive)
 
 shrinkActions :: Actions -> [Actions]
-shrinkActions (Actions (as :|> _)) = [Actions as]
+shrinkActions (Actions (as :|> a :|> _)) = Actions . (as :|>) <$> shrinkAction a
 shrinkActions _ = []
+
+shrinkAction :: SomeAction -> [SomeAction]
+shrinkAction (SomeAction (WriteEvent e)) = SomeAction . WriteEvent <$> shrinkEvent e
+shrinkAction (SomeAction (ReadEvents p)) = SomeAction . ReadEvents <$> shrink p
+shrinkAction (SomeAction (ReadFlow r)) = SomeAction . ReadFlow <$> shrink r
+shrinkAction (SomeAction (ReadNotes _t)) = [] -- SomeAction . ReadNotes <$> shrink t
+shrinkAction (SomeAction (ReadViews)) = []
+shrinkAction (SomeAction (ReadCommands)) = []
+shrinkAction (SomeAction (NewUser p)) = SomeAction . NewUser <$> shrink p
+shrinkAction (SomeAction (SwitchUser _)) = []
 
 generateAction :: UTCTime -> Model -> Integer -> Gen (Seq SomeAction)
 generateAction baseTime model count =
@@ -97,8 +110,8 @@ generateAction baseTime model count =
       act <-
         frequency
           [ (9, SomeAction <$> genEvent m n),
-            (2, pure $ SomeAction (ReadFlow Latest)),
-            (1, (,) <$> genNatural <*> genNatural >>= \(p, s) -> pure (SomeAction (ReadEvents (Page p s)))),
+            (2, SomeAction . ReadFlow <$> arbitrary),
+            (1, arbitrary >>= \p -> pure (SomeAction (ReadEvents p))),
             (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k)))),
             (1, pure $ SomeAction ReadViews),
             (1, SomeAction . NewUser <$> generateUserProfile),
@@ -119,16 +132,15 @@ generateAction baseTime model count =
 
 -- | Interpret a sequence of actions against a `Model`,
 -- yielding a new, updated, `Model`
-interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m a
-interpret (WriteEvent f) = modify $ \m@Model {events} -> m {events = events |> f}
-interpret (ReadFlow Latest) = do
+interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m (Maybe a)
+interpret (WriteEvent f) = do
+  modify $ \m@Model {events} -> m {events = events |> f}
+  pure $ Just ()
+interpret (ReadFlow Latest) = interpret (ReadFlow (Pos 0))
+interpret (ReadFlow (Pos n)) = do
   es <- getEvents
   let fs = Seq.filter (not . isTrace) es
-  case viewr fs of
-    _ :> f@EventFlow {} -> pure $ Just f
-    _ :> n@EventNote {} -> pure $ Just n
-    _ -> pure Nothing
-interpret (ReadFlow _) = error "not implemented"
+  Just <$> findFlowAtPos fs n
 interpret (ReadEvents (Page pageNum size)) = do
   es <- getEvents
   let evs = Seq.sortBy eventTimestampDesc es
@@ -137,7 +149,7 @@ interpret (ReadEvents (Page pageNum size)) = do
       eventsCount = fromIntegral $ Prelude.length resultEvents
       startIndex = min (fromIntegral $ (pageNum - 1) * size) totalEvents
       endIndex = min (fromIntegral $ pageNum * size) totalEvents
-  pure EventsQueryResult {..}
+  pure $ Just EventsQueryResult {..}
 interpret (ReadEvents NoPagination) = do
   es <- getEvents
   let totalEvents = fromIntegral $ Seq.length es
@@ -145,22 +157,25 @@ interpret (ReadEvents NoPagination) = do
       eventsCount = totalEvents
       startIndex = 1
       endIndex = totalEvents
-  pure EventsQueryResult {..}
+  pure $ Just EventsQueryResult {..}
 interpret (ReadNotes rge) = do
   UserProfile {userName, userTimezone} <- gets currentProfile
   fs <- Seq.filter (inRange rge . eventTimestamp) <$> getEvents
-  pure $ foldr (notesViewBuilder userName userTimezone) [] fs
+  pure $ Just $ foldr (notesViewBuilder userName userTimezone) [] fs
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
   fs <- getEvents
-  pure $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] fs
+  pure $ Just $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] fs
 interpret ReadCommands = do
   UserProfile {userTimezone} <- gets currentProfile
   ts <- getEvents
-  pure $ foldr (commandViewBuilder userTimezone) [] ts
-interpret (NewUser u) =
-  modify $ \m -> m {currentProfile = u}
-interpret (SwitchUser u) =
+  pure $ Just $ foldr (commandViewBuilder userTimezone) [] ts
+interpret (NewUser u) = do
+  pfs <- gets profiles
+  case Map.lookup (userName u) pfs of
+    Nothing -> modify (\m -> m {currentProfile = u, profiles = Map.insert (userName u) u pfs}) >> pure (Just ())
+    Just _ -> pure Nothing
+interpret (SwitchUser u) = do
   modify $
     \m ->
       let changeProfile =
@@ -168,12 +183,30 @@ interpret (SwitchUser u) =
               Nothing -> currentProfile m
               Just p -> p
        in m {currentProfile = changeProfile}
+  pure $ Just ()
 
 getEvents :: Monad m => StateT Model m (Seq Event)
 getEvents = do
   es <- gets events
   UserProfile {userName} <- gets currentProfile
   pure $ Seq.filter ((== userName) . (^. user')) es
+
+findFlowAtPos ::
+  (Eq a, Num a, Applicative f) =>
+  Seq Event ->
+  a ->
+  f (Maybe Event)
+findFlowAtPos fs pos =
+  case viewr fs of
+    rest :> f@EventFlow {} ->
+      if pos == 0
+        then pure $ Just f
+        else findFlowAtPos rest (pos - 1)
+    rest :> n@EventNote {} ->
+      if pos == 0
+        then pure $ Just n
+        else findFlowAtPos rest (pos - 1)
+    _ -> pure Nothing
 
 eventTimestampDesc ::
   Event -> Event -> Ordering
@@ -190,11 +223,11 @@ runDB user (ReadFlow r) = readProfileOrDefault user >>= \u -> readFlow u r
 runDB user (ReadNotes rge) = readProfileOrDefault user >>= \u -> readNotes u rge
 runDB user ReadViews = readProfileOrDefault user >>= readViews
 runDB user ReadCommands = readProfileOrDefault user >>= readCommands
-runDB _ (NewUser u) = void $ writeProfile u
+runDB _ (NewUser u) = void $ insertProfile u
 runDB _ (SwitchUser _) = pure ()
 
-readProfileOrDefault :: DB db => Text -> db UserProfile
-readProfileOrDefault user = fmap (either (const defaultProfile) id) (readProfile user)
+readProfileOrDefault :: forall db. DB db => Text -> db UserProfile
+readProfileOrDefault user = fmap (either (const defaultProfile) id) (try @_ @(DBError db) $ readProfile user)
 
 runActions :: (DB db) => Text -> Actions -> db (Seq String)
 runActions user (Actions actions) =
@@ -206,19 +239,17 @@ validateActions :: forall db. DB db => Seq SomeAction -> StateT Model db (Seq (M
 validateActions acts = do
   sequence $ runAndCheck <$> acts
 
-runAndCheck :: DB db => SomeAction -> StateT Model db (Maybe String)
+runAndCheck :: forall db . DB db => SomeAction -> StateT Model db (Maybe String)
 runAndCheck (SomeAction act) = do
   UserProfile {userName} <- gets currentProfile
-  actual <- lift $ runDB userName act
+  actual <- either (const Nothing) Just <$> try @_ @(DBError db) (lift $ runDB userName act)
   expected <- interpret act
   if actual == expected
     then pure Nothing
     else do
-      m <- get
       pure $
         Just $
-          "with state = " <> show m
-            <> ", \naction = "
+          "action = "
             <> show act
             <> ", \nexpected : "
             <> show expected

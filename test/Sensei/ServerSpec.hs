@@ -2,6 +2,7 @@
 
 module Sensei.ServerSpec where
 
+import Sensei.Builder (anOtherFlow, postFlow)
 import Sensei.Server
 import Sensei.TestHelper
 import Sensei.Time
@@ -32,5 +33,5 @@ spec =
 
     withApp (app {withFailingStorage = True}) $
       it "returns error 500 with details given DB fails to access storage file" $ do
-        getJSON "/api/flows/arnaud"
+        postFlow anOtherFlow
           `shouldRespondWith` 500

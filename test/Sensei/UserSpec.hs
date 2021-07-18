@@ -59,26 +59,36 @@ spec = describe "Users Management" $ do
       it "GET /api/users/<user> returns default profile" $ do
         getJSON "/api/users/arnaud" `shouldRespondJSONBody` defaultProfile
 
-      it "PUT /api/users/<user> sets user profile returns user id" $ do
+      it "POST /api/users with profile sets create user profile and returns user id" $ do
         let profile = defaultProfile {userName = "robert"}
 
-        putJSON "/api/users/robert" profile
-          `shouldRespondWith` ResponseMatcher 200 [] (bodySatisfies $ \bs -> BS.length bs == 32 + 2)
+        postJSON "/api/users" profile
+          `shouldRespondWith` 200 { matchBody = bodySatisfies $ \bs -> BS.length bs == 32 + 2 }
 
-      it "PUT /api/users/<user> sets user profile" $ do
+      it "POST /api/users with profile returns 400 given user with same name exists" $ do
         let profile = defaultProfile {userName = "robert"}
 
-        putJSON_ "/api/users/robert" profile
+        postJSON_ "/api/users" profile
 
+        postJSON "/api/users" profile
+          `shouldRespondWith` 400
+
+      it "PUT /api/users/<user> sets user profile given user exists" $ do
+        let profile = defaultProfile {userName = "robert", userFlowTypes = Just $ Map.fromList [(Other, "#123456")]}
+        postJSON_ "/api/users" profile
+
+        putJSON "/api/users/robert" profile `shouldRespondWith` 200
         getJSON "/api/users/robert" `shouldRespondJSONBody` profile
 
-      it "PUT /api/users/<user> sets user profile depending on profile's userName" $ do
-        let profile = defaultProfile {userName = "robert"}
+      it "PUT /api/users/<user> returns 400 given profile user name does not match path" $ do
+        let alice = defaultProfile {userName = "alice"}
+            robert = defaultProfile {userName = "robert"}
 
-        putJSON_ "/api/users/alice" profile
+        postJSON_ "/api/users" alice
+        postJSON_ "/api/users" robert
 
-        getJSON "/api/users/robert" `shouldRespondJSONBody` profile
-        getJSON "/api/users/alice" `shouldRespondJSONBody` defaultProfile
+        putJSON "/api/users/alice" robert
+          `shouldRespondWith` 400
 
       it "PUT /api/users/<user> sets hashed user's password in profile" $ do
         let profile = defaultProfile {userPassword = ("1234", "1234")}

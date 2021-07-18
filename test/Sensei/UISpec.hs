@@ -3,7 +3,7 @@
 module Sensei.UISpec where
 
 import Network.Wai
-import Sensei.Server(embeddedFiles)
+import Sensei.Server (embeddedFiles)
 import Test.Hspec
 import Test.Hspec.Wai
 

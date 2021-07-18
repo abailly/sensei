@@ -1,13 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Sensei.Generators where
 
+import Control.Lens ((.~))
+import Data.Function ((&))
 import Data.Text (Text, pack)
 import Data.Time (UTCTime (..), addUTCTime)
 import Data.Time.LocalTime
 import Preface.Codec (Base64, Encoded (..), toBase64)
 import Sensei.API
 import Sensei.ColorSpec ()
+import Sensei.DB
 import Test.QuickCheck
   ( Arbitrary (..),
     Gen,
@@ -52,6 +56,10 @@ generateUserProfile =
 
 instance Arbitrary UserProfile where
   arbitrary = generateUserProfile
+
+  shrink u@(UserProfile _ _ _ _ fs cs _) =
+    ((\f -> u {userFlowTypes = f}) <$> shrink fs)
+      <> ((\c -> u {userCommands = c}) <$> shrink cs)
 
 instance Arbitrary FlowType where
   arbitrary =
@@ -113,6 +121,31 @@ generateArgs = listOf $ pack . getASCIIString <$> arbitrary
 generateProcess :: Gen Text
 generateProcess = pack . getASCIIString <$> arbitrary
 
+instance Arbitrary Pagination where
+  arbitrary =
+    frequency
+      [ (10, Page <$> genNatural <*> genNatural),
+        (1, pure NoPagination)
+      ]
+
+  shrink (Page n s) = Page <$> shrink n <*> shrink s
+  shrink NoPagination = []
+
+instance Arbitrary Reference where
+  arbitrary =
+    frequency
+      [ (3, pure Latest),
+        (1, Pos <$> genNatural)
+      ]
+
+  shrink Latest = []
+  shrink (Pos p) = Pos <$> shrink p
+
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =
   oneof [generateTrace baseTime off, generateFlow baseTime off]
+
+shrinkEvent :: Event -> [Event]
+shrinkEvent (EventTrace t@(Trace _ _ _ _ args _ _)) =
+  [EventTrace $ t & traceArgs .~ x | x <- shrink args]
+shrinkEvent _ = []

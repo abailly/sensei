@@ -26,7 +26,6 @@ data DBLog
   | GetCurrentTime {user :: Text}
   | WriteEvent {event :: Event}
   | UpdateLatestFlow {setTimeShift :: NominalDiffTime}
-  | WriteProfile {user :: Text}
   | ReadFlow {user :: Text, reference :: Reference}
   | ReadEvents {user :: Text, pagination :: Pagination}
   | ReadNotes {user :: Text, timeRange :: TimeRange}
@@ -34,6 +33,8 @@ data DBLog
   | ReadViews {user :: Text}
   | ReadCommands {user :: Text}
   | ReadProfile {user :: Text}
+  | WriteProfile {user :: Text}
+  | InsertProfile {profile :: UserProfile}
   deriving (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -65,3 +66,5 @@ instance (DB m, MonadIO m) => DB (ReaderT LoggerEnv m) where
     ReaderT $ \l -> withLog l (ReadCommands (userName u)) (readCommands u)
   readProfile n =
     ReaderT $ \l -> withLog l (ReadProfile n) (readProfile n)
+  insertProfile p =
+    ReaderT $ \l -> withLog l (InsertProfile p) (insertProfile p)

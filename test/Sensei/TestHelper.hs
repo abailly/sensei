@@ -93,13 +93,13 @@ withTempDir =
 
 buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
 buildApp AppBuilder {..} act =
-  withTempFile $ \ file -> do
-  unless withStorage $ removePathForcibly file
-  withTempDir $ \ config -> do
-    signal <- newEmptyMVar
-    application <- senseiApp Nothing signal sampleKey file config fakeLogger
-    when withFailingStorage $ removePathForcibly file
-    act ((), application)
+  withTempFile $ \file -> do
+    unless withStorage $ removePathForcibly file
+    withTempDir $ \config -> do
+      signal <- newEmptyMVar
+      application <- senseiApp Nothing (Just "arnaud") signal sampleKey file config fakeLogger
+      when withFailingStorage $ removePathForcibly file
+      act ((), application)
 
 mkTempFile :: HasCallStack => IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp

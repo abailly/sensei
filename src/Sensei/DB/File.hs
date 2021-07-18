@@ -21,12 +21,11 @@ where
 import qualified Control.Exception.Safe as Exc
 import Control.Monad.Reader
 import Data.Aeson hiding (Options)
-import Data.Bifunctor
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import Data.Text (Text, pack)
+import Data.Functor ((<&>))
+import Data.Text (Text)
 import Data.Time
-import Preface.Codec (Encoded, Hex, toHex)
 import Sensei.API
 import Sensei.DB
 import Sensei.IO
@@ -66,6 +65,7 @@ instance DB FileDB where
   searchNotes = undefined
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
   readProfile _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)
+  insertProfile _ = undefined
 
 -- | Initialise a log store at given path
 initLogStorageFile ::
@@ -120,20 +120,19 @@ readCommandsFile UserProfile {userName, userTimezone} file =
 -- Note the /current user/ is the owner of the process executing this function which
 -- should be the same as the one running @ep@ command line.
 readProfileFile ::
-  FilePath -> IO (Either Text UserProfile)
+  FilePath -> IO UserProfile
 readProfileFile home = do
   let configFile = home </> "config.json"
-  existF <- doesFileExist configFile
-  if (not existF)
-    then pure $ Left (pack $ "config file " <> configFile <> " does not exist")
-    else first pack . eitherDecode <$> LBS.readFile configFile
+  content <- eitherDecode <$> LBS.readFile configFile
+  case content of
+    Left e -> Exc.throwIO $ userError ("invalid configuration file '" <> configFile <> "': " <> show e)
+    Right p -> pure p
 
 writeProfileFile ::
-  UserProfile -> FilePath -> IO (Encoded Hex)
+  UserProfile -> FilePath -> IO ()
 writeProfileFile profile home = do
   let configFile = home </> "config.json"
   LBS.writeFile configFile (encode profile)
-  pure $ toHex "1"
 
 {-# DEPRECATED senseiLog "this will be removed in favor of XDG data directory storage" #-}
 senseiLog :: IO FilePath
@@ -141,7 +140,7 @@ senseiLog = (</> ".sensei.log") <$> getHomeDirectory
 
 getDataFile :: IO FilePath
 getDataFile = do
-  newLog <- getDataDirectory >>= pure . (</> "sensei.log")
+  newLog <- getDataDirectory <&> (</> "sensei.log")
   maybeMigrateOldLog newLog
   pure newLog
   where

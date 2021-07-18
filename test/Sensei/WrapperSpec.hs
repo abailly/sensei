@@ -35,17 +35,17 @@ spec =
         res `isExpectedToBe` ExitSuccess
 
       it "selects program to run from User Profile" $ do
-        void $ send io $ setUserProfileC "alice" defaultProfile {userName = "alice", userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
-        res <- tryWrapProg io "alice" "foo" [] "somedir"
+        void $ send io $ setUserProfileC "arnaud" defaultProfile {userName = "arnaud", userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
+        res <- tryWrapProg io "arnaud" "foo" [] "somedir"
         res `isExpectedToBe` Right ExitSuccess
 
       it "return error when called with a non-mapped alias" $ do
-        void $ send io $ setUserProfileC "alice" defaultProfile {userName = "alice", userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
-        res <- tryWrapProg io "alice" "bar" [] "somedir"
+        void $ send io $ setUserProfileC "arnaud" defaultProfile {userName = "arnaud", userCommands = Just $ Map.fromList [("foo", "/usr/bin/foo")]}
+        res <- tryWrapProg io "arnaud" "bar" [] "somedir"
         res `isExpectedToBe` Left (UnMappedAlias "bar")
 
       it "return error when called with a mapped alias given executable does not exist" $ do
         let ioWithoutProg = io {fileExists = const $ pure False}
-        void $ send io $ setUserProfileC "alice" defaultProfile {userName = "alice", userCommands = Just $ Map.fromList [("foo", "qwerty123123")]}
-        res <- tryWrapProg ioWithoutProg "alice" "foo" [] "somedir"
+        void $ send io $ setUserProfileC "arnaud" defaultProfile {userName = "arnaud", userCommands = Just $ Map.fromList [("foo", "qwerty123123")]}
+        res <- tryWrapProg ioWithoutProg "arnaud" "foo" [] "somedir"
         res `isExpectedToBe` Left (NonExistentAlias "foo" "qwerty123123")

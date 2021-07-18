@@ -4,47 +4,62 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Sensei.Server
-( -- * Endpoints
-  killS, setCurrentTimeS, getCurrentTimeS,
-  updateFlowStartTimeS, postEventS,
-  notesDayS, searchNoteS, commandsDayS,
-  queryFlowDayS, queryFlowPeriodSummaryS,
-  getFlowS, queryFlowS, getLogS, getUserProfileS,
-  putUserProfileS,
-  getFreshTokenS, getVersionsS, loginS,
+  ( -- * Endpoints
+    killS,
+    setCurrentTimeS,
+    getCurrentTimeS,
+    updateFlowStartTimeS,
+    postEventS,
+    notesDayS,
+    searchNoteS,
+    commandsDayS,
+    queryFlowDayS,
+    queryFlowPeriodSummaryS,
+    getFlowS,
+    queryFlowS,
+    getLogS,
+    getUserProfileS,
+    putUserProfileS,
+    createUserProfileS,
+    getFreshTokenS,
+    getVersionsS,
+    loginS,
+    module Sensei.Server.OpenApi,
 
-  module Sensei.Server.OpenApi,
-  
-  -- * Links
-  module Sensei.Server.Links,
+    -- * Links
+    module Sensei.Server.Links,
 
-  -- * Configuration
-  module Sensei.Server.Config,
+    -- * Configuration
+    module Sensei.Server.Config,
 
-  -- * Authentication
-  module Sensei.Server.Auth,
+    -- * Authentication
+    module Sensei.Server.Auth,
 
-  -- * Server-side HTML
-  module Sensei.Server.UI
-  )  where
+    -- * Server-side HTML
+    module Sensei.Server.UI,
+  )
+where
 
 import Control.Concurrent.MVar
-import Control.Exception.Safe (throwM)
+import Control.Exception.Safe (throwM, try)
 import Control.Monad (join)
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
+import Data.Text.Lazy (pack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.DB
 import Sensei.Server.Auth
-import Sensei.Server.Links
 import Sensei.Server.Config
+import Sensei.Server.Links
 import Sensei.Server.OpenApi
 import Sensei.Server.UI
 import Sensei.Time hiding (getCurrentTime)
@@ -155,18 +170,27 @@ getLogS userName page = do
           ls -> addHeader $ writeLinkHeader ls
   pure $ links resultEvents
 
+createUserProfileS ::
+  forall m. (DB m) => UserProfile -> m (Encoded Hex)
+createUserProfileS u = do
+  result <- try @_ @(DBError m) $ insertProfile u
+  case result of
+    Left ignored -> throwM $ err400 { errBody = encodeUtf8 $ pack $ show ignored}
+    Right uid -> pure uid
+
 getUserProfileS ::
-  (DB m) => Text -> m UserProfile
+  forall m. (DB m) => Text -> m UserProfile
 getUserProfileS userName = do
-  prof <- readProfile userName
-  case prof of
-    Left _ -> pure defaultProfile
-    Right prf -> pure prf
+  result <- try @_ @(DBError m) $ readProfile userName
+  case result of
+    Left e -> throwM $ err400 {errBody = encodeUtf8 $ pack $ show e}
+    Right p -> pure p
 
 putUserProfileS ::
-  (DB m) => Text -> UserProfile -> m (Encoded Hex)
-putUserProfileS _ profile =
-  writeProfile profile
+  (DB m) => Text -> UserProfile -> m NoContent
+putUserProfileS user profile
+  | user /= userName profile = throwM err400
+  | otherwise = NoContent <$ writeProfile profile
 
 getFreshTokenS ::
   MonadIO m =>

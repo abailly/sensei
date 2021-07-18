@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Implementation of flows DB using <https://www.sqlite.org/index.html SQLite>
@@ -279,6 +280,7 @@ instance DB SQLiteDB where
   readCommands u = readCommandsSQL u
   readProfile = readProfileSQL
   writeProfile = writeProfileSQL
+  insertProfile = insertProfileSQL
 
 data Events
   = StoragePathCreated {dbPath :: FilePath}
@@ -337,10 +339,10 @@ withBackup file action = do
 
 migrateFileBasedProfile :: LoggerEnv -> FilePath -> FilePath -> IO ()
 migrateFileBasedProfile logger storagePath config = do
-  eitherProfile <- File.readProfileFile config
+  eitherProfile <- try @_ @IOException $ File.readProfileFile config
   case eitherProfile of
     Left _ -> pure ()
-    Right profile -> void $ runDB storagePath config logger $ writeProfileSQL profile
+    Right profile -> void $ runDB storagePath config logger $ insertProfileSQL profile
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
@@ -519,27 +521,39 @@ readCommandsSQL UserProfile {..} = do
 readProfileSQL ::
   HasCallStack =>
   Text ->
-  SQLiteDB (Either Text UserProfile)
+  SQLiteDB UserProfile
 readProfileSQL userName = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select profile from users where user = ?"
     res <- query cnx logger q (Only userName)
     case res of
-      [[profile]] -> pure $ first pack . eitherDecode . encodeUtf8 $ profile
-      [] -> pure $ Left ("No user " <> userName)
-      _ -> pure $ Left ("Several users with " <> userName <> ", this is a bug")
+      [[profile]] -> case eitherDecode . encodeUtf8 $ profile of
+        Left e -> throwM $ SQLiteDBError q (pack $ "Fail to decode user profile: " <> e)
+        Right p -> pure p
+      [] -> throwM $ SQLiteDBError q ("No user " <> userName)
+      _ -> throwM $ SQLiteDBError q ("Several users with " <> userName <> ", this is a bug")
 
 writeProfileSQL ::
   HasCallStack =>
   UserProfile ->
-  SQLiteDB (Encoded Hex)
+  SQLiteDB ()
 writeProfileSQL profile = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q =
-          "insert into users (uid, user, profile) values (?,?,?) \
-          \ on conflict(user) do update set profile = excluded.profile;"
+          "update users set profile = ? where user = ?;"
+    execute cnx logger q [toField $ decodeUtf8' $ LBS.toStrict $ encode profile, toField (userName profile)]
+
+insertProfileSQL ::
+  HasCallStack =>
+  UserProfile ->
+  SQLiteDB (Encoded Hex)
+insertProfileSQL profile = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q =
+          "insert into users (uid, user, profile) values (?,?,?);"
     uid <- toHex . BS.pack . take 16 . randoms <$> newStdGen
     execute cnx logger q [toField $ toText uid, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profile]
     pure uid

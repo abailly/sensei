@@ -68,7 +68,8 @@ fromClientRequest inReq =
 
 toClientResponse ::
   HasCallStack =>
-  SResponse -> Response
+  SResponse ->
+  Response
 toClientResponse SResponse {..} =
   Response simpleStatus (fromList simpleHeaders) http11 simpleBody
 

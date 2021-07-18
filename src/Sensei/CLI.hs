@@ -35,11 +35,11 @@ import Sensei.CLI.Options
 import Sensei.CLI.Terminal
 import Sensei.Client
 import Sensei.IO (getConfigDirectory, writeConfig)
-import Sensei.Server.Auth (createKeys, createToken, getPublicKey, setPassword, Credentials(..))
+import Sensei.Server.Auth (Credentials (..), createKeys, createToken, getPublicKey, setPassword)
 import Sensei.Version
 import Sensei.Wrapper (handleWrapperResult, tryWrapProg, wrapProg, wrapperIO)
 import Servant (Headers (getResponse))
-import System.Directory(findExecutable)
+import System.Directory (findExecutable)
 import System.Exit
 import System.IO
 
@@ -119,7 +119,7 @@ ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   handleWrapperResult exe =<< case maybeExePath of
     Just exePath -> Right <$> wrapProg io userName exePath args currentDir
     Nothing -> tryWrapProg io userName exe args currentDir
-    
+
 println :: BS.ByteString -> IO ()
 println bs =
   BS.putStr bs >> BS.putStr "\n"

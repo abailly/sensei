@@ -52,7 +52,7 @@ data EventsQueryResult = EventsQueryResult
 -- This interface provide high-level functions to retrieve
 -- and store various pieces of data for the `Server`-side operations. It is expected
 -- to throw exceptions of type `DBError m`.
-class (Exception (DBError m), MonadCatch m) => DB m where
+class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   type DBError m :: *
 
   -- | Stores the current timestamp
@@ -94,10 +94,14 @@ class (Exception (DBError m), MonadCatch m) => DB m where
 
   -- | Read a user's profile
   -- This function may fail of there's no profile or the format is incorrect.
-  readProfile :: Text -> m (Either Text UserProfile)
+  readProfile :: Text -> m UserProfile
 
-  -- | Write user's profile to the DB
-  writeProfile :: UserProfile -> m (Encoded Hex)
+  -- | Write an existing user's profile to the DB
+  writeProfile :: UserProfile -> m ()
+
+  -- | Create a new user profile to the DB, assuming it does not
+  -- already exist.
+  insertProfile :: UserProfile -> m (Encoded Hex)
 
 flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay flow =
