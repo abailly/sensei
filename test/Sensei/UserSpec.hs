@@ -54,6 +54,11 @@ spec = describe "Users Management" $ do
       eitherDecode jsonProfile
         `shouldBe` Right defaultProfile
 
+    it "can deserialize version 6 JSON" $ do
+      let jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userCommands\":null,\"userProfileVersion\":6,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null,\"userPassword\":[\"\",\"\"]}"
+      eitherDecode jsonProfile
+        `shouldBe` Right defaultProfile
+
   withApp app $
     describe "Users API" $ do
       it "GET /api/users/<user> returns default profile" $ do
