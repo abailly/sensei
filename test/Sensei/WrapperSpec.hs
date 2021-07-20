@@ -6,7 +6,6 @@
 
 module Sensei.WrapperSpec where
 
-import Control.Monad.Reader (runReaderT)
 import Data.Functor
 import qualified Data.Map as Map
 import Data.Time (UTCTime (..))
@@ -23,7 +22,7 @@ io = WrapperIO {..}
   where
     runProcess _ _ = pure ExitSuccess
     getCurrentTime = pure $ UTCTime (toEnum 50000) 0
-    send (ClientMonad a) = runReaderT a (ClientConfig "http://localhost:23456" (Just validSerializedToken) False Nothing)
+    send = runRequest
     fileExists = const $ pure True
 
 spec :: Spec

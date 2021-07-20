@@ -16,7 +16,7 @@ import Data.Time
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
 import Numeric.Natural
-import Preface.Codec (Base64, Encoded)
+import Preface.Codec (Base64, Hex, Encoded)
 import Sensei.Color
 import Sensei.Flow
 
@@ -51,7 +51,10 @@ data UserProfile = UserProfile
     userCommands :: Maybe (Map.Map String String),
     -- | User's password, salted and hashed.
     -- The profile stores the user's password properly salted and hashed with bcrypt.
-    userPassword :: (Encoded Base64, Encoded Base64)
+    userPassword :: (Encoded Base64, Encoded Base64),
+    -- | The user unique identifier.
+    -- This is an hexadecimal string representing 16 bytes
+    userId :: Encoded Hex
   }
   deriving (Eq, Show, Generic)
 
@@ -68,8 +71,29 @@ defaultProfile =
       userEndOfDay = TimeOfDay 18 30 00,
       userFlowTypes = Nothing,
       userCommands = Nothing,
-      userPassword = ("", "")
+      userPassword = ("", ""),
+      userId = ""
     }
+
+instance ToJSON UserProfile where
+  toJSON UserProfile {..} =
+    object
+      [ "userName" .= userName,
+        "userTimezone" .= userTimezone,
+        "userStartOfDay" .= userStartOfDay,
+        "userEndOfDay" .= userEndOfDay,
+        "userFlowTypes" .= userFlowTypes,
+        "userCommands" .= userCommands,
+        "userPassword" .= userPassword,
+        "userId" .= userId,
+        "userProfileVersion" .= currentVersion
+      ]
+
+instance FromJSON UserProfile where
+  parseJSON =
+    withObject "UserProfile" $ \o -> do
+      version <- (o .: "userProfileVersion") <|> pure 0
+      parseJSONFromVersion version o
 
 parseJSONFromVersion :: Natural -> Object -> Parser UserProfile
 parseJSONFromVersion v o =
@@ -81,6 +105,7 @@ parseJSONFromVersion v o =
     <*> parseFlowTypes
     <*> parseCommands
     <*> parsePassword
+    <*> parseId
   where
     parseFlowTypes =
       case v of
@@ -103,24 +128,10 @@ parseJSONFromVersion v o =
         then pure ("", "")
         else o .: "userPassword"
 
-instance ToJSON UserProfile where
-  toJSON UserProfile {..} =
-    object
-      [ "userName" .= userName,
-        "userTimezone" .= userTimezone,
-        "userStartOfDay" .= userStartOfDay,
-        "userEndOfDay" .= userEndOfDay,
-        "userFlowTypes" .= userFlowTypes,
-        "userCommands" .= userCommands,
-        "userPassword" .= userPassword,
-        "userProfileVersion" .= currentVersion
-      ]
-
-instance FromJSON UserProfile where
-  parseJSON =
-    withObject "UserProfile" $ \o -> do
-      version <- (o .: "userProfileVersion") <|> pure 0
-      parseJSONFromVersion version o
+    parseId =
+      if v <= 6
+      then pure ""
+      else o .: "userId"
 
 instance ToJSON TimeZone where
   toJSON = String . Text.pack . iso8601Show

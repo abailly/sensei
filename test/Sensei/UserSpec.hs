@@ -7,10 +7,13 @@ import Data.Aeson
 import qualified Data.ByteString as BS
 import qualified Data.Map as Map
 import Data.Proxy
+import Preface.Codec (Encoded (..))
 import Sensei.API
+import Sensei.Client (getUserProfileC)
 import Sensei.ColorSpec ()
 import Sensei.Generators ()
 import Sensei.TestHelper
+import Sensei.WaiTestHelper (matches, runRequest)
 import Test.Hspec
 import Test.QuickCheck.Classes
 
@@ -62,13 +65,18 @@ spec = describe "Users Management" $ do
   withApp app $
     describe "Users API" $ do
       it "GET /api/users/<user> returns default profile" $ do
-        getJSON "/api/users/arnaud" `shouldRespondJSONBody` defaultProfile
+        getJSON "/api/users/arnaud"
+          `shouldMatchJSONBody` \p -> p {userId = ""} == defaultProfile
+
+      it "GET /api/users/<user> returns default profile with user id" $ do
+        uid <- userId <$> runRequest (getUserProfileC "arnaud")
+        uid `matches` \(Encoded e) -> BS.length e == 16
 
       it "POST /api/users with profile sets create user profile and returns user id" $ do
         let profile = defaultProfile {userName = "robert"}
 
         postJSON "/api/users" profile
-          `shouldRespondWith` 200 { matchBody = bodySatisfies $ \bs -> BS.length bs == 32 + 2 }
+          `shouldRespondWith` 200 {matchBody = bodySatisfies $ \bs -> BS.length bs == 32 + 2}
 
       it "POST /api/users with profile returns 400 given user with same name exists" $ do
         let profile = defaultProfile {userName = "robert"}

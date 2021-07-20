@@ -4,11 +4,12 @@
 module Sensei.Generators where
 
 import Control.Lens ((.~))
+import qualified Data.ByteString as BS
 import Data.Function ((&))
 import Data.Text (Text, pack)
 import Data.Time (UTCTime (..), addUTCTime)
 import Data.Time.LocalTime
-import Preface.Codec (Base64, Encoded (..), toBase64)
+import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
 import Sensei.ColorSpec ()
 import Sensei.DB
@@ -24,6 +25,7 @@ import Test.QuickCheck
     listOf,
     oneof,
     resize,
+    vectorOf,
   )
 
 -- * Orphan Instances
@@ -43,6 +45,9 @@ genPassword = (,) <$> genBase64 <*> genBase64
 genBase64 :: Gen (Encoded Base64)
 genBase64 = toBase64 <$> arbitrary
 
+genUserId :: Gen (Encoded Hex)
+genUserId = toHex . BS.pack <$> vectorOf 16 arbitrary
+
 generateUserProfile :: Gen UserProfile
 generateUserProfile =
   UserProfile
@@ -53,11 +58,12 @@ generateUserProfile =
     <*> arbitrary
     <*> arbitrary
     <*> genPassword
+    <*> genUserId
 
 instance Arbitrary UserProfile where
   arbitrary = generateUserProfile
 
-  shrink u@(UserProfile _ _ _ _ fs cs _) =
+  shrink u@(UserProfile _ _ _ _ fs cs _ _) =
     ((\f -> u {userFlowTypes = f}) <$> shrink fs)
       <> ((\c -> u {userCommands = c}) <$> shrink cs)
 

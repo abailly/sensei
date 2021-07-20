@@ -22,7 +22,8 @@ import qualified Network.HTTP.Types as H
 import Network.HTTP.Types.Version
 import qualified Network.Wai as Wai
 import Network.Wai.Test as Wai
-import Sensei.TestHelper (validAuthToken)
+import Sensei.Client (ClientMonad (..), ClientConfig(..))
+import Sensei.TestHelper (validAuthToken, validSerializedToken)
 import Servant.Client.Core
 import Test.Hspec
 import Test.Hspec.Wai hiding (request)
@@ -68,20 +69,30 @@ fromClientRequest inReq =
 
 toClientResponse ::
   HasCallStack =>
+  Monad m =>
   SResponse ->
-  Response
+  m Response
 toClientResponse SResponse {..} =
-  Response simpleStatus (fromList simpleHeaders) http11 simpleBody
+  pure $ Response simpleStatus (fromList simpleHeaders) http11 simpleBody
 
 instance RunClient (WaiSession st) where
   runRequestAcceptStatus _ req = do
-    WaiSession $ ReaderT $ \_ -> fromClientRequest req >>= \r -> toClientResponse <$> request r
+    WaiSession $ ReaderT $ \_ -> fromClientRequest req >>= request >>= toClientResponse
 
   throwClientError err = error (show err)
+
+runRequest :: RunClient m => ClientMonad a -> m a
+runRequest (ClientMonad a) =
+  runReaderT a (ClientConfig "http://localhost:23456" (Just validSerializedToken) False Nothing)
 
 isExpectedToBe ::
   (Eq a, Show a, HasCallStack) => a -> a -> WaiSession st ()
 isExpectedToBe actual expected =
-  if actual /= expected
-    then liftIO $ expectationFailure $ show actual <> " is not " <> show expected
-    else pure ()
+  unless (actual == expected) $
+    liftIO $ expectationFailure $ show actual <> " is not " <> show expected
+
+matches ::
+  (Eq a, Show a, HasCallStack) => a -> (a -> Bool) -> WaiSession st ()
+matches actual p =
+  unless (p actual) $
+    liftIO $ expectationFailure $ show actual <> " does not match predicate"

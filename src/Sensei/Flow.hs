@@ -70,12 +70,13 @@ import Sensei.FlowType
 import Servant
 
 -- | Current version of data storage format.
+--
 -- This version /must/ be incremented on each change to the structure of `Event` and
 -- other stored data structures which
 -- impacts their serialized representation. Of course, deserialisation
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 6
+currentVersion = 7
 
 data Flow = Flow
   { _flowType :: FlowType,

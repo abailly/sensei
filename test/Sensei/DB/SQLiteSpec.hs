@@ -111,9 +111,8 @@ spec = describe "SQLite DB" $ do
 
       it "logs all DB operations using given logger" $ \tempdb -> do
         let time1 = UTCTime (toEnum 50000) 0
-        logger <- newLog "test"
 
-        res <-
+        res <- withLogger "test" $ \logger -> do
           runDB tempdb "." logger $
             runReaderT
               ( do
@@ -123,6 +122,7 @@ spec = describe "SQLite DB" $ do
               )
               logger
 
+        -- TODO this test has nothing to do with logger
         res `shouldBe` time1
 
       it "gets latest current time when time is set explicitly" $ \tempdb -> do

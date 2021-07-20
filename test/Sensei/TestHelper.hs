@@ -28,6 +28,7 @@ module Sensei.TestHelper
     module W,
     SResponse,
     shouldRespondJSONBody,
+    shouldMatchJSONBody,
     shouldNotThrow,
     clearCookies,
 
@@ -133,6 +134,14 @@ defaultHeaders =
     ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken)
   ]
 
+shouldMatchJSONBody ::
+  (HasCallStack, Eq a, Show a, A.FromJSON a) =>
+  WaiSession st SResponse ->
+  (a -> Bool) ->
+  WaiExpectation st
+shouldMatchJSONBody action p =
+  action `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyMatches p)
+
 shouldRespondJSONBody ::
   (HasCallStack, Eq a, Show a, A.FromJSON a) =>
   WaiSession st SResponse ->
@@ -150,6 +159,16 @@ jsonBodyEquals expected = MatchBody $ \_ body ->
         then Just ("expected " <> show expected <> ", got " <> show actual)
         else Nothing
     Left err -> Just ("expected " <> show expected <> ", got " <> show body <> " with error " <> err)
+
+jsonBodyMatches ::
+  (HasCallStack, Eq a, Show a, A.FromJSON a) => (a -> Bool) -> MatchBody
+jsonBodyMatches predicate = MatchBody $ \_ body ->
+  case A.eitherDecode body of
+    Right actual ->
+      if not (predicate actual)
+        then Just ("body  " <> show actual <> ", does not match predicate")
+        else Nothing
+    Left err -> Just ("body cannot be properly decoded: got " <> show body <> " with error " <> err)
 
 bodyContains :: HasCallStack => ByteString -> MatchBody
 bodyContains fragment =
