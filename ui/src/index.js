@@ -16,17 +16,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const useHash = true;
   const router = new Navigo(root, useHash);
 
+  // default date used to display flows and notes
+  const today = formatISODate(LocalDate.now());
+
   setUserProfile(router);
 
   router
     .on('/flows', function() {
-      charts(router);
+      charts(router, today);
     })
     .on('/login', function() {
       login(router, document.getElementById('main'));
     })
     .on('/notes', function() {
-      notes.list(router, document.getElementById('main'), formatISODate(LocalDate.now()));
+      notes.list(router, document.getElementById('main'), today);
     })
     .on('/notes/:page', function(params) {
       notes.list(router, document.getElementById('main'), params.page);

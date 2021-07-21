@@ -3,7 +3,7 @@ import timeline from './timeline.js';
 import summary from './summary.js';
 
 /// Draw the charts
-export default function charts(router) {
+export default function charts(router, someDate) {
   const content = <div class="content">
     <div class="controls">
       <label for="flowDate">Select a date</label>
@@ -34,6 +34,10 @@ export default function charts(router) {
       document.getElementById('flowDate').disabled = false;
     }
   });
+
+  if (someDate) {
+    tl.fetchFlowData(someDate);
+  }
 
   return content;
 }
