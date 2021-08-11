@@ -14,7 +14,11 @@ RUN apt-get update && \
 RUN echo 'deb http://ppa.launchpad.net/hvr/ghc/ubuntu trusty main' > /etc/apt/sources.list.d/ghc.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F6F88286 && \
     apt-get update && \
-    apt-get install -y --no-install-recommends zlib1g-dev libtinfo-dev libsqlite3-0 libsqlite3-dev ca-certificates g++ git curl netbase build-essential make libgmp3-dev
+    apt-get install -y --no-install-recommends zlib1g-dev libtinfo-dev libsqlite3-0 libsqlite3-dev ca-certificates g++ git curl netbase build-essential make libgmp3-dev ruby ruby-dev rubygems
+
+# install fpm to build debian packages
+# from https://github.com/TorXakis/TorXakis/blob/develop/ci/mk-package/ubuntu/19.04/Dockerfile
+RUN gem install --no-ri --no-rdoc fpm
 
 RUN curl -fSL https://github.com/commercialhaskell/stack/releases/download/v2.7.1/stack-2.7.1-linux-x86_64.tar.gz -o stack.tar.gz && \
     curl -fSL https://github.com/commercialhaskell/stack/releases/download/v2.7.1/stack-2.7.1-linux-x86_64.tar.gz.asc -o stack.tar.gz.asc
@@ -41,6 +45,8 @@ RUN /usr/local/bin/stack setup --resolver $STACKAGE_VERSION
 VOLUME /home/user/.stack
 
 USER root
+
+RUN apt-get update -y && apt-get install -y nodejs npm
 
 # assumes entry.sh is in the context
 COPY entry.sh /usr/local/bin/entry.sh

@@ -132,7 +132,20 @@ runShake pwd uid = shakeArgs options $ do
         "webpack.config.js",
         ".babelrc"
       ]
-    cmd (Cwd "ui") "npm" ["run", "build"]
+    cmd
+      "docker"
+      [ "run",
+        "--rm",
+        "-t",
+        "-v",
+        (pwd </> "ui") <> ":/work",
+        "-w",
+        "/work",
+        "-e",
+        "LOCAL_USER_ID=" <> uid,
+        "pankzsoft/haskell-base",
+        "npm i && npm run build"
+      ]
 
 needDirectoryFiles dir patterns =
   need =<< getDirectoryFiles "" ((dir </>) <$> patterns)
