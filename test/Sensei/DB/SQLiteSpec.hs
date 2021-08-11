@@ -5,10 +5,7 @@ module Sensei.DB.SQLiteSpec where
 
 import Control.Exception.Safe (throwIO)
 import Control.Monad.Reader
-import Data.Aeson (encode)
-import Data.ByteString.Lazy (toStrict)
 import Data.List (isInfixOf, isPrefixOf)
-import Data.Text.Encoding (decodeUtf8)
 import qualified Database.SQLite.Simple as SQLite
 import Preface.Log
 import Sensei.API
@@ -167,6 +164,6 @@ spec = describe "SQLite DB" $ do
           runDB tmp dir fakeLogger initLogStorage
 
           rows <- SQLite.withConnection tmp $ \cnx ->
-            SQLite.query_ cnx "select id,user,profile from users;"
+            SQLite.query_ cnx "select id,user from users;"
 
-          rows `shouldBe` [(1 :: Int, "arnaud" :: String, decodeUtf8 $ toStrict $ encode defaultProfile)]
+          rows `shouldBe` [(1 :: Int, "arnaud" :: String)]
