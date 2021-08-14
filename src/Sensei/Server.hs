@@ -34,7 +34,8 @@ module Sensei.Server
 
     -- * Configuration
     module Sensei.Server.Config,
-
+    module Sensei.Server.Options,
+    
     -- * Authentication
     module Sensei.Server.Auth,
 
@@ -60,6 +61,7 @@ import Sensei.DB
 import Sensei.Server.Auth
 import Sensei.Server.Config
 import Sensei.Server.Links
+import Sensei.Server.Options
 import Sensei.Server.OpenApi
 import Sensei.Server.UI
 import Sensei.Time hiding (getCurrentTime)
