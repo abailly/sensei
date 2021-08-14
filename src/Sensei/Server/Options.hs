@@ -19,8 +19,10 @@ runOptionsParser ::
 runOptionsParser arguments =
   case execParserPure defaultPrefs optionsParserInfo arguments of
     Success opts -> Right opts
-    Failure f -> Left (Text.pack . show $ execFailure f "")
+    Failure f -> Left (Text.pack . show . fst3 $ execFailure f "")
     _ -> Left "Unexpected completion invoked"
+  where
+    fst3 (a,_,_) = a
 
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo =
@@ -36,8 +38,8 @@ optionsParserInfo =
 commandsParser :: Parser Options
 commandsParser  =
   hsubparser
-    ( command "server" (info serverOptions (progDesc "Run sensei server"))
-        <> command "client" (info clientOptions (progDesc "Run sensei client"))
+    ( command "server" (info serverOptions (progDesc "Run sensei server. Pass server's arguments after a '--'."))
+        <> command "client" (info clientOptions (progDesc "Run sensei client. Pass client's arguments after a '--'."))
     )
 
 clientOptions :: Parser Options
