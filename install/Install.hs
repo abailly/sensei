@@ -52,6 +52,19 @@ runShake pwd uid = shakeArgs options $ do
   addBuiltinImageRule
   addBuiltinContainerRule
 
+  let needHaskellSources = do
+        needImage "pankzsoft/haskell-base"
+        needDirectoryFiles "."
+          [ "src//*.hs",
+            "test//*.hs",
+            "data//*.*",
+            "app//*.hs",
+            "package.yaml",
+            "Dockerfile"
+            ]
+        need ["stack.yaml"]
+        need ["ui/dist/index.html"]
+
   -- Build all images locally
   imageRule "pankzsoft/haskell-base" $ \img -> do
     need ["haskell-base/Dockerfile", "haskell-base/haskell.key"]
@@ -59,23 +72,34 @@ runShake pwd uid = shakeArgs options $ do
 
   "build" ~> void (needImage (docker_repository </> "sensei"))
 
+  "test" ~> do
+    needHaskellSources
+    cmd
+      "docker"
+      [ "run",
+        "--rm",
+        "-t",
+        "-v",
+        pwd <> ":/work",
+        "-v",
+        "haskell-stack:/home/user/.stack",
+        "-w",
+        "/work",
+        "-e",
+        "LOCAL_USER_ID=" <> uid,
+        "pankzsoft/haskell-base",
+        "stack",
+        "test",
+        "--allow-different-user",
+        "--work-dir=.stack-work-build"
+      ]
+    
   imageRule (docker_repository </> "sensei") $ \img -> do
     need ["bin/sensei-exe"]
     cmd "docker" ["build", "-t", toArg img, "-f", "Dockerfile", "."]
 
   "bin/sensei-exe" %> \bin -> do
-    needImage "pankzsoft/haskell-base"
-    needDirectoryFiles
-      "."
-      [ "src//*.hs",
-        "test//*.hs",
-        "data//*.*",
-        "app//*.hs",
-        "package.yaml",
-        "Dockerfile"
-      ]
-    need ["stack.yaml"]
-    need ["ui/dist/index.html"]
+    needHaskellSources
     cmd
       "docker"
       [ "run",
