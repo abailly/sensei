@@ -61,6 +61,7 @@ services:
 
   sensei:
     image: pankzsoft/sensei:${IMAGE_ID}
+    command: server
     restart: always
     container_name: "sensei"
     environment:
