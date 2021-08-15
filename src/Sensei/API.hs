@@ -36,13 +36,13 @@ import Sensei.Duration
 import Sensei.Flow
 import Sensei.FlowView
 import Sensei.Group
+import Sensei.Project
 import Sensei.Server.Auth (Auth, AuthenticationToken, Cookie, Credentials, JWT, SerializedToken, SetCookie)
 import Sensei.Server.Tags
 import Sensei.Summary
 import Sensei.Time
 import Sensei.User
 import Sensei.Utils
-import Sensei.Project
 import Sensei.Version
 import Servant
 

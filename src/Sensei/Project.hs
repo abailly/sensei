@@ -20,6 +20,8 @@ newtype ProjectName = ProjectName {projectName :: Text}
 newtype Regex = Regex {regex :: Text}
   deriving newtype (Eq, Show, Read, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey, IsString)
 
+type ProjectsMap = Map.Map Regex ProjectName
+
 selectProject :: Map.Map Regex ProjectName -> Text -> ProjectName
 selectProject projectsMap directory =
   fromMaybe

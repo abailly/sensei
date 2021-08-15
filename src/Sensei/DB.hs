@@ -103,17 +103,9 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   -- already exist.
   insertProfile :: UserProfile -> m (Encoded Hex)
 
-flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
-flowViewBuilder userName userTimezone userEndOfDay flow =
-  flowView flow userName (appendFlow userTimezone userEndOfDay)
-
--- | Basically a combination of a `filter` and a single step of a fold
---  Should be refactored to something more standard
-flowView :: Event -> Text -> (Event -> [a] -> [a]) -> [a] -> [a]
-flowView e usr mkView views =
-  if eventUser e == usr
-    then mkView e views
-    else views
+flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> ProjectsMap -> Event -> [FlowView] -> [FlowView]
+flowViewBuilder userName userTimezone userEndOfDay projectsMap flow =
+  flowView flow userName (appendFlow userTimezone userEndOfDay projectsMap)
 
 notesViewBuilder :: Text -> TimeZone -> Event -> [(LocalTime, Text)] -> [(LocalTime, Text)]
 notesViewBuilder userName userTimezone flow = flowView flow userName f
@@ -123,6 +115,14 @@ notesViewBuilder userName userTimezone flow = flowView flow userName f
       (utcToLocalTime userTimezone st, note) : fragments
     f _ fragments = fragments
 
-commandViewBuilder :: TimeZone -> Event -> [CommandView] -> [CommandView]
-commandViewBuilder userTimezone t@(EventTrace _) acc = fromJust (mkCommandView userTimezone t) : acc
-commandViewBuilder _ _ acc = acc
+commandViewBuilder :: TimeZone -> ProjectsMap -> Event -> [CommandView] -> [CommandView]
+commandViewBuilder userTimezone projectsMap t@(EventTrace _) acc = fromJust (mkCommandView userTimezone projectsMap t) : acc
+commandViewBuilder _ _ _ acc = acc
+
+-- | Basically a combination of a `filter` and a single step of a fold
+--  Should be refactored to something more standard
+flowView :: Event -> Text -> (Event -> [a] -> [a]) -> [a] -> [a]
+flowView e usr mkView views =
+  if eventUser e == usr
+    then mkView e views
+    else views

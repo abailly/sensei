@@ -6,10 +6,10 @@ module Sensei.UserSpec where
 import Data.Aeson
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Text.Encoding as UTF8
 import qualified Data.Map as Map
 import Data.Proxy
-import Preface.Codec (toHex, Encoded (..), encodedHex)
+import qualified Data.Text.Encoding as UTF8
+import Preface.Codec (Encoded (..), encodedHex, toHex)
 import Sensei.API
 import Sensei.Client (getUserProfileC)
 import Sensei.ColorSpec ()

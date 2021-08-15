@@ -505,7 +505,7 @@ readViewsSQL UserProfile {..} = do
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
     flows <- query_ cnx logger q
-    pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] flows
+    pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] flows
 
 readCommandsSQL ::
   HasCallStack =>
@@ -516,7 +516,7 @@ readCommandsSQL UserProfile {..} = do
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' and user = ? order by timestamp"
     traces <- query cnx logger q (Only userName)
-    pure $ foldr (commandViewBuilder userTimezone) [] traces
+    pure $ foldr (commandViewBuilder userTimezone userProjects) [] traces
 
 readProfileSQL ::
   HasCallStack =>

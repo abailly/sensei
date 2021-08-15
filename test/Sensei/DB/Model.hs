@@ -163,13 +163,13 @@ interpret (ReadNotes rge) = do
   fs <- Seq.filter (inRange rge . eventTimestamp) <$> getEvents
   pure $ Just $ foldr (notesViewBuilder userName userTimezone) [] fs
 interpret ReadViews = do
-  UserProfile {userName, userTimezone, userEndOfDay} <- gets currentProfile
+  UserProfile {userName, userTimezone, userEndOfDay, userProjects} <- gets currentProfile
   fs <- getEvents
-  pure $ Just $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] fs
+  pure $ Just $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] fs
 interpret ReadCommands = do
-  UserProfile {userTimezone} <- gets currentProfile
+  UserProfile {userTimezone, userProjects} <- gets currentProfile
   ts <- getEvents
-  pure $ Just $ foldr (commandViewBuilder userTimezone) [] ts
+  pure $ Just $ foldr (commandViewBuilder userTimezone userProjects) [] ts
 interpret (NewUser u) = do
   pfs <- gets profiles
   case Map.lookup (userName u) pfs of

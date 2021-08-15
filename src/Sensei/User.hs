@@ -53,7 +53,7 @@ data UserProfile = UserProfile
     -- | Custom definition of projects
     -- This maps a regular expression to some project identifier. The regular expression is used to assign
     -- traces to projects based on the directory they are tied to.
-    userProjects :: Maybe (Map.Map Regex ProjectName),
+    userProjects :: Map.Map Regex ProjectName,
     -- | User's password, salted and hashed.
     -- The profile stores the user's password properly salted and hashed with bcrypt.
     userPassword :: (Encoded Base64, Encoded Base64),
@@ -77,7 +77,7 @@ defaultProfile =
       userFlowTypes = Nothing,
       userCommands = Nothing,
       userPassword = ("", ""),
-      userProjects = Nothing,
+      userProjects = mempty,
       userId = ""
     }
 
@@ -143,7 +143,7 @@ parseJSONFromVersion v o =
 
     parseProjects =
       if v <= 7
-        then pure Nothing
+        then pure mempty
         else o .: "userProjects"
 
 instance ToJSON TimeZone where

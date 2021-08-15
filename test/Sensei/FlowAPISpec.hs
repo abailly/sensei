@@ -4,6 +4,7 @@
 
 module Sensei.FlowAPISpec where
 
+import Control.Lens ((.~))
 import Data.Function ((&))
 import Data.Maybe (catMaybes, fromJust)
 import Data.Text.Encoding (encodeUtf8)
@@ -24,13 +25,29 @@ spec = withApp app $
 
     it "GET /api/flows/<user> retrieves all Flows ungrouped" $ do
       let flow1 = anOtherFlow
-          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (succ aDay) 0) "some/directory"
+          flow2 =
+            anOtherFlow
+              & (flowType .~ FlowType "Meeting")
+                . (flowTimestamp .~ UTCTime (succ aDay) 0)
+
       postFlow_ flow1
       postFlow_ flow2
 
       let expectedGroups =
-            [ Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay sixThirtyPM) Other,
-              Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) oneAM) (FlowType "Meeting")
+            [ Leaf $
+                FlowView
+                  { flowStart = LocalTime aDay oneAM,
+                    flowEnd = LocalTime aDay sixThirtyPM,
+                    viewType = Other,
+                    flowProject = "directory"
+                  },
+              Leaf $
+                FlowView
+                  { flowStart = LocalTime (succ aDay) oneAM,
+                    flowEnd = LocalTime (succ aDay) oneAM,
+                    viewType = FlowType "Meeting",
+                    flowProject = "directory"
+                  }
             ]
 
       getJSON "/api/flows/arnaud" `shouldRespondJSONBody` expectedGroups
@@ -38,7 +55,10 @@ spec = withApp app $
     it "GET /api/flows/<user>?group=Day retrieves all Flows grouped by Day" $ do
       let flow1 = anOtherFlow
           flow3 = anOtherFlow & later 1000 seconds
-          flow2 = Flow (FlowType "Meeting") "arnaud" (UTCTime (succ aDay) 0) "some/directory"
+          flow2 =
+            anOtherFlow
+              & (flowType .~ FlowType "Meeting")
+                . (flowTimestamp .~ UTCTime (succ aDay) 0)
       postFlow_ flow1
       postFlow_ flow3
       postFlow_ flow2
@@ -47,13 +67,32 @@ spec = withApp app $
             [ GroupLevel
                 Day
                 (LocalTime aDay oneAM)
-                [ Leaf $ FlowView (LocalTime aDay oneAM) (LocalTime aDay (TimeOfDay 1 16 40)) Other,
-                  Leaf $ FlowView (LocalTime aDay (TimeOfDay 1 16 40)) (LocalTime aDay sixThirtyPM) Other
+                [ Leaf $
+                    FlowView
+                      { flowStart = LocalTime aDay oneAM,
+                        flowEnd = LocalTime aDay (TimeOfDay 1 16 40),
+                        viewType = Other,
+                        flowProject = "directory"
+                      },
+                  Leaf $
+                    FlowView
+                      { flowStart = LocalTime aDay (TimeOfDay 1 16 40),
+                        flowEnd = LocalTime aDay sixThirtyPM,
+                        viewType = Other,
+                        flowProject = "directory"
+                      }
                 ],
               GroupLevel
                 Day
                 (LocalTime (succ aDay) oneAM)
-                [Leaf $ FlowView (LocalTime (succ aDay) oneAM) (LocalTime (succ aDay) sixThirtyPM) (FlowType "Meeting")]
+                [ Leaf $
+                    FlowView
+                      { flowStart = LocalTime (succ aDay) oneAM,
+                        flowEnd = LocalTime (succ aDay) sixThirtyPM,
+                        viewType = FlowType "Meeting",
+                        flowProject = "directory"
+                      }
+                ]
             ]
 
       getJSON "/api/flows/arnaud?group=Day" `shouldRespondJSONBody` expectedGroups
@@ -85,8 +124,8 @@ spec = withApp app $
           cmd2 = Trace "arnaud" (UTCTime aDay 1000) "other/directory" "git" ["bar"] 0 100
 
           expected =
-            [ CommandView (LocalTime aDay oneAM) "foo" 10,
-              CommandView (LocalTime aDay (TimeOfDay 1 16 40)) "git" 100
+            [ CommandView (LocalTime aDay oneAM) "foo" 10 "directory",
+              CommandView (LocalTime aDay (TimeOfDay 1 16 40)) "git" 100 "directory"
             ]
 
       postTrace_ cmd1

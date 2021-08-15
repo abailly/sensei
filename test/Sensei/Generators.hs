@@ -64,9 +64,10 @@ generateUserProfile =
 instance Arbitrary UserProfile where
   arbitrary = generateUserProfile
 
-  shrink u@(UserProfile _ _ _ _ fs cs _ _ _) =
+  shrink u@(UserProfile _ _ _ _ fs cs ps _ _) =
     ((\f -> u {userFlowTypes = f}) <$> shrink fs)
       <> ((\c -> u {userCommands = c}) <$> shrink cs)
+      <> ((\p -> u {userProjects = p}) <$> shrink ps)
 
 instance Arbitrary FlowType where
   arbitrary =
@@ -80,9 +81,16 @@ instance Arbitrary FlowType where
 instance Arbitrary ProjectName where
   arbitrary = ProjectName <$> resize 20 (pack . getPrintableString <$> arbitrary)
 
--- NOTE: Does not generate a valid regex
+-- we don't really want to build arbitrary complex regexes so let's just
+-- do simple stuff, and keep the regex smalls otherwise we'll slow the tests
+-- as hell
 instance Arbitrary Regex where
-  arbitrary = Regex . pack . getPrintableString <$> arbitrary
+  arbitrary = Regex . pack . concat <$> reFragments
+    where
+      reFragments :: Gen [String]
+      reFragments = vectorOf 3 reFragment
+
+      reFragment = oneof [pure ".*", listOf (elements ['a' .. 'z'])]
 
 genNatural :: Gen Natural
 genNatural = fromInteger . getPositive <$> arbitrary

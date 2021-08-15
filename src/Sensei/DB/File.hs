@@ -91,8 +91,8 @@ writeJSON file jsonData =
 
 -- | Read all the views for a given `UserProfile`
 readViewsFile :: UserProfile -> FilePath -> IO [FlowView]
-readViewsFile UserProfile {userName, userTimezone, userEndOfDay} file =
-  withBinaryFile file ReadMode $ loop (flowViewBuilder userName userTimezone userEndOfDay) userName []
+readViewsFile UserProfile {userName, userTimezone, userEndOfDay, userProjects} file =
+  withBinaryFile file ReadMode $ loop (flowViewBuilder userName userTimezone userEndOfDay userProjects) userName []
 
 loop :: FromJSON b => (b -> [a] -> [a]) -> Text -> [a] -> Handle -> IO [a]
 loop g usr acc hdl = do
@@ -110,8 +110,8 @@ readNotesFile UserProfile {userName, userTimezone} file =
 
 -- | Read all the views for a given `UserProfile`
 readCommandsFile :: UserProfile -> FilePath -> IO [CommandView]
-readCommandsFile UserProfile {userName, userTimezone} file =
-  withBinaryFile file ReadMode $ loop (commandViewBuilder userTimezone) userName []
+readCommandsFile UserProfile {userName, userTimezone, userProjects} file =
+  withBinaryFile file ReadMode $ loop (commandViewBuilder userTimezone userProjects) userName []
 
 -- | Read user profile file from given directory
 -- The `UserProfile` is expected to be stored as a JSON-encoded file named `config.json`

@@ -46,7 +46,7 @@ postTrace_ :: Trace -> WaiSession () ()
 postTrace_ = postEvent_ . pure . EventTrace
 
 anOtherFlow :: Flow
-anOtherFlow = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+anOtherFlow = Flow Other "arnaud" (UTCTime aDay 0) "some/directory"
 
 aDay :: Day
 aDay = toEnum 50000
