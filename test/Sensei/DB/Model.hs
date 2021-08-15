@@ -239,7 +239,7 @@ validateActions :: forall db. DB db => Seq SomeAction -> StateT Model db (Seq (M
 validateActions acts = do
   sequence $ runAndCheck <$> acts
 
-runAndCheck :: forall db . DB db => SomeAction -> StateT Model db (Maybe String)
+runAndCheck :: forall db. DB db => SomeAction -> StateT Model db (Maybe String)
 runAndCheck (SomeAction act) = do
   UserProfile {userName} <- gets currentProfile
   actual <- either (const Nothing) Just <$> try @_ @(DBError db) (lift $ runDB userName act)

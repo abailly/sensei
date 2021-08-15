@@ -555,6 +555,6 @@ insertProfileSQL profile = do
     let q =
           "insert into users (uid, user, profile) values (?,?,?);"
     userId <- toHex . BS.pack . take 16 . randoms <$> newStdGen
-    let profileWithId = profile { userId }
+    let profileWithId = profile {userId}
     execute cnx logger q [toField $ toText userId, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profileWithId]
     pure userId

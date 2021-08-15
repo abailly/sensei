@@ -35,20 +35,20 @@ spec =
       it "returns error 500 with details given DB fails to access storage file" $ do
         postFlow anOtherFlow
           `shouldRespondWith` 500
-          
+
     describe "Run mode and Options" $ do
       it "parses client mode and pass arguments to it" $ do
-        runOptionsParser [ "client", "foo", "--", "-b" ,"ar"]
-          `shouldBe` Right (ClientOptions ["foo","-b" ,"ar"])
-          
+        runOptionsParser ["client", "foo", "--", "-b", "ar"]
+          `shouldBe` Right (ClientOptions ["foo", "-b", "ar"])
+
       it "parses server mode and pass arguments to it" $ do
-        runOptionsParser [ "server", "foo", "--", "-b" ,"ar"]
-          `shouldBe` Right (ServerOptions ["foo","-b" ,"ar"])
+        runOptionsParser ["server", "foo", "--", "-b", "ar"]
+          `shouldBe` Right (ServerOptions ["foo", "-b", "ar"])
 
       it "returns error message given unknown command" $ do
-        runOptionsParser [ "frobnicate"]
+        runOptionsParser ["frobnicate"]
           `shouldBe` Left "Invalid argument `frobnicate'\n\nUsage:  COMMAND\n  sensei - Virtual assistant for developers version: 0.34.0, storage: 7"
 
       it "returns error message given unescaped parseable arguments" $ do
-        runOptionsParser [ "client", "-x"]
+        runOptionsParser ["client", "-x"]
           `shouldBe` Left "Invalid option `-x'\n\nUsage:  COMMAND\n  sensei - Virtual assistant for developers version: 0.34.0, storage: 7"

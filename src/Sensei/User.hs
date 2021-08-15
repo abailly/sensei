@@ -16,7 +16,7 @@ import Data.Time
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
 import Numeric.Natural
-import Preface.Codec (Base64, Hex, Encoded)
+import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.Color
 import Sensei.Flow
 
@@ -130,8 +130,8 @@ parseJSONFromVersion v o =
 
     parseId =
       if v <= 6
-      then pure ""
-      else o .: "userId"
+        then pure ""
+        else o .: "userId"
 
 instance ToJSON TimeZone where
   toJSON = String . Text.pack . iso8601Show

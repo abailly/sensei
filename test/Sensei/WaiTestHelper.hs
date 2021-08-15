@@ -22,7 +22,7 @@ import qualified Network.HTTP.Types as H
 import Network.HTTP.Types.Version
 import qualified Network.Wai as Wai
 import Network.Wai.Test as Wai
-import Sensei.Client (ClientMonad (..), ClientConfig(..))
+import Sensei.Client (ClientConfig (..), ClientMonad (..))
 import Sensei.TestHelper (validAuthToken, validSerializedToken)
 import Servant.Client.Core
 import Test.Hspec

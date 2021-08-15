@@ -5,9 +5,11 @@ module Sensei.UserSpec where
 
 import Data.Aeson
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Text.Encoding as UTF8
 import qualified Data.Map as Map
 import Data.Proxy
-import Preface.Codec (Encoded (..))
+import Preface.Codec (toHex, Encoded (..), encodedHex)
 import Sensei.API
 import Sensei.Client (getUserProfileC)
 import Sensei.ColorSpec ()
@@ -61,6 +63,12 @@ spec = describe "Users Management" $ do
       let jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userCommands\":null,\"userProfileVersion\":6,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null,\"userPassword\":[\"\",\"\"]}"
       eitherDecode jsonProfile
         `shouldBe` Right defaultProfile
+
+    it "can deserialize version 7 JSON" $ do
+      let uid = toHex "foo"
+          jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userCommands\":null,\"userProfileVersion\":7,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null,\"userPassword\":[\"\",\"\"],\"userId\":\"" <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid)) <> "\"}"
+      eitherDecode jsonProfile
+        `shouldBe` Right defaultProfile {userId = uid}
 
   withApp app $
     describe "Users API" $ do

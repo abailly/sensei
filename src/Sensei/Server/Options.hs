@@ -22,7 +22,7 @@ runOptionsParser arguments =
     Failure f -> Left (Text.pack . show . fst3 $ execFailure f "")
     _ -> Left "Unexpected completion invoked"
   where
-    fst3 (a,_,_) = a
+    fst3 (a, _, _) = a
 
 optionsParserInfo :: ParserInfo Options
 optionsParserInfo =
@@ -36,7 +36,7 @@ optionsParserInfo =
     )
 
 commandsParser :: Parser Options
-commandsParser  =
+commandsParser =
   hsubparser
     ( command "server" (info serverOptions (progDesc "Run sensei server. Pass server's arguments after a '--'."))
         <> command "client" (info clientOptions (progDesc "Run sensei client. Pass client's arguments after a '--'."))
@@ -49,7 +49,6 @@ clientOptions =
 serverOptions :: Parser Options
 serverOptions =
   ServerOptions <$> many (strArgument (help "any argument"))
-  
 
 parseSenseiOptions ::
   IO Options

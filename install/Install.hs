@@ -54,14 +54,15 @@ runShake pwd uid = shakeArgs options $ do
 
   let needHaskellSources = do
         needImage "pankzsoft/haskell-base"
-        needDirectoryFiles "."
+        needDirectoryFiles
+          "."
           [ "src//*.hs",
             "test//*.hs",
             "data//*.*",
             "app//*.hs",
             "package.yaml",
             "Dockerfile"
-            ]
+          ]
         need ["stack.yaml"]
         need ["ui/dist/index.html"]
 
@@ -93,7 +94,7 @@ runShake pwd uid = shakeArgs options $ do
         "--allow-different-user",
         "--work-dir=.stack-work-build"
       ]
-    
+
   imageRule (docker_repository </> "sensei") $ \img -> do
     need ["bin/sensei-exe"]
     cmd "docker" ["build", "-t", toArg img, "-f", "Dockerfile", "."]
