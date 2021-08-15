@@ -2,6 +2,7 @@ import { get } from './request.js';
 import { formatISODate, nextDay } from './date.js';
 import { drawCommands } from './commands.js';
 import { drawSummary } from './summary.js';
+import { drawProjectsSelector } from './project.js';
 import { dom, clearElement } from './dom.js';
 import { config } from "./config";
 import { LocalDateTime, LocalDate } from "@js-joda/core";
@@ -15,6 +16,7 @@ function createTimelineContainer(router, day, data, notesData) {
   const notesName = 'notes-checkbox-' + day;
   const commandsName = 'cmd-checkbox-' + day;
   const summaryName = 'summary-checkbox-' + day;
+  const projectsName = 'projects-selector-' + day;
   const chart = <div class="timeline-chart" />;
   const commandsDiv = <div id={'commands-' + day} class="timeline-chart" />;
   const summaryDiv = <div id={'summary-' + day} class="summary" />;
@@ -22,6 +24,7 @@ function createTimelineContainer(router, day, data, notesData) {
   const notes = <input type="checkbox" id={notesName} />;
   const commands = <input type="checkbox" id={commandsName} />;
   const summary = <input type="checkbox" id={summaryName} />;
+  const projects = drawProjectsSelector(projectsName, data);
 
   let timeline = undefined;
 
@@ -36,6 +39,8 @@ function createTimelineContainer(router, day, data, notesData) {
         {commands}
         <label for={summaryName}>Summary</label>
         {summary}
+        <label for={projectsName}>Projects</label>
+        {projects}
       </div>
       {commandsDiv}
       {summaryDiv}
@@ -78,6 +83,16 @@ function createTimelineContainer(router, day, data, notesData) {
       clearElement(summaryDiv);
     }
   });
+
+
+  projects.addEventListener('change', (e) => {
+    if (e.target.value == "all") {
+      timeline.draw();
+    } else {
+      timeline.draw(f => f.flowProject);
+    }
+  });
+
 
   document.getElementById('timelines').appendChild(container);
   timeline = new Timeline(chart, day, data);

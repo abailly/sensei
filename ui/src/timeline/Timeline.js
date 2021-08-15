@@ -168,7 +168,7 @@ function TimelineFooter(startTimeOfDay, endTimeOfDay) {
     if (!this.hasBeenDrawn) {
       const timelineFooterContainer = <div id={'timeline-time-' + day} class='timeline-time' />;
       const footerItems = <ul />;
-      const nbHalfHours = (this.endTimeOfDay.hour() - this.startTimeOfDay.hour()) * 2
+      const nbHalfHours = (this.endTimeOfDay.hour() - this.startTimeOfDay.hour()) * 2;
       for (let i = 0; i < nbHalfHours; i++) {
         const time = this.startTimeOfDay.plusMinutes(i * THIRTY_MINUTES);
         footerItems.appendChild(<li>{time.format(DateTimeFormatter.ofPattern('HH:mm'))}</li>);
@@ -177,7 +177,7 @@ function TimelineFooter(startTimeOfDay, endTimeOfDay) {
       container.appendChild(timelineFooterContainer);
       this.hasBeenDrawn = true;
     }
-  }
+  };
 }
 
 function TimelineNotes(startTimeOfDay, day) {
@@ -190,7 +190,7 @@ function TimelineNotes(startTimeOfDay, day) {
   this.drawNotes = function(container, notes) {
     this.notes = notes.map((note, index, notes) => new TimelineNote(note, this.startTimeOfDay, index, notes));
     this.draw(container);
-  }
+  };
 
   this.draw = function(container) {
     if (!this.hasBeenDrawn && this.notes.length) {
@@ -204,7 +204,7 @@ function TimelineNotes(startTimeOfDay, day) {
       container.insertBefore(this.notesDiv, container.children[2]);
       this.hasBeenDrawn = true;
     }
-  }
+  };
 
   this.clear = function() {
     this.notes.forEach(note => note.clear());
