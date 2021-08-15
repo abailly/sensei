@@ -76,7 +76,7 @@ import Servant
 -- impacts their serialized representation. Of course, deserialisation
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 7
+currentVersion = 8
 
 data Flow = Flow
   { _flowType :: FlowType,

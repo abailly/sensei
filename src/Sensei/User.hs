@@ -19,6 +19,7 @@ import Numeric.Natural
 import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.Color
 import Sensei.Flow
+import Sensei.Project (ProjectName, Regex)
 
 -- | Customizable parameters for registering and displaying flows.
 --  This configuration defines user-specific configurations that are used
@@ -49,6 +50,10 @@ data UserProfile = UserProfile
     --  This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
     --  it actually will wrap referenced program's execution in the current environment.
     userCommands :: Maybe (Map.Map String String),
+    -- | Custom definition of projects
+    -- This maps a regular expression to some project identifier. The regular expression is used to assign
+    -- traces to projects based on the directory they are tied to.
+    userProjects :: Maybe (Map.Map Regex ProjectName),
     -- | User's password, salted and hashed.
     -- The profile stores the user's password properly salted and hashed with bcrypt.
     userPassword :: (Encoded Base64, Encoded Base64),
@@ -72,6 +77,7 @@ defaultProfile =
       userFlowTypes = Nothing,
       userCommands = Nothing,
       userPassword = ("", ""),
+      userProjects = Nothing,
       userId = ""
     }
 
@@ -86,6 +92,7 @@ instance ToJSON UserProfile where
         "userCommands" .= userCommands,
         "userPassword" .= userPassword,
         "userId" .= userId,
+        "userProjects" .= userProjects,
         "userProfileVersion" .= currentVersion
       ]
 
@@ -104,6 +111,7 @@ parseJSONFromVersion v o =
     <*> o .: "userEndOfDay"
     <*> parseFlowTypes
     <*> parseCommands
+    <*> parseProjects
     <*> parsePassword
     <*> parseId
   where
@@ -132,6 +140,11 @@ parseJSONFromVersion v o =
       if v <= 6
         then pure ""
         else o .: "userId"
+
+    parseProjects =
+      if v <= 7
+        then pure Nothing
+        else o .: "userProjects"
 
 instance ToJSON TimeZone where
   toJSON = String . Text.pack . iso8601Show

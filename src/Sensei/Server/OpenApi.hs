@@ -111,6 +111,24 @@ instance ToSchema (Encoded Hex) where
             ?~ "A hex-encoded bytestring."
           & type_ ?~ SwaggerString
 
+instance ToSchema Regex where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Regex") $
+        mempty
+          & description
+            ?~ "A regular expression."
+          & type_ ?~ SwaggerString
+
+instance ToSchema ProjectName where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "ProjectName") $
+        mempty
+          & description
+            ?~ "A project name."
+          & type_ ?~ SwaggerString
+
 senseiSwagger :: Swagger
 senseiSwagger =
   toSwagger senseiAPI

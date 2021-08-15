@@ -57,13 +57,14 @@ generateUserProfile =
     <*> genTimeOfDay
     <*> arbitrary
     <*> arbitrary
+    <*> arbitrary
     <*> genPassword
     <*> genUserId
 
 instance Arbitrary UserProfile where
   arbitrary = generateUserProfile
 
-  shrink u@(UserProfile _ _ _ _ fs cs _ _) =
+  shrink u@(UserProfile _ _ _ _ fs cs _ _ _) =
     ((\f -> u {userFlowTypes = f}) <$> shrink fs)
       <> ((\c -> u {userCommands = c}) <$> shrink cs)
 
@@ -75,6 +76,13 @@ instance Arbitrary FlowType where
         (1, pure End),
         (2, pure Other)
       ]
+
+instance Arbitrary ProjectName where
+  arbitrary = ProjectName <$> resize 20 (pack . getPrintableString <$> arbitrary)
+
+-- NOTE: Does not generate a valid regex
+instance Arbitrary Regex where
+  arbitrary = Regex . pack . getPrintableString <$> arbitrary
 
 genNatural :: Gen Natural
 genNatural = fromInteger . getPositive <$> arbitrary

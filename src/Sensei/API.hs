@@ -19,6 +19,7 @@ module Sensei.API
     module Sensei.FlowView,
     module Sensei.Group,
     module Sensei.User,
+    module Sensei.Project,
     module Sensei.Utils,
     GroupViews (..),
     Event (..),
@@ -41,6 +42,7 @@ import Sensei.Summary
 import Sensei.Time
 import Sensei.User
 import Sensei.Utils
+import Sensei.Project
 import Sensei.Version
 import Servant
 

@@ -37,7 +37,8 @@ library
   other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
                  Sensei.Server.Auth, Sensei.Server.Options, Sensei.Server.Links, Sensei.Server.UI, Sensei.Server.Config,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
-                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags, Sensei.CLI.Options
+                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags, Sensei.CLI.Options,
+                 Sensei.Project
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , aeson-pretty
