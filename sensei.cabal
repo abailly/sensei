@@ -67,6 +67,7 @@ library
                      , prettyprinter
                      , process
                      , random
+                     , regex-tdfa
                      , safe-exceptions
                      , servant
                      , servant-auth
@@ -121,6 +122,7 @@ test-suite sensei-test
                      , Sensei.Server.LinksSpec
                      , Sensei.Builder
                      , Sensei.TestHelper
+                     , Sensei.ProjectSpec
                      , Sensei.UISpec
                      , Sensei.UserSpec
                      , Sensei.VersionSpec
