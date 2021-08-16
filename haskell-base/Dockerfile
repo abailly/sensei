@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND noninteractive
 # from https://github.com/inversepath/usbarmory-debian-base_image/issues/9
 RUN mkdir ~/.gnupg && echo "disable-ipv6" >> ~/.gnupg/dirmngr.conf
 
-RUN apt-get update && \
+RUN apt-get  --allow-releaseinfo-change update && \
     apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git
 RUN echo 'deb http://ppa.launchpad.net/hvr/ghc/ubuntu trusty main' > /etc/apt/sources.list.d/ghc.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F6F88286 && \
