@@ -342,7 +342,10 @@ migrateFileBasedProfile logger storagePath config = do
   eitherProfile <- try @_ @IOException $ File.readProfileFile config
   case eitherProfile of
     Left _ -> pure ()
-    Right profile -> void $ runDB storagePath config logger $ insertProfileSQL profile
+    Right profile@UserProfile{userName} ->
+      runDB storagePath config logger $ do
+        void (readProfileSQL userName)
+         `catch` \ (_ :: SQLiteDBError) -> void (insertProfileSQL profile)
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do

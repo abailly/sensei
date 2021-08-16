@@ -8,6 +8,7 @@ import Control.Monad.Reader
 import Data.List (isInfixOf, isPrefixOf)
 import qualified Database.SQLite.Simple as SQLite
 import Preface.Log
+import Preface.Utils(toText)
 import Sensei.API
 import Sensei.DB
 import qualified Sensei.DB.File as File
@@ -167,3 +168,18 @@ spec = describe "SQLite DB" $ do
             SQLite.query_ cnx "select id,user from users;"
 
           rows `shouldBe` [(1 :: Int, "arnaud" :: String)]
+
+      it "do not add existing file-based user profile to DB with uid given user exists in DB" $ \tmp ->
+        withTempDir $ \dir -> do
+          uid <- runDB tmp dir fakeLogger $ do
+            initLogStorage
+            insertProfile defaultProfile
+          
+          void $ File.writeProfileFile defaultProfile dir
+
+          runDB tmp dir fakeLogger initLogStorage
+
+          rows <- SQLite.withConnection tmp $ \cnx ->
+            SQLite.query_ cnx "select id,uid, user from users;"
+
+          rows `shouldBe` [(1 :: Int, toText uid, "arnaud" :: String)]
