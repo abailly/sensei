@@ -144,7 +144,10 @@ spec = describe "SQLite DB" $ do
           writeEvent (EventNote note1)
           searchNotes defaultProfile "foo"
 
-        res `shouldBe` [(utcToLocalTime (userTimezone defaultProfile) noteTime, content)]
+        res `shouldBe` [NoteView { noteStart = utcToLocalTime (userTimezone defaultProfile) noteTime,
+                                   noteView = content,
+                                   noteProject = "dir"
+                                 }]
 
   around withTempFile $
     describe "Migrations" $ do

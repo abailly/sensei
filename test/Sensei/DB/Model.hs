@@ -44,7 +44,7 @@ data Action a where
   WriteEvent :: Event -> Action ()
   ReadEvents :: Pagination -> Action EventsQueryResult
   ReadFlow :: Reference -> Action (Maybe Event)
-  ReadNotes :: TimeRange -> Action [(LocalTime, Text)]
+  ReadNotes :: TimeRange -> Action [NoteView]
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
   NewUser :: UserProfile -> Action ()
@@ -159,9 +159,9 @@ interpret (ReadEvents NoPagination) = do
       endIndex = totalEvents
   pure $ Just EventsQueryResult {..}
 interpret (ReadNotes rge) = do
-  UserProfile {userName, userTimezone} <- gets currentProfile
+  UserProfile {userName, userTimezone, userProjects} <- gets currentProfile
   fs <- Seq.filter (inRange rge . eventTimestamp) <$> getEvents
-  pure $ Just $ foldr (notesViewBuilder userName userTimezone) [] fs
+  pure $ Just $ foldr (notesViewBuilder userName userTimezone userProjects) [] fs
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay, userProjects} <- gets currentProfile
   fs <- getEvents

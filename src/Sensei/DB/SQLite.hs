@@ -68,7 +68,6 @@ import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as A
-import Data.Bifunctor (Bifunctor (first))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor ((<&>))
@@ -77,7 +76,6 @@ import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 import qualified Data.Time as Time
-import Data.Time.LocalTime
 import Database.SQLite.Simple hiding (execute, execute_, query, query_, withConnection)
 import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
@@ -342,10 +340,10 @@ migrateFileBasedProfile logger storagePath config = do
   eitherProfile <- try @_ @IOException $ File.readProfileFile config
   case eitherProfile of
     Left _ -> pure ()
-    Right profile@UserProfile{userName} ->
+    Right profile@UserProfile {userName} ->
       runDB storagePath config logger $ do
         void (readProfileSQL userName)
-         `catch` \ (_ :: SQLiteDBError) -> void (insertProfileSQL profile)
+          `catch` \(_ :: SQLiteDBError) -> void (insertProfileSQL profile)
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
@@ -479,25 +477,25 @@ readNotesSQL ::
   HasCallStack =>
   UserProfile ->
   TimeRange ->
-  SQLiteDB [(LocalTime, Text)]
+  SQLiteDB [NoteView]
 readNotesSQL UserProfile {..} TimeRange {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
     let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and user = ? and datetime(timestamp) between ? and ? order by timestamp"
     notesFlow <- query cnx logger q (userName, rangeStart, rangeEnd)
-    pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
+    pure $ foldr (notesViewBuilder userName userTimezone userProjects) [] notesFlow
 
 searchNotesSQL ::
   HasCallStack =>
   UserProfile ->
   Text ->
-  SQLiteDB [(LocalTime, Text)]
+  SQLiteDB [NoteView]
 searchNotesSQL UserProfile {..} text = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, note from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
+    let q = "select timestamp, version, flow_type, flow_data from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
     notesFlow <- query cnx logger q [text]
-    pure $ fmap (first $ utcToLocalTime userTimezone) notesFlow
+    pure $ fmap (toNoteView userTimezone userProjects) (filterNotes notesFlow)
 
 readViewsSQL ::
   HasCallStack =>

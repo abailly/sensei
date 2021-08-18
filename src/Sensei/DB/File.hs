@@ -25,7 +25,6 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor ((<&>))
 import Data.Text (Text)
-import Data.Time
 import Sensei.API
 import Sensei.DB
 import Sensei.IO
@@ -104,9 +103,9 @@ loop g usr acc hdl = do
         Left _err -> loop g usr acc hdl
         Right b -> loop g usr (g b acc) hdl
 
-readNotesFile :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
-readNotesFile UserProfile {userName, userTimezone} file =
-  withBinaryFile file ReadMode $ loop (notesViewBuilder userName userTimezone) userName []
+readNotesFile :: UserProfile -> FilePath -> IO [NoteView]
+readNotesFile UserProfile {userName, userTimezone, userProjects} file =
+  withBinaryFile file ReadMode $ loop (notesViewBuilder userName userTimezone userProjects) userName []
 
 -- | Read all the views for a given `UserProfile`
 readCommandsFile :: UserProfile -> FilePath -> IO [CommandView]

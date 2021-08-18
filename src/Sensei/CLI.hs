@@ -29,6 +29,7 @@ import Data.Functor (void)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
+import Data.Text.ToText (toText)
 import Data.Time
 import Sensei.API
 import Sensei.CLI.Options
@@ -130,14 +131,14 @@ formatNotes MarkdownTable = (tblHeaders <>) . fmap tblRow
 formatNotes Section = concatMap sectionized
 
 sectionized :: NoteView -> [Text]
-sectionized (NoteView ts note) =
-  ["#### " <> formatTimestamp ts, "", note]
+sectionized (NoteView ts note project) =
+  ["#### " <> formatTimestamp ts <> " (" <> toText project <> ")", "", note]
 
 tblHeaders :: [Text]
 tblHeaders = ["Time | Note", "--- | ---"]
 
 tblRow :: NoteView -> Text
-tblRow (NoteView ts note) = formatTimestamp ts <> " | " <> replaceEOLs note
+tblRow (NoteView ts note project) = formatTimestamp ts <> " | " <> toText project <> " | " <> replaceEOLs note
 
 replaceEOLs :: Text -> Text
 replaceEOLs = Text.replace "\n" "<br/>"
@@ -146,4 +147,4 @@ formatTimestamp :: LocalTime -> Text
 formatTimestamp = Text.pack . formatTime defaultTimeLocale "%H:%M"
 
 timestamped :: NoteView -> [Text]
-timestamped (NoteView st note) = formatTimestamp st : Text.lines note
+timestamped (NoteView st note _) = formatTimestamp st : Text.lines note

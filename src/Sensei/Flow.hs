@@ -51,6 +51,7 @@ module Sensei.Flow
     noteTimestamp,
     noteDir,
     noteContent,
+    filterNotes,
   )
 where
 
@@ -283,3 +284,10 @@ instance ToJSON Event where
 isTrace :: Event -> Bool
 isTrace EventTrace {} = True
 isTrace _ = False
+
+-- | Project a stream of 'Event' into a stream of 'NoteFlow'
+filterNotes :: [Event] -> [NoteFlow]
+filterNotes = foldr addNote []
+  where
+    addNote (EventNote note) notes = note : notes
+    addNote _ notes = notes

@@ -100,7 +100,7 @@ spec = withApp app $
     it "GET /api/flows/<user>/<day>/notes retrieves Notes for given day with link headers" $ do
       let flow1 = anOtherFlow
           flow2 = NoteFlow "arnaud" (UTCTime (succ aDay) 0) "some/directory" "some note"
-          expectedNotes = [NoteView (LocalTime (succ aDay) oneAM) "some note"]
+          expectedNotes = [NoteView (LocalTime (succ aDay) oneAM) "some note" "directory"]
 
       postFlow_ flow1
       postNote_ flow2

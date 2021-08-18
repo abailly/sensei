@@ -19,11 +19,13 @@ module Sensei.DB
     flowView,
     flowViewBuilder,
     notesViewBuilder,
+    toNoteView,
     commandViewBuilder,
   )
 where
 
 import Control.Exception.Safe
+import Control.Lens ((^.))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
@@ -80,10 +82,10 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
 
   -- | Read all notes from DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
-  readNotes :: UserProfile -> TimeRange -> m [(LocalTime, Text)]
+  readNotes :: UserProfile -> TimeRange -> m [NoteView]
 
   -- | Full-text search of notes
-  searchNotes :: UserProfile -> Text -> m [(LocalTime, Text)]
+  searchNotes :: UserProfile -> Text -> m [NoteView]
 
   -- | Read all flows and construct `FlowView` items from the DB
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
@@ -107,13 +109,21 @@ flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> ProjectsMap -> Event -> [Flo
 flowViewBuilder userName userTimezone userEndOfDay projectsMap flow =
   flowView flow userName (appendFlow userTimezone userEndOfDay projectsMap)
 
-notesViewBuilder :: Text -> TimeZone -> Event -> [(LocalTime, Text)] -> [(LocalTime, Text)]
-notesViewBuilder userName userTimezone flow = flowView flow userName f
+notesViewBuilder :: Text -> TimeZone -> ProjectsMap -> Event -> [NoteView] -> [NoteView]
+notesViewBuilder userName userTimezone projectsMap flow = flowView flow userName f
   where
-    f :: Event -> [(LocalTime, Text)] -> [(LocalTime, Text)]
-    f (EventNote (NoteFlow _ st _ note)) fragments =
-      (utcToLocalTime userTimezone st, note) : fragments
+    f :: Event -> [NoteView] -> [NoteView]
+    f (EventNote note) fragments =
+      toNoteView userTimezone projectsMap note : fragments
     f _ fragments = fragments
+
+toNoteView :: TimeZone -> ProjectsMap -> NoteFlow -> NoteView
+toNoteView userTimezone projectsMap note =
+  NoteView
+    { noteStart = utcToLocalTime userTimezone (note ^. noteTimestamp),
+      noteView = note ^. noteContent,
+      noteProject = projectsMap `selectProject` (note ^. noteDir)
+    }
 
 commandViewBuilder :: TimeZone -> ProjectsMap -> Event -> [CommandView] -> [CommandView]
 commandViewBuilder userTimezone projectsMap t@(EventTrace _) acc = fromJust (mkCommandView userTimezone projectsMap t) : acc

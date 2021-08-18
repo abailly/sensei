@@ -27,7 +27,8 @@ import Sensei.Utils
 -- | A single note
 data NoteView = NoteView
   { noteStart :: LocalTime,
-    noteView :: Text
+    noteView :: Text,
+    noteProject :: ProjectName
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 

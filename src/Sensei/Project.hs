@@ -11,6 +11,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.Text (Text, pack, unpack)
+import Data.Text.ToText (ToText, toText)
 import System.FilePath (takeBaseName)
 import Text.Regex.TDFA ((=~))
 
@@ -19,6 +20,9 @@ newtype ProjectName = ProjectName {projectName :: Text}
 
 newtype Regex = Regex {regex :: Text}
   deriving newtype (Eq, Show, Read, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey, IsString)
+
+instance ToText ProjectName where
+  toText = projectName
 
 type ProjectsMap = Map.Map Regex ProjectName
 

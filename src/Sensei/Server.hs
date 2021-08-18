@@ -107,7 +107,7 @@ notesDayS usr day = do
                   previousDayLink usr (Just day)
                 ]
           )
-  pure $ hdrs $ map (uncurry NoteView) notes
+  pure $ hdrs notes
 
 searchNoteS ::
   (DB m) => Text -> Maybe Text -> m [NoteView]
@@ -115,7 +115,7 @@ searchNoteS _ Nothing = pure []
 searchNoteS usr (Just search) = do
   usrProfile <- getUserProfileS usr
   rawNotes <- searchNotes usrProfile search
-  pure $ fmap (uncurry NoteView) rawNotes
+  pure rawNotes
 
 commandsDayS ::
   (DB m) => Text -> Day -> m [CommandView]
