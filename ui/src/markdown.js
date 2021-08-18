@@ -4,7 +4,7 @@ const showdownOptions = { simplifiedAutoLink: true, tables: true };
 
 export default function markdownNote(note, timestamp) {
   const timeHeader = timestamp ?
-    '#### ' + new Date(note.noteStart).toLocaleTimeString() + '\n\n' : '';
+    '#### ' + new Date(note.noteStart).toLocaleTimeString() + ' (' + note.noteProject + ')' + '\n\n' : '';
 
   const converter = new showdown.Converter(showdownOptions);
   converter.setFlavor('github');

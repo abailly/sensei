@@ -8,12 +8,13 @@ import markdown from "./markdown";
 
 
 export function formatNote(note) {
-  return "<div class='note'>" + markdown(note.noteView, note.nodeStart) + "</div>";
+  return "<div class='note'>" + markdown(note.noteView, note.noteStart) + "</div>";
 }
 
 function formatNoteDiv(note) {
   const noteDiv = <div class='note-full'>
     <h3>{formatISODateTime(LocalDateTime.parse(note.noteStart))} </h3>
+    <h4>{note.noteProject}</h4>
   </div>;
 
   const content = <div class='note-content'>
