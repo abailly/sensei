@@ -1,6 +1,6 @@
 import showdown from 'showdown';
 
-const showdownOptions = { simplifiedAutoLink: true, tables: true };
+const showdownOptions = { simplifiedAutoLink: true, tables: true, emoji: true };
 
 export default function markdownNote(note, timestamp) {
   const timeHeader = timestamp ?
