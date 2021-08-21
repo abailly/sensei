@@ -11,10 +11,17 @@ export function formatNote(note) {
   return "<div class='note'>" + markdown(note.noteView, note.noteStart) + "</div>";
 }
 
+function formatTags(tags) {
+  return <h4 class='note-tags'>
+    {tags.map(tag => (<span class='note-tag'>{tag}</span>))}
+  </h4>;
+};
+
 function formatNoteDiv(note) {
   const noteDiv = <div class='note-full'>
     <h3>{formatISODateTime(LocalDateTime.parse(note.noteStart))} </h3>
     <h4>{note.noteProject}</h4>
+    {formatTags(note.noteTags)}
   </div>;
 
   const content = <div class='note-content'>

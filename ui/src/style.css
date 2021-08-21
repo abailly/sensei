@@ -103,6 +103,21 @@ table.tbl-log td {
     vertical-align: top;
 }
 
+.note-full h4.note-tags {
+    width: 20%;
+}
+
+.note-tag {
+    display: inline-block;
+    background-color: #e13c36;
+    color: white;
+    vertical-align: top;
+    font-size: 80%;
+    font-style: italic;
+    border-radius: 4px;
+    margin: .2em;
+    padding: 0.2em .6em 0.2em .6em;
+};
 
 .timeline-controls {
     padding-bottom: 12px;
