@@ -7,6 +7,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Sensei.FlowView where
 
@@ -16,6 +18,7 @@ import qualified Data.List as List
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
+import Data.Text.ToText(ToText(..))
 import Data.Time
 import GHC.Generics
 import Sensei.Flow
@@ -28,10 +31,17 @@ import Sensei.Utils
 data NoteView = NoteView
   { noteStart :: LocalTime,
     noteView :: Text,
-    noteProject :: ProjectName
+    noteProject :: ProjectName,
+    noteTags :: [Tag]
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
+newtype Tag = Tag Text
+  deriving newtype (Eq, Show, ToJSON, FromJSON)
+
+instance ToText Tag where
+  toText (Tag t) = t
+  
 -- | A view of an executed command
 data CommandView = CommandView
   { commandStart :: LocalTime,

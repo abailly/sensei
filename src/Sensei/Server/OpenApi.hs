@@ -9,7 +9,7 @@ import Data.Swagger hiding (Reference)
 import Data.Text (pack)
 import Data.Time
 import Preface.Codec (Base64, Encoded, Hex)
-import Sensei.API
+import Sensei.API as Sensei
 import Sensei.Server.Auth (SerializedToken)
 import Sensei.Version
 import Servant.Swagger
@@ -127,6 +127,15 @@ instance ToSchema ProjectName where
         mempty
           & description
             ?~ "A project name."
+          & type_ ?~ SwaggerString
+
+instance ToSchema Sensei.Tag where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Tag") $
+        mempty
+          & description
+            ?~ "An arbitrary tag"
           & type_ ?~ SwaggerString
 
 senseiSwagger :: Swagger

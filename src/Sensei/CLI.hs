@@ -131,14 +131,20 @@ formatNotes MarkdownTable = (tblHeaders <>) . fmap tblRow
 formatNotes Section = concatMap sectionized
 
 sectionized :: NoteView -> [Text]
-sectionized (NoteView ts note project) =
-  ["#### " <> formatTimestamp ts <> " (" <> toText project <> ")", "", note]
+sectionized (NoteView ts note project tags) =
+  [header, "", note]
+  where
+    header = "#### " <> formatTimestamp ts <> " (" <> toText project <> ")" <> tagsHeader
+    tagsHeader =
+      case tags of
+        [] -> ""
+        t -> " [" <> (Text.intercalate ", " $ map toText t) <> "]"
 
 tblHeaders :: [Text]
 tblHeaders = ["Time | Note", "--- | ---"]
 
 tblRow :: NoteView -> Text
-tblRow (NoteView ts note project) = formatTimestamp ts <> " | " <> toText project <> " | " <> replaceEOLs note
+tblRow (NoteView ts note project _tags) = formatTimestamp ts <> " | " <> toText project <> " | " <> replaceEOLs note
 
 replaceEOLs :: Text -> Text
 replaceEOLs = Text.replace "\n" "<br/>"
@@ -147,4 +153,4 @@ formatTimestamp :: LocalTime -> Text
 formatTimestamp = Text.pack . formatTime defaultTimeLocale "%H:%M"
 
 timestamped :: NoteView -> [Text]
-timestamped (NoteView st note _) = formatTimestamp st : Text.lines note
+timestamped (NoteView st note _ _) = formatTimestamp st : Text.lines note

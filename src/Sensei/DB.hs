@@ -122,7 +122,8 @@ toNoteView userTimezone projectsMap note =
   NoteView
     { noteStart = utcToLocalTime userTimezone (note ^. noteTimestamp),
       noteView = note ^. noteContent,
-      noteProject = projectsMap `selectProject` (note ^. noteDir)
+      noteProject = projectsMap `selectProject` (note ^. noteDir),
+      noteTags = []
     }
 
 commandViewBuilder :: TimeZone -> ProjectsMap -> Event -> [CommandView] -> [CommandView]

@@ -146,7 +146,8 @@ spec = describe "SQLite DB" $ do
 
         res `shouldBe` [NoteView { noteStart = utcToLocalTime (userTimezone defaultProfile) noteTime,
                                    noteView = content,
-                                   noteProject = "dir"
+                                   noteProject = "dir",
+                                   noteTags = []
                                  }]
 
   around withTempFile $
