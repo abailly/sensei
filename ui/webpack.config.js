@@ -1,6 +1,7 @@
 const path = require('path');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const FaviconsWebpackPlugin = require('favicons-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
@@ -16,7 +17,8 @@ module.exports = {
     new webpack.DefinePlugin({
       VERSION: JSON.stringify(require('./package.json').version),
       USER: "'arnaud'"
-    })
+    }),
+    new FaviconsWebpackPlugin('./src/son-of-man-1964.png')
   ],
   module: {
     rules: [
