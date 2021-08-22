@@ -47,7 +47,8 @@ VOLUME /home/user/.stack
 USER root
 
 # Install node-js and npm to build UI
-RUN apt-get update -y && apt-get install -y nodejs npm
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
+RUN apt-get update -y && apt-get install -y nodejs
 
 # assumes entry.sh is in the context
 COPY entry.sh /usr/local/bin/entry.sh
