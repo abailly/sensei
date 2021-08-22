@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     .on('/flows', function() {
       charts(router, today);
     })
+    .on('/flows/:date', function(params) {
+      charts(router, params.date);
+    })
     .on('/login', function() {
       login(router, document.getElementById('main'));
     })
@@ -50,7 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
       summaries(router, document.getElementById('main'));
     })
     .on(function() {
-      charts(router);
+      // default to flows for today
+      router.navigate('/flows/' + today);
     }).resolve();
 
 });
