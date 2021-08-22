@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   router
     .on('/flows', function() {
-      charts(router, today);
+      router.navigate('/flows/' + today);
     })
     .on('/flows/:date', function(params) {
       charts(router, params.date);
