@@ -10,6 +10,7 @@ copyright:           2020 Arnaud Bailly
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
+                     CHANGELOG.md
 cabal-version:       >=2.0
 
 -- To avoid duplicated efforts in documentation and dealing with the
