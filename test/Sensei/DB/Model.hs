@@ -43,7 +43,7 @@ import Test.QuickCheck.Monadic
 data Action a where
   WriteEvent :: Event -> Action ()
   ReadEvents :: Pagination -> Action EventsQueryResult
-  ReadFlow :: Reference -> Action (Maybe Event)
+  ReadFlow :: Reference -> Action (Maybe EventView)
   ReadNotes :: TimeRange -> Action [NoteView]
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
@@ -65,7 +65,7 @@ instance Show (Action a) where
 data Model = Model
   { currentTimestamp :: UTCTime,
     currentProfile :: UserProfile,
-    events :: Seq Event,
+    events :: Seq EventView,
     profiles :: Map.Map Text UserProfile
   }
   deriving (Eq, Show)
@@ -134,12 +134,12 @@ generateAction baseTime model count =
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m (Maybe a)
 interpret (WriteEvent f) = do
-  modify $ \m@Model {events} -> m {events = events |> f}
+  modify $ \m@Model {events} -> m {events = events |> EventView {index = fromIntegral (Seq.length events + 1), event = f}}
   pure $ Just ()
 interpret (ReadFlow Latest) = interpret (ReadFlow (Pos 0))
 interpret (ReadFlow (Pos n)) = do
   es <- getEvents
-  let fs = Seq.filter (not . isTrace) es
+  let fs = Seq.filter (not . isTrace . event) es
   Just <$> findFlowAtPos fs n
 interpret (ReadEvents (Page pageNum size)) = do
   es <- getEvents
@@ -160,7 +160,7 @@ interpret (ReadEvents NoPagination) = do
   pure $ Just EventsQueryResult {..}
 interpret (ReadNotes rge) = do
   UserProfile {userName, userTimezone, userProjects} <- gets currentProfile
-  fs <- Seq.filter (inRange rge . eventTimestamp) <$> getEvents
+  fs <- Seq.filter (inRange rge . eventTimestamp . event) <$> getEvents
   pure $ Just $ foldr (notesViewBuilder userName userTimezone userProjects) [] fs
 interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay, userProjects} <- gets currentProfile
@@ -185,32 +185,28 @@ interpret (SwitchUser u) = do
        in m {currentProfile = changeProfile}
   pure $ Just ()
 
-getEvents :: Monad m => StateT Model m (Seq Event)
+getEvents :: Monad m => StateT Model m (Seq EventView)
 getEvents = do
   es <- gets events
   UserProfile {userName} <- gets currentProfile
-  pure $ Seq.filter ((== userName) . (^. user')) es
+  pure $ Seq.filter ((== userName) . (^. user') . event) es
 
 findFlowAtPos ::
   (Eq a, Num a, Applicative f) =>
-  Seq Event ->
+  Seq EventView ->
   a ->
-  f (Maybe Event)
+  f (Maybe EventView)
 findFlowAtPos fs pos =
   case viewr fs of
-    rest :> f@EventFlow {} ->
+    rest :> f ->
       if pos == 0
         then pure $ Just f
-        else findFlowAtPos rest (pos - 1)
-    rest :> n@EventNote {} ->
-      if pos == 0
-        then pure $ Just n
         else findFlowAtPos rest (pos - 1)
     _ -> pure Nothing
 
 eventTimestampDesc ::
-  Event -> Event -> Ordering
-eventTimestampDesc e e' = desc $ (compare `on` eventTimestamp) e e'
+  EventView -> EventView -> Ordering
+eventTimestampDesc EventView {event} EventView {event = event'} = desc $ (compare `on` eventTimestamp) event event'
   where
     desc LT = GT
     desc EQ = EQ

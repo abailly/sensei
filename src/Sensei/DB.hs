@@ -42,7 +42,7 @@ data Pagination
   deriving anyclass (ToJSON, FromJSON)
 
 data EventsQueryResult = EventsQueryResult
-  { resultEvents :: [Event],
+  { resultEvents :: [EventView],
     eventsCount :: Natural,
     startIndex :: Natural,
     endIndex :: Natural,
@@ -75,7 +75,7 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   updateLatestFlow :: NominalDiffTime -> m Event
 
   -- | Read a single `Flow` from the storage, pointed at by given `Reference`.
-  readFlow :: UserProfile -> Reference -> m (Maybe Event)
+  readFlow :: UserProfile -> Reference -> m (Maybe EventView)
 
   -- | Read raw events stored in the database, younger events first.
   readEvents :: UserProfile -> Pagination -> m EventsQueryResult
@@ -105,15 +105,15 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   -- already exist.
   insertProfile :: UserProfile -> m (Encoded Hex)
 
-flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> ProjectsMap -> Event -> [FlowView] -> [FlowView]
+flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> ProjectsMap -> EventView -> [FlowView] -> [FlowView]
 flowViewBuilder userName userTimezone userEndOfDay projectsMap flow =
   flowView flow userName (appendFlow userTimezone userEndOfDay projectsMap)
 
-notesViewBuilder :: Text -> TimeZone -> ProjectsMap -> Event -> [NoteView] -> [NoteView]
+notesViewBuilder :: Text -> TimeZone -> ProjectsMap -> EventView -> [NoteView] -> [NoteView]
 notesViewBuilder userName userTimezone projectsMap flow = flowView flow userName f
   where
-    f :: Event -> [NoteView] -> [NoteView]
-    f (EventNote note) fragments =
+    f :: EventView -> [NoteView] -> [NoteView]
+    f EventView{event = (EventNote note)} fragments =
       toNoteView userTimezone projectsMap note : fragments
     f _ fragments = fragments
 
@@ -126,14 +126,14 @@ toNoteView userTimezone projectsMap note =
       noteTags = []
     }
 
-commandViewBuilder :: TimeZone -> ProjectsMap -> Event -> [CommandView] -> [CommandView]
-commandViewBuilder userTimezone projectsMap t@(EventTrace _) acc = fromJust (mkCommandView userTimezone projectsMap t) : acc
+commandViewBuilder :: TimeZone -> ProjectsMap -> EventView -> [CommandView] -> [CommandView]
+commandViewBuilder userTimezone projectsMap EventView{event = t@(EventTrace _)} acc = fromJust (mkCommandView userTimezone projectsMap t) : acc
 commandViewBuilder _ _ _ acc = acc
 
 -- | Basically a combination of a `filter` and a single step of a fold
 --  Should be refactored to something more standard
-flowView :: Event -> Text -> (Event -> [a] -> [a]) -> [a] -> [a]
+flowView :: EventView -> Text -> (EventView -> [a] -> [a]) -> [a] -> [a]
 flowView e usr mkView views =
-  if eventUser e == usr
+  if eventUser (event e) == usr
     then mkView e views
     else views

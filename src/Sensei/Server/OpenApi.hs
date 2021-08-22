@@ -49,6 +49,8 @@ instance ToParamSchema FlowType where
       & type_ ?~ SwaggerString
       & enum_ ?~ ["End", "Note", "Other", "<any string>"]
 
+instance ToSchema EventView
+
 instance ToSchema FlowView
 
 instance ToSchema NoteView

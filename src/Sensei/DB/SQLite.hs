@@ -71,7 +71,6 @@ import qualified Data.Aeson.Types as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor ((<&>))
-import Data.Int (Int64)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
@@ -84,7 +83,7 @@ import GHC.Stack (HasCallStack)
 import Preface.Codec (Encoded, Hex, toHex)
 import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
-import Sensei.API
+import Sensei.API as API
 import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.SQLite.Migration
@@ -157,7 +156,7 @@ migrateFileDB dbFile configDir = do
     Left (e :: IOException) -> pure $ Left (pack $ show e)
     Right events -> runDB dbFile configDir fakeLogger $ do
       initSQLiteDB
-      writeAll events
+      writeAll (fmap API.event events)
       pure $ Right oldLog
 
 -- * Instances
@@ -175,17 +174,19 @@ typeOf EventTrace {} = "__TRACE__"
 typeOf (EventFlow Flow {_flowType}) = toText _flowType
 typeOf EventNote {} = "Note"
 
-instance FromRow Event where
+instance FromRow EventView where
   fromRow = do
+    index <- fromInteger <$> field
     _ts :: UTCTime <- field
     ver :: Integer <- field
     ty :: Text <- field
-    if ver >= 5
-      then either error id . eitherDecode . encodeUtf8 <$> field
-      else case ty of
-        "__TRACE__" -> decodeTracev4 <$> field
-        "Note" -> decodeNotev4 <$> field
-        _ -> decodeFlowv4 ty <$> field
+    event <- if ver >= 5
+             then either error id . eitherDecode . encodeUtf8 <$> field
+             else case ty of
+               "__TRACE__" -> decodeTracev4 <$> field
+               "Note" -> decodeNotev4 <$> field
+               _ -> decodeFlowv4 ty <$> field
+    pure $ EventView {..}
     where
       decodeTracev4 txt =
         let val = eitherDecode $ encodeUtf8 txt
@@ -210,11 +211,6 @@ instance FromRow Event where
               (Right j, Just ftype) -> case A.parse parseFlowFromv4 j of
                 A.Success t -> EventFlow t {_flowType = ftype}
                 A.Error f -> error f
-
-data IdFlow = IdFlow {identifier :: Int64, event :: Event}
-
-instance FromRow IdFlow where
-  fromRow = IdFlow <$> field <*> fromRow
 
 -- | This instance returns a number to be used as offset value in a query
 instance ToField Reference where
@@ -418,23 +414,23 @@ updateLatestFlowSQL diff = do
           u = "update event_log set timestamp = ?, flow_data = ? where id = ?"
       res <- query_ cnx logger q
       case res of
-        (IdFlow {identifier, event = EventFlow f@Flow {_flowTimestamp}} : _) -> do
+        (EventView {index, event = EventFlow f@Flow {_flowTimestamp}} : _) -> do
           let newTs = addUTCTime diff _flowTimestamp
               updatedFlow = EventFlow f {_flowTimestamp = newTs}
-          execute cnx logger u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
+          execute cnx logger u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField (toInteger index)]
           pure updatedFlow
-        (IdFlow {event} : _) -> pure event -- don't change other events
+        (EventView {event} : _) -> pure event -- don't change other events
         [] -> error "no flows recorded"
 
 readFlowSQL ::
   HasCallStack =>
   UserProfile ->
   Reference ->
-  SQLiteDB (Maybe Event)
+  SQLiteDB (Maybe EventView)
 readFlowSQL UserProfile {userName} ref = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and user = ? order by timestamp desc limit 1 offset ?"
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and user = ? order by timestamp desc limit 1 offset ?"
     res <- query cnx logger q (userName, ref)
     case res of
       [flow] -> pure $ Just flow
@@ -449,7 +445,7 @@ readEventsSQL ::
 readEventsSQL UserProfile {userName} Page {pageNumber, pageSize} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp desc limit ? offset ?"
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp desc limit ? offset ?"
         count = "select count(*) from event_log where user = ?"
         limit = SQLInteger $ fromIntegral pageSize
         offset = SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize
@@ -463,7 +459,7 @@ readEventsSQL UserProfile {userName} Page {pageNumber, pageSize} = do
 readEventsSQL UserProfile {userName} NoPagination = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp asc"
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp asc"
         count = "select count(*) from event_log where user = ?"
     resultEvents <- query cnx logger q (Only userName)
     [[numEvents]] <- query cnx logger count (Only userName)
@@ -481,7 +477,7 @@ readNotesSQL ::
 readNotesSQL UserProfile {..} TimeRange {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and user = ? and datetime(timestamp) between ? and ? order by timestamp"
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and user = ? and datetime(timestamp) between ? and ? order by timestamp"
     notesFlow <- query cnx logger q (userName, rangeStart, rangeEnd)
     pure $ foldr (notesViewBuilder userName userTimezone userProjects) [] notesFlow
 
@@ -493,9 +489,9 @@ searchNotesSQL ::
 searchNotesSQL UserProfile {..} text = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
+    let q = "select event_log.id, timestamp, version, flow_type, flow_data from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
     notesFlow <- query cnx logger q [text]
-    pure $ fmap (toNoteView userTimezone userProjects) (filterNotes notesFlow)
+    pure $ fmap (toNoteView userTimezone userProjects) (filterNotes $ fmap API.event notesFlow)
 
 readViewsSQL ::
   HasCallStack =>
@@ -504,7 +500,7 @@ readViewsSQL ::
 readViewsSQL UserProfile {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
     flows <- query_ cnx logger q
     pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] flows
 
@@ -515,7 +511,7 @@ readCommandsSQL ::
 readCommandsSQL UserProfile {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' and user = ? order by timestamp"
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' and user = ? order by timestamp"
     traces <- query cnx logger q (Only userName)
     pure $ foldr (commandViewBuilder userTimezone userProjects) [] traces
 

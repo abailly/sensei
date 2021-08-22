@@ -142,7 +142,7 @@ queryFlowPeriodSummaryS usr fromDay toDay period = do
   pure $ fromMaybe noHeader links $ result
 
 getFlowS ::
-  (DB m) => Text -> Reference -> m (Maybe Event)
+  (DB m) => Text -> Reference -> m (Maybe EventView)
 getFlowS usr ref = do
   profile <- getUserProfileS usr
   readFlow profile ref
@@ -154,7 +154,7 @@ queryFlowS usr groups = do
   groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews usrProfile
 
 getLogS ::
-  DB m => Text -> Maybe Natural -> m (Headers '[Header "Link" Text] [Event])
+  DB m => Text -> Maybe Natural -> m (Headers '[Header "Link" Text] [EventView])
 getLogS userName page = do
   usrProfile <- getUserProfileS userName
   EventsQueryResult {..} <- readEvents usrProfile (maybe NoPagination (\p -> Page p 50) page)

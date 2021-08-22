@@ -73,10 +73,12 @@ initLogStorageFile output = do
   hasFile <- doesFileExist output
   unless hasFile $ openFile output WriteMode >>= hClose
 
-readAll :: FileDB [Event]
+readAll :: FileDB [EventView]
 readAll = FileDB $ do
   file <- asks storageFile
-  liftIO $ withBinaryFile file ReadMode $ loop (:) "" []
+  liftIO $ withBinaryFile file ReadMode $ \ hdl -> reverse . snd <$> loop appendEventView "" (0, []) hdl
+  where
+    appendEventView e (index, acc) = (index + 1, EventView index e : acc)
 
 writeEventFile :: Event -> FilePath -> IO ()
 writeEventFile event file =
@@ -91,13 +93,13 @@ writeJSON file jsonData =
 -- | Read all the views for a given `UserProfile`
 readViewsFile :: UserProfile -> FilePath -> IO [FlowView]
 readViewsFile UserProfile {userName, userTimezone, userEndOfDay, userProjects} file =
-  withBinaryFile file ReadMode $ loop (flowViewBuilder userName userTimezone userEndOfDay userProjects) userName []
+  withBinaryFile file ReadMode $ \ hdl -> reverse <$> loop (flowViewBuilder userName userTimezone userEndOfDay userProjects) userName [] hdl
 
-loop :: FromJSON b => (b -> [a] -> [a]) -> Text -> [a] -> Handle -> IO [a]
+loop :: FromJSON b => (b -> a -> a) -> Text -> a -> Handle -> IO a
 loop g usr acc hdl = do
   res <- Exc.try $ BS.hGetLine hdl
   case res of
-    Left (_ex :: Exc.IOException) -> pure (reverse acc)
+    Left (_ex :: Exc.IOException) -> pure acc
     Right ln ->
       case eitherDecode (LBS.fromStrict ln) of
         Left _err -> loop g usr acc hdl
@@ -105,12 +107,12 @@ loop g usr acc hdl = do
 
 readNotesFile :: UserProfile -> FilePath -> IO [NoteView]
 readNotesFile UserProfile {userName, userTimezone, userProjects} file =
-  withBinaryFile file ReadMode $ loop (notesViewBuilder userName userTimezone userProjects) userName []
+  withBinaryFile file ReadMode $ \ hdl -> reverse <$> loop (notesViewBuilder userName userTimezone userProjects) userName [] hdl
 
 -- | Read all the views for a given `UserProfile`
 readCommandsFile :: UserProfile -> FilePath -> IO [CommandView]
 readCommandsFile UserProfile {userName, userTimezone, userProjects} file =
-  withBinaryFile file ReadMode $ loop (commandViewBuilder userTimezone userProjects) userName []
+  withBinaryFile file ReadMode $ \ hdl -> reverse <$> loop (commandViewBuilder userTimezone userProjects) userName [] hdl
 
 -- | Read user profile file from given directory
 -- The `UserProfile` is expected to be stored as a JSON-encoded file named `config.json`

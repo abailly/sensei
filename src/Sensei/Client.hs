@@ -62,7 +62,7 @@ loginC :: Credentials -> ClientMonad ()
 loginC = void . clientIn (Proxy @LoginAPI) Proxy
 
 postEventC :: [Event] -> ClientMonad ()
-getFlowC :: Text -> Reference -> ClientMonad (Maybe Event)
+getFlowC :: Text -> Reference -> ClientMonad (Maybe EventView)
 updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
 queryFlowDayC :: Text -> Day -> ClientMonad [FlowView]
@@ -70,7 +70,7 @@ queryFlowPeriodSummaryC :: Text -> Maybe Day -> Maybe Day -> Maybe Group -> Clie
 notesDayC :: Text -> Day -> ClientMonad (Headers '[Header "Link" Text] [NoteView])
 commandsDayC :: Text -> Day -> ClientMonad [CommandView]
 searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
-getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [Event])
+getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [EventView])
 getFreshTokenC :: Text -> ClientMonad SerializedToken
 createUserProfileC :: UserProfile -> ClientMonad (Encoded Hex)
 getUserProfileC :: Text -> ClientMonad UserProfile

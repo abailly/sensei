@@ -130,7 +130,7 @@ type GetFlow =
   Summary "Query flows"
     :> Capture "user" Text :? "User to query flows for"
     :> Capture "ref" Reference :? "A 'reference' expression denoting the event to retrieve"
-    :> Get '[JSON] (Maybe Event)
+    :> Get '[JSON] (Maybe EventView)
 
 type GetFlowsTimeline =
   Summary "Retrieve timeline of flows for a given day."
@@ -155,7 +155,7 @@ type GetAllLog =
       :? "Pagination parameter for retrieving events. Events are returned \
          \ 50 by 50, most recent event first. The 'next' and 'prev' pages \
          \ URLs are provided as 'Link' header"
-    :> Get '[JSON] (Headers '[Header "Link" Text] [Event])
+    :> Get '[JSON] (Headers '[Header "Link" Text] [EventView])
 
 type GetFreshToken =
   Summary "Retrieve a fresh signed JWT token for given user."

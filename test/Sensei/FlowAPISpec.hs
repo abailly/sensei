@@ -201,7 +201,7 @@ spec = withApp app $
       postFlow_ flow1
       postFlow_ flow2
 
-      getJSON "/api/flows/arnaud/latest" `shouldRespondJSONBody` flow2
+      getJSON "/api/flows/arnaud/latest" `shouldRespondJSONBody` EventView 2 (EventFlow flow2)
 
     it "GET /api/flows/<user>/2 retrieves flow 2 steps back" $ do
       let flow1 = anOtherFlow
@@ -211,4 +211,4 @@ spec = withApp app $
       postFlow_ flow2
       postFlow_ flow3
 
-      getJSON "/api/flows/arnaud/2" `shouldRespondJSONBody` flow1
+      getJSON "/api/flows/arnaud/2" `shouldRespondJSONBody` EventView 1 (EventFlow flow1)

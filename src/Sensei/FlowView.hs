@@ -27,6 +27,11 @@ import Sensei.Summary
 import Sensei.Time
 import Sensei.Utils
 
+
+-- | A view on a single event
+data EventView = EventView { index :: Natural, event :: Event }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
 -- | A single note
 data NoteView = NoteView
   { noteStart :: LocalTime,
@@ -91,11 +96,11 @@ flowInPeriod ::
 flowInPeriod (Just lb) (Just ub) = withinPeriod lb ub flowStart
 flowInPeriod _ _ = undefined
 
-appendFlow :: TimeZone -> TimeOfDay -> ProjectsMap -> Event -> [FlowView] -> [FlowView]
-appendFlow _ _ _ (EventFlow (Flow {_flowType = End})) [] = []
-appendFlow tz _ _ (EventFlow (Flow {_flowType = End, ..})) (v : vs) =
+appendFlow :: TimeZone -> TimeOfDay -> ProjectsMap -> EventView -> [FlowView] -> [FlowView]
+appendFlow _ _ _ (EventView{event = EventFlow (Flow {_flowType = End})}) [] = []
+appendFlow tz _ _ (EventView{event = EventFlow (Flow {_flowType = End, ..})}) (v : vs) =
   v {flowEnd = utcToLocalTime tz _flowTimestamp} : vs
-appendFlow tz dayEnd projectsMap (EventFlow (Flow {..})) views =
+appendFlow tz dayEnd projectsMap (EventView{event = EventFlow (Flow {..})}) views =
   let view = FlowView st st _flowType (projectsMap `selectProject` _flowDir)
       st = utcToLocalTime tz _flowTimestamp
    in case views of
