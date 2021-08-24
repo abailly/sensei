@@ -76,6 +76,7 @@ type DisplayVersions =
 
 type PostEvent =
   Summary "Record a new `Event` in the log."
+    :> Capture "user" UserName :? "User name for which these events are posted"
     :> ReqBody '[JSON] [Event]
     :> Post '[JSON] ()
 

@@ -131,6 +131,20 @@ instance ToSchema ProjectName where
             ?~ "A project name."
           & type_ ?~ SwaggerString
 
+instance ToSchema UserName where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "UserName") $
+        mempty
+          & description
+            ?~ "A user name."
+          & type_ ?~ SwaggerString
+
+instance ToParamSchema UserName where
+  toParamSchema _ =
+        mempty
+          & type_ ?~ SwaggerString
+
 instance ToSchema Sensei.Tag where
   declareNamedSchema _ =
     return $

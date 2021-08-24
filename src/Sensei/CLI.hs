@@ -64,10 +64,10 @@ ep config (RecordOptions (SingleFlow ftype)) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
-      send config $ postEventC [EventNote $ NoteFlow curUser startDate curDir txt]
+      send config $ postEventC (UserName curUser) [EventNote $ NoteFlow curUser startDate curDir txt]
     _ ->
-      send config $ postEventC [EventFlow $ Flow ftype curUser startDate curDir]
-ep config (RecordOptions (FromFile fileName)) _ _ _ = do
+      send config $ postEventC (UserName curUser) [EventFlow $ Flow ftype curUser startDate curDir]
+ep config (RecordOptions (FromFile fileName)) curUser _ _ = do
   decoded <- eitherDecode <$> LBS.readFile fileName
   case decoded of
     Left err -> hPutStrLn stderr ("failed to decode events from " <> fileName <> ": " <> err) >> exitWith (ExitFailure 1)
@@ -79,7 +79,7 @@ ep config (RecordOptions (FromFile fileName)) _ _ _ = do
       mapM_
         ( \evs -> do
             putStrLn $ "Sending " <> show (length evs) <> " events: " <> show evs
-            send config $ postEventC evs
+            send config $ postEventC (UserName curUser) evs
         )
         $ chunks events
 ep config (UserOptions GetProfile) usrName _ _ =

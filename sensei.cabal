@@ -125,6 +125,7 @@ test-suite sensei-test
                      , Sensei.TestHelper
                      , Sensei.ProjectSpec
                      , Sensei.UISpec
+                     , Sensei.TagAPISpec
                      , Sensei.UserSpec
                      , Sensei.VersionSpec
                      , Sensei.WaiTestHelper

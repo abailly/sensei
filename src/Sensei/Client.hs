@@ -61,7 +61,7 @@ killC = clientIn (Proxy @KillServer) Proxy
 loginC :: Credentials -> ClientMonad ()
 loginC = void . clientIn (Proxy @LoginAPI) Proxy
 
-postEventC :: [Event] -> ClientMonad ()
+postEventC :: UserName -> [Event] -> ClientMonad ()
 getFlowC :: Text -> Reference -> ClientMonad (Maybe EventView)
 updateFlowC :: Text -> TimeDifference -> ClientMonad Event
 queryFlowC :: Text -> [Group] -> ClientMonad [GroupViews FlowView]
