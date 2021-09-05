@@ -60,13 +60,14 @@ ep config (NotesOptions (NotesQuery (QueryDay day) noteFormat)) usrName _ _ =
   send config (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
 ep config (NotesOptions (NotesQuery (QuerySearch txt) noteFormat)) usrName _ _ =
   send config (searchNotesC usrName (Just txt)) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
-ep config (RecordOptions (SingleFlow ftype)) curUser startDate curDir =
-  case ftype of
+ep config (RecordOptions (SingleFlow ftype)) curUser startDate curDir = do
+  res <- case ftype of
     Note -> do
       txt <- captureNote
       send config $ postEventC (UserName curUser) [EventNote $ NoteFlow curUser startDate curDir txt]
     _ ->
       send config $ postEventC (UserName curUser) [EventFlow $ Flow ftype curUser startDate curDir]
+  display res
 ep config (RecordOptions (FromFile fileName)) curUser _ _ = do
   decoded <- eitherDecode <$> LBS.readFile fileName
   case decoded of

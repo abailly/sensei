@@ -86,8 +86,8 @@ getCurrentTimeS usr = do
   Timestamp <$> getCurrentTime usrProfile
 
 postEventS ::
-  (DB m) => UserName -> [Event] -> m ()
-postEventS _user = mapM_ writeEvent
+  (DB m) => UserName -> [Event] -> m [EventView]
+postEventS _user = mapM writeEvent
 
 updateFlowStartTimeS ::
   (DB m) => Text -> TimeDifference -> m Event

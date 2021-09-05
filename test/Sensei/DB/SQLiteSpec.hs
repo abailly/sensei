@@ -141,7 +141,7 @@ spec = describe "SQLite DB" $ do
             note1 = NoteFlow "arnaud" noteTime "some/dir" content
         res <- runDB tempdb "." fakeLogger $ do
           initLogStorage
-          writeEvent (EventNote note1)
+          void $ writeEvent (EventNote note1)
           searchNotes defaultProfile "foo"
 
         res `shouldBe` [NoteView { noteStart = utcToLocalTime (userTimezone defaultProfile) noteTime,

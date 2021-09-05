@@ -3,6 +3,7 @@
 
 module Sensei.Wrapper where
 
+import Data.Functor (void)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
@@ -110,7 +111,7 @@ wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   st <- getCurrentTime
   ex <- runProcess realProg progArgs
   en <- getCurrentTime
-  send (postEventC (UserName curUser) [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
+  void $ send (postEventC (UserName curUser) [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
   pure ex
 
 toInt :: ExitCode -> Int

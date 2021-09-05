@@ -9,6 +9,7 @@ import Data.Function ((&))
 import Data.Maybe (catMaybes, fromJust)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Lens (modL)
+import Data.UUID (nil)
 import Sensei.API
 import Sensei.Builder
 import Sensei.Server hiding (Other)
@@ -201,7 +202,7 @@ spec = withApp app $
       postFlow_ flow1
       postFlow_ flow2
 
-      getJSON "/api/flows/arnaud/latest" `shouldRespondJSONBody` EventView 2 (EventFlow flow2)
+      getJSON "/api/flows/arnaud/latest" `shouldRespondJSONBody` EventView 2 nil (EventFlow flow2)
 
     it "GET /api/flows/<user>/2 retrieves flow 2 steps back" $ do
       let flow1 = anOtherFlow
@@ -211,4 +212,4 @@ spec = withApp app $
       postFlow_ flow2
       postFlow_ flow3
 
-      getJSON "/api/flows/arnaud/2" `shouldRespondJSONBody` EventView 1 (EventFlow flow1)
+      getJSON "/api/flows/arnaud/2" `shouldRespondJSONBody` EventView 1 nil (EventFlow flow1)

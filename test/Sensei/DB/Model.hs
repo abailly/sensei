@@ -10,6 +10,7 @@
 
 module Sensei.DB.Model where
 
+import Data.UUID(nil)
 import Control.Exception.Safe (try)
 import Control.Lens (set, (^.))
 import Control.Monad.State
@@ -41,7 +42,7 @@ import Test.QuickCheck.Monadic
 
 -- | Relevant commands issued to the underlying DB
 data Action a where
-  WriteEvent :: Event -> Action ()
+  WriteEvent :: Event -> Action EventView
   ReadEvents :: Pagination -> Action EventsQueryResult
   ReadFlow :: Reference -> Action (Maybe EventView)
   ReadNotes :: TimeRange -> Action [NoteView]
@@ -134,8 +135,12 @@ generateAction baseTime model count =
 -- yielding a new, updated, `Model`
 interpret :: (Monad m, Eq a, Show a) => Action a -> StateT Model m (Maybe a)
 interpret (WriteEvent f) = do
-  modify $ \m@Model {events} -> m {events = events |> EventView {index = fromIntegral (Seq.length events + 1), event = f}}
-  pure $ Just ()
+  es <- getEvents
+  let view = EventView {index = fromIntegral (Seq.length es + 1)
+                       , uuid = nil
+                       , event = f}
+  modify $ \m@Model {events} -> m {events = events |> view}
+  pure $ Just view
 interpret (ReadFlow Latest) = interpret (ReadFlow (Pos 0))
 interpret (ReadFlow (Pos n)) = do
   es <- getEvents

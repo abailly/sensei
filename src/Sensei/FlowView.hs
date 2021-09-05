@@ -1,14 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Sensei.FlowView where
 
@@ -18,8 +18,9 @@ import qualified Data.List as List
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
-import Data.Text.ToText(ToText(..))
+import Data.Text.ToText (ToText (..))
 import Data.Time
+import Data.UUID (UUID)
 import GHC.Generics
 import Sensei.Flow
 import Sensei.Project
@@ -27,9 +28,8 @@ import Sensei.Summary
 import Sensei.Time
 import Sensei.Utils
 
-
 -- | A view on a single event
-data EventView = EventView { index :: Natural, event :: Event }
+data EventView = EventView {index :: Natural, uuid :: UUID, event :: Event}
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 -- | A single note
@@ -46,7 +46,7 @@ newtype Tag = Tag Text
 
 instance ToText Tag where
   toText (Tag t) = t
-  
+
 -- | A view of an executed command
 data CommandView = CommandView
   { commandStart :: LocalTime,
@@ -97,10 +97,10 @@ flowInPeriod (Just lb) (Just ub) = withinPeriod lb ub flowStart
 flowInPeriod _ _ = undefined
 
 appendFlow :: TimeZone -> TimeOfDay -> ProjectsMap -> EventView -> [FlowView] -> [FlowView]
-appendFlow _ _ _ (EventView{event = EventFlow (Flow {_flowType = End})}) [] = []
-appendFlow tz _ _ (EventView{event = EventFlow (Flow {_flowType = End, ..})}) (v : vs) =
+appendFlow _ _ _ (EventView {event = EventFlow (Flow {_flowType = End})}) [] = []
+appendFlow tz _ _ (EventView {event = EventFlow (Flow {_flowType = End, ..})}) (v : vs) =
   v {flowEnd = utcToLocalTime tz _flowTimestamp} : vs
-appendFlow tz dayEnd projectsMap (EventView{event = EventFlow (Flow {..})}) views =
+appendFlow tz dayEnd projectsMap (EventView {event = EventFlow (Flow {..})}) views =
   let view = FlowView st st _flowType (projectsMap `selectProject` _flowDir)
       st = utcToLocalTime tz _flowTimestamp
    in case views of

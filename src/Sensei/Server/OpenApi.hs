@@ -142,8 +142,8 @@ instance ToSchema UserName where
 
 instance ToParamSchema UserName where
   toParamSchema _ =
-        mempty
-          & type_ ?~ SwaggerString
+    mempty
+      & type_ ?~ SwaggerString
 
 instance ToSchema Sensei.Tag where
   declareNamedSchema _ =

@@ -5,6 +5,7 @@ module Sensei.FlowViewSpec where
 import Data.Time
 import Sensei.API
 import Test.Hspec
+import Data.UUID(nil)
 
 spec :: Spec
 spec = describe "FlowViews Timings" $ do
@@ -35,7 +36,7 @@ spec = describe "FlowViews Timings" $ do
                     Flow End "user" (UTCTime (toEnum 5000) (3600 * 11)) "foo",
                     Flow Other "user" (UTCTime (toEnum 5000) (3600 * 10)) "foo"
                   ]
-          views = zipWith EventView [0..] flows
+          views = zipWith (flip EventView nil) [0..] flows
           
       foldr (appendFlow tz endOfDay mempty) [] views
         `shouldBe` [ someView,

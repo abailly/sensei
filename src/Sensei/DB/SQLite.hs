@@ -75,6 +75,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 import qualified Data.Time as Time
+import Data.UUID (nil)
 import Database.SQLite.Simple hiding (execute, execute_, query, query_, withConnection)
 import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
@@ -176,17 +177,19 @@ typeOf EventNote {} = "Note"
 
 instance FromRow EventView where
   fromRow = do
+    let uuid = nil
     index <- fromInteger <$> field
     _ts :: UTCTime <- field
     ver :: Integer <- field
     ty :: Text <- field
-    event <- if ver >= 5
-             then either error id . eitherDecode . encodeUtf8 <$> field
-             else case ty of
-               "__TRACE__" -> decodeTracev4 <$> field
-               "Note" -> decodeNotev4 <$> field
-               _ -> decodeFlowv4 ty <$> field
-    pure $ EventView {..}
+    event <-
+      if ver >= 5
+        then either error id . eitherDecode . encodeUtf8 <$> field
+        else case ty of
+          "__TRACE__" -> decodeTracev4 <$> field
+          "Note" -> decodeNotev4 <$> field
+          _ -> decodeFlowv4 ty <$> field
+    pure $ EventView {index, uuid, event}
     where
       decodeTracev4 txt =
         let val = eitherDecode $ encodeUtf8 txt
@@ -382,12 +385,13 @@ updateNotesIndex _ _ _ _ = pure ()
 writeEventSQL ::
   HasCallStack =>
   Event ->
-  SQLiteDB ()
-writeEventSQL e = do
+  SQLiteDB EventView
+writeEventSQL event = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    rid <- insert cnx logger e
-    updateNotesIndex rid e cnx logger
+    rid <- insert cnx logger event
+    updateNotesIndex rid event cnx logger
+    pure $ EventView {index = fromIntegral rid, uuid = nil, event}
 
 insert ::
   HasCallStack =>
