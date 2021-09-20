@@ -3,243 +3,123 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Sensei.CLI where
+module Sensei.CLI
+  ( -- * Options
+    Options (..),
+    RecordOptions (..),
+    QueryOptions (..),
+    UserOptions (..),
+    NotesOptions (..),
+    NotesQuery (..),
+    AuthOptions (..),
+    CommandOptions (..),
+    runOptionsParser,
+    parseSenseiOptions,
+
+    -- * Main entrypoint
+    ep,
+  )
+where
 
 import Data.Aeson hiding (Options, Success)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
+import Data.Text.ToText (toText)
 import Data.Time
-import Data.Time.Format.ISO8601
-import Options.Applicative
 import Sensei.API
+import Sensei.CLI.Options
 import Sensei.CLI.Terminal
 import Sensei.Client
+import Sensei.IO (getConfigDirectory, writeConfig)
+import Sensei.Server.Auth (Credentials (..), createKeys, createToken, getPublicKey, setPassword)
 import Sensei.Version
+import Sensei.Wrapper (handleWrapperResult, tryWrapProg, wrapProg, wrapperIO)
 import Servant (Headers (getResponse))
+import System.Directory (findExecutable)
 import System.Exit
 import System.IO
-import System.IO.Unsafe
-
-data Options
-  = QueryOptions {queryDay :: Day, summarize :: Bool, groups :: [Group]}
-  | RecordOptions {recordType :: FlowType}
-  | NotesOptions {notesQuery :: NotesQuery, format :: NoteFormat}
-  | UserOptions {userAction :: UserAction}
-  deriving (Show, Eq)
-
-data NotesQuery = QueryDay Day | QuerySearch Text
-  deriving (Show, Eq)
-
-data UserAction
-  = GetProfile
-  | SetProfile {profileFile :: FilePath}
-  | GetVersions
-  | ShiftTimestamp TimeDifference
-  | GetFlow Reference
-  deriving (Show, Eq)
-
-runOptionsParser ::
-  Maybe [FlowType] -> [String] -> Either Text Options
-runOptionsParser flows arguments =
-  case execParserPure defaultPrefs (optionsParserInfo flows) arguments of
-    Success opts -> Right opts
-    Failure f -> Left (Text.pack . show $ execFailure f "")
-    _ -> Left "Unexpected completion invoked"
-
-optionsParserInfo :: Maybe [FlowType] -> ParserInfo Options
-optionsParserInfo flows =
-  info
-    (optionsParser flows <**> helper)
-    ( progDesc $
-        unlines
-          [ "ep(oché) - Record start time of some flow type for current user",
-            "version: " <> showVersion senseiVersion <> ", storage: " <> show currentVersion
-          ]
-    )
-
-optionsParser :: Maybe [FlowType] -> Parser Options
-optionsParser flows =
-  QueryOptions <$> dayParser <*> summarizeParser <*> many groupParser
-    <|> RecordOptions <$> flowTypeParser flows
-    <|> NotesOptions <$> (notesParser *> ((QueryDay <$> dayParser) <|> searchParser)) <*> formatParser
-    <|> UserOptions <$> (profileParser *> userActionParser)
-
-{-# NOINLINE today #-}
-today :: Day
-today = unsafePerformIO $ localDay . zonedTimeToLocalTime <$> getZonedTime
-
-formatParser :: Parser NoteFormat
-formatParser =
-  option
-    (eitherReader parseNoteFormat)
-    ( long "format"
-        <> short 'f'
-        <> metavar "STRING"
-        <> help "notes formatting, can be 'plain' (default) or 'table'"
-    )
-
-dayParser :: Parser Day
-dayParser =
-  option
-    (maybeReader iso8601ParseM)
-    ( long "date"
-        <> short 'd'
-        <> metavar "DATE"
-        <> value today
-        <> help "date to filter on, in ISO8601 format (YYYY-mm-dd)"
-    )
-
-searchParser :: Parser NotesQuery
-searchParser =
-  QuerySearch . Text.pack
-    <$> strOption
-      ( long "search"
-          <> short 's'
-          <> metavar "TEXT"
-          <> help "full-text query to search notes."
-      )
-
-summarizeParser :: Parser Bool
-summarizeParser =
-  flag
-    False
-    True
-    ( long "summary"
-        <> short 's'
-        <> help "summarize by flow type"
-    )
-
-groupParser :: Parser Group
-groupParser =
-  option
-    auto
-    ( long "group"
-        <> short 'G'
-        <> metavar "GROUP"
-        <> help "groups for retrieving daily views, one of Week, Month, Quarter or Year"
-    )
-
-notesParser :: Parser ()
-notesParser =
-  flag
-    ()
-    ()
-    ( long "notes"
-        <> short 'N'
-        <> help "Display only notes for a given day"
-    )
-
-flowTypeParser ::
-  Maybe [FlowType] -> Parser FlowType
-flowTypeParser (fromMaybe defaultFlowTypes -> flows) =
-  foldr mkFlag baseFlag flows
-  where
-    keyLetter (FlowType "") = '.'
-    keyLetter (FlowType (Text.head . Text.toLower -> l)) = l
-    keyLetter Other = 'o'
-    keyLetter Note = 'n'
-    keyLetter End = 'E'
-
-    mkFlag ftype parser =
-      flag' ftype (short (keyLetter ftype) <> help (show ftype <> " period")) <|> parser
-
-    baseFlag =
-      flag' End (short 'E' <> help "End previous period")
-        <|> flag' Note (short 'n' <> help "Taking some note")
-        <|> flag' Other (short 'o' <> help "Other period")
-
-profileParser :: Parser ()
-profileParser =
-  flag
-    ()
-    ()
-    ( long "user-profile"
-        <> short 'U'
-        <> help "get or set the user profile for current user"
-    )
-
-userActionParser :: Parser UserAction
-userActionParser =
-  ( SetProfile
-      <$> strOption
-        ( long "config"
-            <> short 'c'
-            <> metavar "FILE"
-            <> help "JSON-formatted user profile to use"
-        )
-      <|> pure GetProfile
-  )
-    <|> flag'
-      GetVersions
-      ( long "versions"
-          <> short 'v'
-          <> help "retrieve the current versions of client and server"
-      )
-    <|> ( ShiftTimestamp
-            <$> option
-              (eitherReader parse)
-              ( long "shift-time"
-                  <> short 'S'
-                  <> help "shift the latest flow by the given time difference"
-              )
-        )
-    <|> ( GetFlow
-            <$> option
-              (eitherReader parseRef)
-              ( long "query"
-                  <> short 'Q'
-                  <> value Latest
-                  <> help "Query some flow or group of FlowViews from underlying storage (default: latest)"
-              )
-        )
-
-parseSenseiOptions ::
-  UserProfile -> IO Options
-parseSenseiOptions userProfile = execParser (optionsParserInfo $ userDefinedFlows userProfile)
 
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
 
-ep :: Options -> Text -> UTCTime -> Text -> IO ()
-ep (QueryOptions day False []) usrName _ _ =
-  send (queryFlowDayC usrName day) >>= display
-ep (QueryOptions day True []) usrName _ _ =
-  send (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day) Nothing) >>= display . getResponse
-ep (QueryOptions _ _ grps) usrName _ _ =
-  send (queryFlowC usrName grps) >>= display
-ep (NotesOptions (QueryDay day) noteFormat) usrName _ _ =
-  send (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
-ep (NotesOptions (QuerySearch txt) noteFormat) usrName _ _ =
-  send (searchNotesC usrName (Just txt)) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
-ep (RecordOptions ftype) curUser startDate curDir =
+ep :: ClientConfig -> Options -> Text -> UTCTime -> Text -> IO ()
+ep config (QueryOptions (FlowQuery day False [])) usrName _ _ =
+  send config (queryFlowDayC usrName day) >>= display
+ep config (QueryOptions (FlowQuery day True [])) usrName _ _ =
+  send config (queryFlowPeriodSummaryC usrName (Just day) (Just $ succ day) Nothing) >>= display . getResponse
+ep config (QueryOptions (FlowQuery _ _ grps)) usrName _ _ =
+  send config (queryFlowC usrName grps) >>= display
+ep config (QueryOptions GetAllLogs) usrName _ _ =
+  send config (getLogC usrName Nothing) >>= display . getResponse
+ep config (NotesOptions (NotesQuery (QueryDay day) noteFormat)) usrName _ _ =
+  send config (notesDayC usrName day) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat . getResponse
+ep config (NotesOptions (NotesQuery (QuerySearch txt) noteFormat)) usrName _ _ =
+  send config (searchNotesC usrName (Just txt)) >>= mapM_ println . fmap encodeUtf8 . formatNotes noteFormat
+ep config (RecordOptions (SingleFlow ftype)) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
-      send $ postEventC (EventNote $ NoteFlow curUser startDate curDir txt)
+      send config $ postEventC [EventNote $ NoteFlow curUser startDate curDir txt]
     _ ->
-      send $ postEventC (EventFlow $ Flow ftype curUser startDate curDir)
-ep (UserOptions GetProfile) usrName _ _ =
-  send (getUserProfileC usrName) >>= display
-ep (UserOptions (SetProfile file)) usrName _ _ = do
+      send config $ postEventC [EventFlow $ Flow ftype curUser startDate curDir]
+ep config (RecordOptions (FromFile fileName)) _ _ _ = do
+  decoded <- eitherDecode <$> LBS.readFile fileName
+  case decoded of
+    Left err -> hPutStrLn stderr ("failed to decode events from " <> fileName <> ": " <> err) >> exitWith (ExitFailure 1)
+    Right events -> do
+      let chunks [] = []
+          chunks xs =
+            let (chunk, rest) = splitAt 50 xs
+             in chunk : chunks rest
+      mapM_
+        ( \evs -> do
+            putStrLn $ "Sending " <> show (length evs) <> " events: " <> show evs
+            send config $ postEventC evs
+        )
+        $ chunks events
+ep config (UserOptions GetProfile) usrName _ _ =
+  send config (getUserProfileC usrName) >>= display
+ep config (UserOptions (SetProfile file)) usrName _ _ = do
   profile <- eitherDecode <$> LBS.readFile file
   case profile of
     Left err -> hPutStrLn stderr ("failed to decode user profile from " <> file <> ": " <> err) >> exitWith (ExitFailure 1)
-    Right prof -> void $ send (setUserProfileC usrName prof)
-ep (UserOptions GetVersions) _ _ _ = do
-  vs <- send getVersionsC
+    Right prof -> void $ send config (setUserProfileC usrName prof)
+ep config (UserOptions GetVersions) _ _ _ = do
+  vs <- send config getVersionsC
   display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
-ep (UserOptions (ShiftTimestamp diff)) curUser _ _ = do
-  f <- send (updateFlowC curUser diff)
-  display f
-ep (UserOptions (GetFlow q)) curUser _ _ = do
-  f <- send (getFlowC curUser q)
-  display f
+ep config (UserOptions (ShiftTimestamp diff)) curUser _ _ =
+  send config (updateFlowC curUser diff) >>= display
+ep config (UserOptions (GetFlow q)) curUser _ _ =
+  send config (getFlowC curUser q) >>= display
+ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
+ep _config (AuthOptions PublicKey) _ _ _ = getConfigDirectory >>= getPublicKey >>= display
+ep config (AuthOptions CreateToken) _ _ _ = do
+  token <- getConfigDirectory >>= createToken
+  writeConfig config {authToken = Just token}
+ep config (AuthOptions SetPassword) userName _ _ = do
+  oldProfile <- send config (getUserProfileC userName)
+  pwd <- readPassword
+  newProfile <- setPassword oldProfile pwd
+  void $ send config (setUserProfileC userName newProfile)
+ep config (AuthOptions GetToken) userName _ _ = do
+  pwd <- readPassword
+  token <- send config $ do
+    -- authenticate with password
+    void $ loginC $ Credentials userName pwd
+    getFreshTokenC userName
+  writeConfig config {authToken = Just token}
+ep _config (AuthOptions NoOp) _ _ _ = pure ()
+ep config (CommandOptions (Command exe args)) userName _ currentDir = do
+  let io = wrapperIO config
+  maybeExePath <- findExecutable exe
+  handleWrapperResult exe =<< case maybeExePath of
+    Just exePath -> Right <$> wrapProg io userName exePath args currentDir
+    Nothing -> tryWrapProg io userName exe args currentDir
 
 println :: BS.ByteString -> IO ()
 println bs =
@@ -251,14 +131,20 @@ formatNotes MarkdownTable = (tblHeaders <>) . fmap tblRow
 formatNotes Section = concatMap sectionized
 
 sectionized :: NoteView -> [Text]
-sectionized (NoteView ts note) =
-  ["#### " <> formatTimestamp ts, "", note]
+sectionized (NoteView ts note project tags) =
+  [header, "", note]
+  where
+    header = "#### " <> formatTimestamp ts <> " (" <> toText project <> ")" <> tagsHeader
+    tagsHeader =
+      case tags of
+        [] -> ""
+        t -> " [" <> (Text.intercalate ", " $ map toText t) <> "]"
 
 tblHeaders :: [Text]
 tblHeaders = ["Time | Note", "--- | ---"]
 
 tblRow :: NoteView -> Text
-tblRow (NoteView ts note) = formatTimestamp ts <> " | " <> replaceEOLs note
+tblRow (NoteView ts note project _tags) = formatTimestamp ts <> " | " <> toText project <> " | " <> replaceEOLs note
 
 replaceEOLs :: Text -> Text
 replaceEOLs = Text.replace "\n" "<br/>"
@@ -267,4 +153,4 @@ formatTimestamp :: LocalTime -> Text
 formatTimestamp = Text.pack . formatTime defaultTimeLocale "%H:%M"
 
 timestamped :: NoteView -> [Text]
-timestamped (NoteView st note) = formatTimestamp st : Text.lines note
+timestamped (NoteView st note _ _) = formatTimestamp st : Text.lines note

@@ -4,23 +4,70 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
-module Sensei.Server where
+module Sensei.Server
+  ( -- * Endpoints
+    killS,
+    setCurrentTimeS,
+    getCurrentTimeS,
+    updateFlowStartTimeS,
+    postEventS,
+    notesDayS,
+    searchNoteS,
+    commandsDayS,
+    queryFlowDayS,
+    queryFlowPeriodSummaryS,
+    getFlowS,
+    queryFlowS,
+    getLogS,
+    getUserProfileS,
+    putUserProfileS,
+    createUserProfileS,
+    getFreshTokenS,
+    getVersionsS,
+    loginS,
+    module Sensei.Server.OpenApi,
+
+    -- * Links
+    module Sensei.Server.Links,
+
+    -- * Configuration
+    module Sensei.Server.Config,
+    module Sensei.Server.Options,
+
+    -- * Authentication
+    module Sensei.Server.Auth,
+
+    -- * Server-side HTML
+    module Sensei.Server.UI,
+  )
+where
 
 import Control.Concurrent.MVar
-import Control.Monad(join)
+import Control.Exception.Safe (throwM, try)
+import Control.Monad (join)
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
+import Data.Text.Lazy (pack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 import Network.HTTP.Link as Link
 import Network.URI.Extra ()
+import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.DB
-import Sensei.Server.Links (nextDayLink, periodLinks, nextPageLink, previousDayLink, previousPageLink)
+import Sensei.Server.Auth
+import Sensei.Server.Config
+import Sensei.Server.Links
+import Sensei.Server.OpenApi
+import Sensei.Server.Options
+import Sensei.Server.UI
 import Sensei.Time hiding (getCurrentTime)
 import Sensei.Version (Versions (..), senseiVersion)
 import Servant
+import Servant.Auth.Server as SAS
 
 killS ::
   MonadIO m => MVar () -> m ()
@@ -39,8 +86,8 @@ getCurrentTimeS usr = do
   Timestamp <$> getCurrentTime usrProfile
 
 postEventS ::
-  (DB m) => Event -> m ()
-postEventS = writeEvent
+  (DB m) => [Event] -> m ()
+postEventS = mapM_ writeEvent
 
 updateFlowStartTimeS ::
   (DB m) => Text -> TimeDifference -> m Event
@@ -60,7 +107,7 @@ notesDayS usr day = do
                   previousDayLink usr (Just day)
                 ]
           )
-  pure $ hdrs $ map (uncurry NoteView) notes
+  pure $ hdrs notes
 
 searchNoteS ::
   (DB m) => Text -> Maybe Text -> m [NoteView]
@@ -68,7 +115,7 @@ searchNoteS _ Nothing = pure []
 searchNoteS usr (Just search) = do
   usrProfile <- getUserProfileS usr
   rawNotes <- searchNotes usrProfile search
-  pure $ fmap (uncurry NoteView) rawNotes
+  pure rawNotes
 
 commandsDayS ::
   (DB m) => Text -> Day -> m [CommandView]
@@ -95,7 +142,7 @@ queryFlowPeriodSummaryS usr fromDay toDay period = do
   pure $ fromMaybe noHeader links $ result
 
 getFlowS ::
-  (DB m) => Text -> Reference -> m (Maybe Event)
+  (DB m) => Text -> Reference -> m (Maybe EventView)
 getFlowS usr ref = do
   profile <- getUserProfileS usr
   readFlow profile ref
@@ -107,10 +154,10 @@ queryFlowS usr groups = do
   groupViews userStartOfDay userEndOfDay (List.sort groups) <$> readViews usrProfile
 
 getLogS ::
-  DB m => Text -> Maybe Natural -> m (Headers '[Header "Link" Text] [Event])
+  DB m => Text -> Maybe Natural -> m (Headers '[Header "Link" Text] [EventView])
 getLogS userName page = do
   usrProfile <- getUserProfileS userName
-  EventsQueryResult {..} <- readEvents usrProfile (Page (fromMaybe 1 page) 50)
+  EventsQueryResult {..} <- readEvents usrProfile (maybe NoPagination (\p -> Page p 50) page)
   let nextHeader =
         if endIndex < totalEvents
           then nextPageLink userName page
@@ -125,20 +172,58 @@ getLogS userName page = do
           ls -> addHeader $ writeLinkHeader ls
   pure $ links resultEvents
 
+createUserProfileS ::
+  forall m. (DB m) => UserProfile -> m (Encoded Hex)
+createUserProfileS u = do
+  result <- try @_ @(DBError m) $ insertProfile u
+  case result of
+    Left ignored -> throwM $ err400 {errBody = encodeUtf8 $ pack $ show ignored}
+    Right uid -> pure uid
+
 getUserProfileS ::
-  (DB m) => Text -> m UserProfile
-getUserProfileS _ = do
-  prof <- readProfile
-  case prof of
-    Left _ -> pure defaultProfile
-    Right prf -> pure prf
+  forall m. (DB m) => Text -> m UserProfile
+getUserProfileS userName = do
+  result <- try @_ @(DBError m) $ readProfile userName
+  case result of
+    Left e -> throwM $ err400 {errBody = encodeUtf8 $ pack $ show e}
+    Right p -> pure p
 
 putUserProfileS ::
   (DB m) => Text -> UserProfile -> m NoContent
-putUserProfileS _ profile = do
-  writeProfile profile
-  pure NoContent
+putUserProfileS user profile
+  | user /= userName profile = throwM err400
+  | otherwise = NoContent <$ writeProfile profile
+
+getFreshTokenS ::
+  MonadIO m =>
+  JWTSettings ->
+  Text ->
+  m SerializedToken
+getFreshTokenS js _userName =
+  liftIO $ makeToken js (AuthToken 1 1)
 
 getVersionsS ::
   (Monad m) => m Versions
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
+
+loginS ::
+  (MonadIO m, DB m) =>
+  JWTSettings ->
+  CookieSettings ->
+  Credentials ->
+  m
+    ( Headers
+        '[ Header "Set-Cookie" SetCookie,
+           Header "Set-Cookie" SetCookie
+         ]
+        UserProfile
+    )
+loginS js cs Credentials {credLogin, credPassword} = do
+  profile <- getUserProfileS credLogin
+  case authenticateUser credPassword profile of
+    SAS.Authenticated usr -> do
+      mApplyCookies <- liftIO $ acceptLogin cs js usr
+      case mApplyCookies of
+        Nothing -> throwM err401 {errBody = "Failed to generate cookies for user login"}
+        Just applyCookies -> return $ applyCookies profile
+    _ -> throwM err401 {errBody = "Fail to authenticate user"}

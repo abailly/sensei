@@ -19,7 +19,7 @@ function extractLinks(xhr) {
 }
 
 
-export function get(url, callback) {
+export function get(router, url, callback) {
   const xhr = new XMLHttpRequest();
   xhr.open('GET', url);
   xhr.setRequestHeader('X-API-Version', VERSION);
@@ -40,9 +40,47 @@ export function get(url, callback) {
         }
         throw e;
       }
+    } else if (xhr.status == 401) {
+      router.navigate('/login');
     } else {
       alert('Request failed.  Returned status of ' + xhr.status);
     }
   };
   xhr.send();
+}
+
+
+export function post(router, url, data, callback) {
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', url);
+  xhr.setRequestHeader('X-API-Version', VERSION);
+  xhr.setRequestHeader('Content-type', 'application/json');
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        if (xhr.responseText) {
+          const flowData = JSON.parse(xhr.responseText);
+          const links = extractLinks(xhr);
+          if (links) {
+            callback(flowData, links);
+          } else {
+            callback(flowData);
+          }
+        } else {
+          callback();
+        }
+      } catch (e) {
+        // JSON.parse can throw a SyntaxError
+        if (e instanceof SyntaxError) {
+          alert("invalid JSON payload" + xhr.responseText);
+        }
+        throw e;
+      }
+    } else if (xhr.status == 401) {
+      router.navigate('/login');
+    } else {
+      alert('Request failed.  Returned status of ' + xhr.status);
+    }
+  };
+  xhr.send(JSON.stringify(data));
 }

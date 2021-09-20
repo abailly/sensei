@@ -27,26 +27,26 @@ import Data.Time.Lens (Lens, modL, month, seconds)
 import Sensei.API
 import Sensei.TestHelper
 
-postEvent :: Event -> WaiSession () SResponse
+postEvent :: [Event] -> WaiSession () SResponse
 postEvent = postJSON "/api/log"
 
-postEvent_ :: Event -> WaiSession () ()
+postEvent_ :: [Event] -> WaiSession () ()
 postEvent_ = void . postEvent
 
 postFlow :: Flow -> WaiSession () SResponse
-postFlow = postEvent . EventFlow
+postFlow = postEvent . pure . EventFlow
 
 postFlow_ :: Flow -> WaiSession () ()
-postFlow_ = postEvent_ . EventFlow
+postFlow_ = postEvent_ . pure . EventFlow
 
 postNote_ :: NoteFlow -> WaiSession () ()
-postNote_ = postEvent_ . EventNote
+postNote_ = postEvent_ . pure . EventNote
 
 postTrace_ :: Trace -> WaiSession () ()
-postTrace_ = postEvent_ . EventTrace
+postTrace_ = postEvent_ . pure . EventTrace
 
 anOtherFlow :: Flow
-anOtherFlow = Flow Other "arnaud" (UTCTime (toEnum 50000) 0) "some/directory"
+anOtherFlow = Flow Other "arnaud" (UTCTime aDay 0) "some/directory"
 
 aDay :: Day
 aDay = toEnum 50000

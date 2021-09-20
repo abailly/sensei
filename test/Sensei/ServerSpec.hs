@@ -2,7 +2,9 @@
 
 module Sensei.ServerSpec where
 
-import Sensei.Server.Config
+import Data.Either (isLeft)
+import Sensei.Builder (anOtherFlow, postFlow)
+import Sensei.Server
 import Sensei.TestHelper
 import Sensei.Time
 import Test.Hspec
@@ -32,5 +34,22 @@ spec =
 
     withApp (app {withFailingStorage = True}) $
       it "returns error 500 with details given DB fails to access storage file" $ do
-        getJSON "/api/flows/arnaud"
+        postFlow anOtherFlow
           `shouldRespondWith` 500
+
+    describe "Run mode and Options" $ do
+      it "parses client mode and pass arguments to it" $ do
+        runOptionsParser ["client", "foo", "--", "-b", "ar"]
+          `shouldBe` Right (ClientOptions ["foo", "-b", "ar"])
+
+      it "parses server mode and pass arguments to it" $ do
+        runOptionsParser ["server", "foo", "--", "-b", "ar"]
+          `shouldBe` Right (ServerOptions ["foo", "-b", "ar"])
+
+      it "returns error message given unknown command" $ do
+        runOptionsParser ["frobnicate"]
+          `shouldSatisfy` isLeft
+
+      it "returns error message given unescaped parseable arguments" $ do
+        runOptionsParser ["client", "-x"]
+          `shouldSatisfy` isLeft

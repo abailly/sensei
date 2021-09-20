@@ -27,6 +27,8 @@ module Sensei.Flow
     defaultFlowTypes,
     currentVersion,
     eventUser,
+    setUser,
+    user',
     eventTimestamp,
     isTrace,
     parseEventFromv4,
@@ -45,10 +47,16 @@ module Sensei.Flow
     traceProcess,
     traceTimestamp,
     traceUser,
+    noteUser,
+    noteTimestamp,
+    noteDir,
+    noteContent,
+    filterNotes,
   )
 where
 
 import Control.Applicative
+import Control.Lens (Lens', set)
 import Control.Lens.TH (makeLenses)
 import Data.Aeson hiding (Options)
 import Data.Aeson.Types
@@ -63,12 +71,13 @@ import Sensei.FlowType
 import Servant
 
 -- | Current version of data storage format.
+--
 -- This version /must/ be incremented on each change to the structure of `Event` and
 -- other stored data structures which
 -- impacts their serialized representation. Of course, deserialisation
 -- functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 5
+currentVersion = 8
 
 data Flow = Flow
   { _flowType :: FlowType,
@@ -89,7 +98,7 @@ instance ToJSON Flow where
 data Trace = Trace
   { _traceUser :: Text,
     _traceTimestamp :: UTCTime,
-    _traceDirectory :: FilePath,
+    _traceDirectory :: Text,
     _traceProcess :: Text,
     _traceArgs :: [Text],
     _traceExitCode :: Int,
@@ -113,6 +122,8 @@ data NoteFlow = NoteFlow
   }
   deriving (Eq, Show, Generic)
 
+makeLenses ''NoteFlow
+
 instance FromJSON NoteFlow where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 1}
 
@@ -130,6 +141,16 @@ eventUser ::
 eventUser (EventFlow f) = _flowUser f
 eventUser (EventTrace t) = _traceUser t
 eventUser (EventNote n) = _noteUser n
+
+setUser :: Text -> Event -> Event
+setUser u (EventFlow f) = EventFlow $ f {_flowUser = u}
+setUser u (EventTrace t) = EventTrace $ t {_traceUser = u}
+setUser u (EventNote n) = EventNote $ n {_noteUser = u}
+
+user' :: Lens' Event Text
+user' fu (EventFlow f@Flow {_flowUser}) = (\u -> EventFlow (set flowUser u f)) <$> fu _flowUser
+user' fu (EventTrace t@Trace {_traceUser}) = (\u -> EventTrace (set traceUser u t)) <$> fu _traceUser
+user' fu (EventNote n@NoteFlow {_noteUser}) = (\u -> EventNote (set noteUser u n)) <$> fu _noteUser
 
 -- | Supported rendering formats for notes
 data NoteFormat
@@ -263,3 +284,10 @@ instance ToJSON Event where
 isTrace :: Event -> Bool
 isTrace EventTrace {} = True
 isTrace _ = False
+
+-- | Project a stream of 'Event' into a stream of 'NoteFlow'
+filterNotes :: [Event] -> [NoteFlow]
+filterNotes = foldr addNote []
+  where
+    addNote (EventNote note) notes = note : notes
+    addNote _ notes = notes

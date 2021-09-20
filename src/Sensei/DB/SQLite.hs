@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Implementation of flows DB using <https://www.sqlite.org/index.html SQLite>
@@ -13,15 +14,24 @@
 --
 -- The DB is expected to have the following schema:
 -- @@
+-- CREATE TABLE users (
+--    id integer primary key,
+--    uid text unique not null,
+--    user text unique not null,
+--    profile text not null);
+--
 -- CREATE TABLE schema_migrations ( id integer primary key,
 --                                  filename text not null,
 --                                  checksum text not null,
 --                                  executed_at integer default (strftime('%s','now')) not null);
+--
 -- CREATE TABLE event_log ( id integer primary key,
 --                          timestamp text not null,
 --                          version integer not null,
+--                          user text not null,
 --                          flow_type text not null,
 --                          flow_data text not null);
+--
 -- CREATE TABLE config_log ( id integer primary key,
 --                           timestamp text not null,
 --                           version integer not null,
@@ -29,39 +39,59 @@
 --                           key text not null,
 --                           value text not null);
 -- @@
+--
 -- The actual data is stored in the `flow_data` field as JSON.
-module Sensei.DB.SQLite (runDB, getDataFile, migrateFileDB, SQLiteDB, SQLiteDBError (..)) where
+module Sensei.DB.SQLite
+  ( runDB,
+    getDataFile,
+    migrateFileDB,
+    SQLiteDB,
+    SQLiteDBError (..),
+    withBackup,
+  )
+where
 
 import Control.Exception (throwIO)
-import Control.Exception.Safe (Exception, Handler (Handler), IOException, MonadCatch, MonadThrow, catches, throwM, try)
+import Control.Exception.Safe
+  ( Exception,
+    Handler (Handler),
+    IOException,
+    MonadCatch,
+    MonadThrow,
+    catch,
+    catches,
+    throwM,
+    try,
+  )
+import Control.Lens ((^.))
 import Control.Monad.Reader
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as A
-import Data.Bifunctor (Bifunctor (first))
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import Data.Int (Int64)
+import Data.Functor ((<&>))
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 import qualified Data.Time as Time
-import Data.Time.LocalTime
 import Database.SQLite.Simple hiding (execute, execute_, query, query_, withConnection)
 import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
+import Preface.Codec (Encoded, Hex, toHex)
 import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
-import Sensei.API
+import Sensei.API as API
 import Sensei.DB
-import Sensei.DB.File (readProfileFile, writeProfileFile)
 import qualified Sensei.DB.File as File
 import Sensei.DB.SQLite.Migration
 import Sensei.IO
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
+import System.Random (newStdGen, randoms)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig
@@ -92,8 +122,8 @@ runDB dbFile configDir logger act =
 
 getDataFile :: FilePath -> IO FilePath
 getDataFile configDir = do
-  oldLog <- getDataDirectory >>= pure . (</> "sensei.log")
-  newLog <- getDataDirectory >>= pure . (</> "sensei.sqlite")
+  oldLog <- getDataDirectory <&> (</> "sensei.log")
+  newLog <- getDataDirectory <&> (</> "sensei.sqlite")
   existOldLog <- doesFileExist oldLog
   if existOldLog
     then migrateOldLog oldLog newLog
@@ -104,7 +134,9 @@ getDataFile configDir = do
       res <- migrateFileDB old configDir
       case res of
         Left err -> throwIO $ userError $ "failed to migrate File DB, aborting " <> unpack err
-        Right _ -> renameFile old new >> pure new
+        Right _ -> do
+          renameFile old new
+          pure new
 
 -- | Migrate an existing File-based event log to a SQLite-based one.
 --  The old database is preserved and copied to a new File with same name
@@ -124,7 +156,7 @@ migrateFileDB dbFile configDir = do
     Left (e :: IOException) -> pure $ Left (pack $ show e)
     Right events -> runDB dbFile configDir fakeLogger $ do
       initSQLiteDB
-      writeAll events
+      writeAll (fmap API.event events)
       pure $ Right oldLog
 
 -- * Instances
@@ -132,26 +164,29 @@ migrateFileDB dbFile configDir = do
 instance ToRow Event where
   toRow e =
     let ts = toField (eventTimestamp e)
+        u = e ^. user'
         payload = toField $ decodeUtf8' $ LBS.toStrict $ encode e
         typ = typeOf e
-     in [ts, SQLInteger (fromIntegral currentVersion), toField (typ :: Text), payload]
+     in [ts, SQLInteger (fromIntegral currentVersion), toField u, toField (typ :: Text), payload]
 
 typeOf :: Event -> Text
 typeOf EventTrace {} = "__TRACE__"
 typeOf (EventFlow Flow {_flowType}) = toText _flowType
 typeOf EventNote {} = "Note"
 
-instance FromRow Event where
+instance FromRow EventView where
   fromRow = do
+    index <- fromInteger <$> field
     _ts :: UTCTime <- field
     ver :: Integer <- field
     ty :: Text <- field
-    if ver >= 5
-      then either error id . eitherDecode . encodeUtf8 <$> field
-      else case ty of
-        "__TRACE__" -> decodeTracev4 <$> field
-        "Note" -> decodeNotev4 <$> field
-        _ -> decodeFlowv4 ty <$> field
+    event <- if ver >= 5
+             then either error id . eitherDecode . encodeUtf8 <$> field
+             else case ty of
+               "__TRACE__" -> decodeTracev4 <$> field
+               "Note" -> decodeNotev4 <$> field
+               _ -> decodeFlowv4 ty <$> field
+    pure $ EventView {..}
     where
       decodeTracev4 txt =
         let val = eitherDecode $ encodeUtf8 txt
@@ -176,11 +211,6 @@ instance FromRow Event where
               (Right j, Just ftype) -> case A.parse parseFlowFromv4 j of
                 A.Success t -> EventFlow t {_flowType = ftype}
                 A.Error f -> error f
-
-data IdFlow = IdFlow {identifier :: Int64, event :: Event}
-
-instance FromRow IdFlow where
-  fromRow = IdFlow <$> field <*> fromRow
 
 -- | This instance returns a number to be used as offset value in a query
 instance ToField Reference where
@@ -236,14 +266,15 @@ instance DB SQLiteDB where
   getCurrentTime u = getCurrentTimeSQL u
   writeEvent t = writeEventSQL t
   updateLatestFlow ts = updateLatestFlowSQL ts
-  writeProfile u = SQLiteDB $ (asks configDir >>= liftIO . writeProfileFile u)
   readFlow u r = readFlowSQL u r
   readEvents u p = readEventsSQL u p
   readNotes u rge = readNotesSQL u rge
   searchNotes u txt = searchNotesSQL u txt
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
-  readProfile = SQLiteDB $ (asks configDir >>= liftIO . readProfileFile)
+  readProfile = readProfileSQL
+  writeProfile = writeProfileSQL
+  insertProfile = insertProfileSQL
 
 data Events
   = StoragePathCreated {dbPath :: FilePath}
@@ -255,39 +286,60 @@ data Events
 
 -- ** Orphan Instances
 
-instance A.ToJSON Query where
-  toJSON = A.String . fromQuery
-
-instance A.FromJSON Query where
-  parseJSON = A.withText "Query" $ pure . Query
-
 -- initializes the DB file
 -- if the file does not exist, it is created
 initSQLiteDB :: SQLiteDB ()
 initSQLiteDB = do
-  SQLiteConfig {storagePath, logger} <- ask
+  SQLiteConfig {storagePath, logger, configDir} <- ask
   storagePathExists <- liftIO $ doesFileExist storagePath
   unless storagePathExists $
     liftIO $ do
       openFile storagePath WriteMode >>= hClose
       logInfo logger (StoragePathCreated storagePath)
-  liftIO $ withLog logger (MigratingSQLiteDB storagePath) $ migrateSQLiteDB storagePath
+  liftIO $
+    withLog logger (MigratingSQLiteDB storagePath) $ do
+      migrateSQLiteDB logger storagePath
+      migrateFileBasedProfile logger storagePath configDir
 
-migrateSQLiteDB :: FilePath -> IO ()
-migrateSQLiteDB sqliteFile =
-  SQLite.withConnection sqliteFile $ \cnx -> do
-    migResult <-
-      runMigrations
-        cnx
-        [ InitialMigration,
-          createLog,
-          createConfig,
-          createNotesSearch,
-          populateSearch
-        ]
-    case migResult of
-      MigrationSuccessful -> pure ()
-      MigrationFailed err -> throwM $ SQLiteDBError "" err
+migrateSQLiteDB :: LoggerEnv -> FilePath -> IO ()
+migrateSQLiteDB logger sqliteFile =
+  withBackup sqliteFile $ \file ->
+    SQLite.withConnection file $ \cnx -> do
+      migResult <-
+        runMigrations
+          logger
+          cnx
+          [ InitialMigration,
+            createLog,
+            createConfig,
+            createNotesSearch,
+            populateSearch,
+            createUsers,
+            addUserInEventLog,
+            updateUserInEventLog,
+            addUniqueConstraintToUsers
+          ]
+      case migResult of
+        MigrationSuccessful -> pure ()
+        MigrationFailed err -> throwIO $ SQLiteDBError "" err
+
+withBackup :: FilePath -> (FilePath -> IO a) -> IO a
+withBackup file action = do
+  timestamp <- Time.formatTime Time.defaultTimeLocale "%s" <$> Time.getCurrentTime
+  let backup = file <.> "bak" <.> timestamp
+  copyFile file backup
+  (action file <* removeFile backup)
+    `catch` \(e :: SQLiteDBError) -> copyFile backup file >> removeFile backup >> throwIO e
+
+migrateFileBasedProfile :: LoggerEnv -> FilePath -> FilePath -> IO ()
+migrateFileBasedProfile logger storagePath config = do
+  eitherProfile <- try @_ @IOException $ File.readProfileFile config
+  case eitherProfile of
+    Left _ -> pure ()
+    Right profile@UserProfile {userName} ->
+      runDB storagePath config logger $ do
+        void (readProfileSQL userName)
+          `catch` \(_ :: SQLiteDBError) -> void (insertProfileSQL profile)
 
 setCurrentTimeSQL :: UserProfile -> UTCTime -> SQLiteDB ()
 setCurrentTimeSQL UserProfile {userName} newTime = do
@@ -324,7 +376,7 @@ updateNotesIndex ::
   IO ()
 updateNotesIndex rid (EventNote NoteFlow {..}) cnx logger =
   let q = "insert into notes_search (id, note) values (?, ?)"
-   in execute cnx logger q [toField rid, SQLText $ _noteContent]
+   in execute cnx logger q [toField rid, SQLText _noteContent]
 updateNotesIndex _ _ _ _ = pure ()
 
 writeEventSQL ::
@@ -345,7 +397,7 @@ insert ::
   q ->
   IO Int
 insert cnx logger event = do
-  let q = "insert into event_log (timestamp, version, flow_type, flow_data) values (?, ?, ?, ?)"
+  let q = "insert into event_log (timestamp, version, user, flow_type, flow_data) values (?, ?, ?, ?, ?)"
   execute cnx logger q event
   [[r]] <- query_ cnx logger "SELECT last_insert_rowid()"
   pure r
@@ -362,24 +414,24 @@ updateLatestFlowSQL diff = do
           u = "update event_log set timestamp = ?, flow_data = ? where id = ?"
       res <- query_ cnx logger q
       case res of
-        (IdFlow {identifier, event = EventFlow f@Flow {_flowTimestamp}} : _) -> do
+        (EventView {index, event = EventFlow f@Flow {_flowTimestamp}} : _) -> do
           let newTs = addUTCTime diff _flowTimestamp
               updatedFlow = EventFlow f {_flowTimestamp = newTs}
-          execute cnx logger u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField identifier]
+          execute cnx logger u [toField newTs, toField $ decodeUtf8' $ LBS.toStrict $ encode updatedFlow, toField (toInteger index)]
           pure updatedFlow
-        (IdFlow {event} : _) -> pure event -- don't change other events
+        (EventView {event} : _) -> pure event -- don't change other events
         [] -> error "no flows recorded"
 
 readFlowSQL ::
   HasCallStack =>
   UserProfile ->
   Reference ->
-  SQLiteDB (Maybe Event)
-readFlowSQL _ ref = do
+  SQLiteDB (Maybe EventView)
+readFlowSQL UserProfile {userName} ref = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' order by timestamp desc limit 1 offset ?"
-    res <- query cnx logger q (Only ref)
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and user = ? order by timestamp desc limit 1 offset ?"
+    res <- query cnx logger q (userName, ref)
     case res of
       [flow] -> pure $ Just flow
       [] -> pure Nothing
@@ -390,42 +442,56 @@ readEventsSQL ::
   UserProfile ->
   Pagination ->
   SQLiteDB EventsQueryResult
-readEventsSQL _ Page {pageNumber, pageSize} = do
+readEventsSQL UserProfile {userName} Page {pageNumber, pageSize} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log order by timestamp desc limit ? offset ?"
-        count = "select count(*) from event_log"
-    resultEvents <- query cnx logger q [SQLInteger $ fromIntegral pageSize, SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize]
-    [[numEvents]] <- query_ cnx logger count
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp desc limit ? offset ?"
+        count = "select count(*) from event_log where user = ?"
+        limit = SQLInteger $ fromIntegral pageSize
+        offset = SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize
+    resultEvents <- query cnx logger q (userName, limit, offset)
+    [[numEvents]] <- query cnx logger count (Only userName)
     let totalEvents = fromInteger numEvents
         eventsCount = fromIntegral $ length resultEvents
         startIndex = min ((pageNumber - 1) * pageSize) totalEvents
         endIndex = min (pageNumber * pageSize) totalEvents
+    pure $ EventsQueryResult {..}
+readEventsSQL UserProfile {userName} NoPagination = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp asc"
+        count = "select count(*) from event_log where user = ?"
+    resultEvents <- query cnx logger q (Only userName)
+    [[numEvents]] <- query cnx logger count (Only userName)
+    let totalEvents = fromInteger numEvents
+        eventsCount = totalEvents
+        startIndex = 1
+        endIndex = totalEvents
     pure $ EventsQueryResult {..}
 
 readNotesSQL ::
   HasCallStack =>
   UserProfile ->
   TimeRange ->
-  SQLiteDB [(LocalTime, Text)]
+  SQLiteDB [NoteView]
 readNotesSQL UserProfile {..} TimeRange {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and datetime(timestamp) between ? and ? order by timestamp"
-    notesFlow <- query cnx logger q [rangeStart, rangeEnd]
-    pure $ foldr (notesViewBuilder userName userTimezone) [] notesFlow
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type = 'Note' and user = ? and datetime(timestamp) between ? and ? order by timestamp"
+    notesFlow <- query cnx logger q (userName, rangeStart, rangeEnd)
+    pure $ foldr (notesViewBuilder userName userTimezone userProjects) [] notesFlow
 
 searchNotesSQL ::
   HasCallStack =>
   UserProfile ->
   Text ->
-  SQLiteDB [(LocalTime, Text)]
+  SQLiteDB [NoteView]
 searchNotesSQL UserProfile {..} text = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, note from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
+    let q = "select event_log.id, timestamp, version, flow_type, flow_data from event_log inner join notes_search on event_log.id = notes_search.id where notes_search match ?"
     notesFlow <- query cnx logger q [text]
-    pure $ fmap (first $ utcToLocalTime userTimezone) notesFlow
+    pure $ fmap (toNoteView userTimezone userProjects) (filterNotes $ fmap API.event notesFlow)
 
 readViewsSQL ::
   HasCallStack =>
@@ -434,9 +500,9 @@ readViewsSQL ::
 readViewsSQL UserProfile {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
     flows <- query_ cnx logger q
-    pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay) [] flows
+    pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] flows
 
 readCommandsSQL ::
   HasCallStack =>
@@ -445,6 +511,47 @@ readCommandsSQL ::
 readCommandsSQL UserProfile {..} = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> do
-    let q = "select timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' order by timestamp"
-    traces <- query_ cnx logger q
-    pure $ foldr (commandViewBuilder userTimezone) [] traces
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_Type = '__TRACE__' and user = ? order by timestamp"
+    traces <- query cnx logger q (Only userName)
+    pure $ foldr (commandViewBuilder userTimezone userProjects) [] traces
+
+readProfileSQL ::
+  HasCallStack =>
+  Text ->
+  SQLiteDB UserProfile
+readProfileSQL userName = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select profile from users where user = ?"
+    res <- query cnx logger q (Only userName)
+    case res of
+      [[profile]] -> case eitherDecode . encodeUtf8 $ profile of
+        Left e -> throwM $ SQLiteDBError q (pack $ "Fail to decode user profile: " <> e)
+        Right p -> pure p
+      [] -> throwM $ SQLiteDBError q ("No user " <> userName)
+      _ -> throwM $ SQLiteDBError q ("Several users with " <> userName <> ", this is a bug")
+
+writeProfileSQL ::
+  HasCallStack =>
+  UserProfile ->
+  SQLiteDB ()
+writeProfileSQL profile = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q =
+          "update users set profile = ? where user = ?;"
+    execute cnx logger q [toField $ decodeUtf8' $ LBS.toStrict $ encode profile, toField (userName profile)]
+
+insertProfileSQL ::
+  HasCallStack =>
+  UserProfile ->
+  SQLiteDB (Encoded Hex)
+insertProfileSQL profile = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q =
+          "insert into users (uid, user, profile) values (?,?,?);"
+    userId <- toHex . BS.pack . take 16 . randoms <$> newStdGen
+    let profileWithId = profile {userId}
+    execute cnx logger q [toField $ toText userId, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profileWithId]
+    pure userId

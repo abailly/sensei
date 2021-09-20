@@ -15,7 +15,7 @@ import System.Posix.User (getRealUserID)
 -- | Id of current user
 type UID = String
 
-stackage_version = "lts-16.18"
+stackage_version = "lts-18.2"
 
 docker_repository = "pankzsoft"
 
@@ -52,6 +52,20 @@ runShake pwd uid = shakeArgs options $ do
   addBuiltinImageRule
   addBuiltinContainerRule
 
+  let needHaskellSources = do
+        needImage "pankzsoft/haskell-base"
+        needDirectoryFiles
+          "."
+          [ "src//*.hs",
+            "test//*.hs",
+            "data//*.*",
+            "app//*.hs",
+            "package.yaml",
+            "Dockerfile"
+          ]
+        need ["stack.yaml"]
+        need ["ui/dist/index.html"]
+
   -- Build all images locally
   imageRule "pankzsoft/haskell-base" $ \img -> do
     need ["haskell-base/Dockerfile", "haskell-base/haskell.key"]
@@ -59,23 +73,34 @@ runShake pwd uid = shakeArgs options $ do
 
   "build" ~> void (needImage (docker_repository </> "sensei"))
 
+  "test" ~> do
+    needHaskellSources
+    cmd
+      "docker"
+      [ "run",
+        "--rm",
+        "-t",
+        "-v",
+        pwd <> ":/work",
+        "-v",
+        "haskell-stack:/home/user/.stack",
+        "-w",
+        "/work",
+        "-e",
+        "LOCAL_USER_ID=" <> uid,
+        "pankzsoft/haskell-base",
+        "stack",
+        "test",
+        "--allow-different-user",
+        "--work-dir=.stack-work-build"
+      ]
+
   imageRule (docker_repository </> "sensei") $ \img -> do
     need ["bin/sensei-exe"]
     cmd "docker" ["build", "-t", toArg img, "-f", "Dockerfile", "."]
 
   "bin/sensei-exe" %> \bin -> do
-    needImage "pankzsoft/haskell-base"
-    needDirectoryFiles
-      "."
-      [ "src//*.hs",
-        "test//*.hs",
-        "data//*.*",
-        "app//*.hs",
-        "package.yaml",
-        "Dockerfile"
-      ]
-    need ["stack.yaml"]
-    need ["ui/dist/index.html"]
+    needHaskellSources
     cmd
       "docker"
       [ "run",
@@ -114,15 +139,15 @@ runShake pwd uid = shakeArgs options $ do
   -- Most of the work is delegated to terraform
   "deploy" ~> do
     checkEnvironment
-    cmd_ "terraform" ["plan", "-out=.deploy.plan", "-var-file=infra/terraform.tfvars", "infra"]
-    cmd_ "terraform" ["apply", ".deploy.plan"]
+    cmd_ (Cwd "infra") "terraform" ["plan", "-out=.deploy.plan", "-var-file=terraform.tfvars"]
+    cmd_ (Cwd "infra") "terraform" ["apply", ".deploy.plan"]
 
   -- Clean up all resources set for the deployment
   "destroy" ~> do
     checkEnvironment
-    cmd_ "terraform" ["destroy", "-auto-approve", "-var-file=infra/terraform.tfvars", "infra"]
+    cmd_ (Cwd "infra") "terraform" ["destroy", "-auto-approve", "-var-file=terraform.tfvars"]
 
-  "ui/dist/index.html" %> \ _ -> do
+  "ui/dist/index.html" %> \_ -> do
     needDirectoryFiles
       "ui"
       [ "src//*.js",
@@ -132,7 +157,20 @@ runShake pwd uid = shakeArgs options $ do
         "webpack.config.js",
         ".babelrc"
       ]
-    cmd (Cwd "ui") "npm" ["run", "build"]
+    cmd
+      "docker"
+      [ "run",
+        "--rm",
+        "-t",
+        "-v",
+        (pwd </> "ui") <> ":/work",
+        "-w",
+        "/work",
+        "-e",
+        "LOCAL_USER_ID=" <> uid,
+        "pankzsoft/haskell-base",
+        "npm i && npm run build"
+      ]
 
 needDirectoryFiles dir patterns =
-  need =<< getDirectoryFiles "" ((dir <>) <$> patterns)
+  need =<< getDirectoryFiles "" ((dir </>) <$> patterns)

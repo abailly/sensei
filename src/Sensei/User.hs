@@ -16,8 +16,10 @@ import Data.Time
 import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
 import Numeric.Natural
+import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.Color
 import Sensei.Flow
+import Sensei.Project (ProjectName, Regex)
 
 -- | Customizable parameters for registering and displaying flows.
 --  This configuration defines user-specific configurations that are used
@@ -31,11 +33,10 @@ data UserProfile = UserProfile
     --  but for display and analysis purpose we need to be able to relate absolute timestamps
     --  with meaningful time.
     userTimezone :: TimeZone,
+    -- | This user's standard start of day time. This parameter is used when displaying timelines
+    --  for flows and other events, to bound the scale the timeline is displayed with. It's also
+    --  used when normalising and grouping flows in a timeline.
     userStartOfDay :: TimeOfDay,
-    -- ˆThis user's standard start of day time. This parameter is used when displaying timelines
-    -- for flows and other events, to bound the scale the timeline is displayed with. It's also
-    -- used when normalising and grouping flows in a timeline.
-
     -- | This user's standard end of (work) day time. This is used to normalise daily timelines, either to add
     --  some dummy flow or to compute the end of flows which have not been properly "closed".
     --  If one forgets to `End` the day then this parameter will be used to limit the duration of "unfinished"
@@ -48,7 +49,17 @@ data UserProfile = UserProfile
     -- | Custom definition of command aliases
     --  This maps an alias to an actual, usually absolute, command path. When `ep` is invoked as the alias,
     --  it actually will wrap referenced program's execution in the current environment.
-    userCommands :: Maybe (Map.Map String String)
+    userCommands :: Maybe (Map.Map String String),
+    -- | Custom definition of projects
+    -- This maps a regular expression to some project identifier. The regular expression is used to assign
+    -- traces to projects based on the directory they are tied to.
+    userProjects :: Map.Map Regex ProjectName,
+    -- | User's password, salted and hashed.
+    -- The profile stores the user's password properly salted and hashed with bcrypt.
+    userPassword :: (Encoded Base64, Encoded Base64),
+    -- | The user unique identifier.
+    -- This is an hexadecimal string representing 16 bytes
+    userId :: Encoded Hex
   }
   deriving (Eq, Show, Generic)
 
@@ -64,8 +75,32 @@ defaultProfile =
       userStartOfDay = TimeOfDay 08 00 00,
       userEndOfDay = TimeOfDay 18 30 00,
       userFlowTypes = Nothing,
-      userCommands = Nothing
+      userCommands = Nothing,
+      userPassword = ("", ""),
+      userProjects = mempty,
+      userId = ""
     }
+
+instance ToJSON UserProfile where
+  toJSON UserProfile {..} =
+    object
+      [ "userName" .= userName,
+        "userTimezone" .= userTimezone,
+        "userStartOfDay" .= userStartOfDay,
+        "userEndOfDay" .= userEndOfDay,
+        "userFlowTypes" .= userFlowTypes,
+        "userCommands" .= userCommands,
+        "userPassword" .= userPassword,
+        "userId" .= userId,
+        "userProjects" .= userProjects,
+        "userProfileVersion" .= currentVersion
+      ]
+
+instance FromJSON UserProfile where
+  parseJSON =
+    withObject "UserProfile" $ \o -> do
+      version <- (o .: "userProfileVersion") <|> pure 0
+      parseJSONFromVersion version o
 
 parseJSONFromVersion :: Natural -> Object -> Parser UserProfile
 parseJSONFromVersion v o =
@@ -76,6 +111,9 @@ parseJSONFromVersion v o =
     <*> o .: "userEndOfDay"
     <*> parseFlowTypes
     <*> parseCommands
+    <*> parseProjects
+    <*> parsePassword
+    <*> parseId
   where
     parseFlowTypes =
       case v of
@@ -93,23 +131,20 @@ parseJSONFromVersion v o =
         then pure Nothing
         else o .: "userCommands"
 
-instance ToJSON UserProfile where
-  toJSON UserProfile {..} =
-    object
-      [ "userName" .= userName,
-        "userTimezone" .= userTimezone,
-        "userStartOfDay" .= userStartOfDay,
-        "userEndOfDay" .= userEndOfDay,
-        "userFlowTypes" .= userFlowTypes,
-        "userCommands" .= userCommands,
-        "userProfileVersion" .= currentVersion
-      ]
+    parsePassword =
+      if v <= 5
+        then pure ("", "")
+        else o .: "userPassword"
 
-instance FromJSON UserProfile where
-  parseJSON =
-    withObject "UserProfile" $ \o -> do
-      version <- (o .: "userProfileVersion") <|> pure 0
-      parseJSONFromVersion version o
+    parseId =
+      if v <= 6
+        then pure ""
+        else o .: "userId"
+
+    parseProjects =
+      if v <= 7
+        then pure mempty
+        else o .: "userProjects"
 
 instance ToJSON TimeZone where
   toJSON = String . Text.pack . iso8601Show

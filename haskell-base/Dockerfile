@@ -9,15 +9,19 @@ ENV DEBIAN_FRONTEND noninteractive
 # from https://github.com/inversepath/usbarmory-debian-base_image/issues/9
 RUN mkdir ~/.gnupg && echo "disable-ipv6" >> ~/.gnupg/dirmngr.conf
 
-RUN apt-get update && \
+RUN apt-get  --allow-releaseinfo-change update && \
     apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git
 RUN echo 'deb http://ppa.launchpad.net/hvr/ghc/ubuntu trusty main' > /etc/apt/sources.list.d/ghc.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F6F88286 && \
     apt-get update && \
-    apt-get install -y --no-install-recommends zlib1g-dev libtinfo-dev libsqlite3-0 libsqlite3-dev ca-certificates g++ git curl netbase build-essential make libgmp3-dev
+    apt-get install -y --no-install-recommends zlib1g-dev libtinfo-dev libsqlite3-0 libsqlite3-dev ca-certificates g++ git curl netbase build-essential make libgmp3-dev ruby ruby-dev rubygems
 
-RUN curl -fSL https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64.tar.gz -o stack.tar.gz && \
-    curl -fSL https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64.tar.gz.asc -o stack.tar.gz.asc
+# install fpm to build debian packages
+# from https://github.com/TorXakis/TorXakis/blob/develop/ci/mk-package/ubuntu/19.04/Dockerfile
+RUN gem install --no-ri --no-rdoc fpm
+
+RUN curl -fSL https://github.com/commercialhaskell/stack/releases/download/v2.7.1/stack-2.7.1-linux-x86_64.tar.gz -o stack.tar.gz && \
+    curl -fSL https://github.com/commercialhaskell/stack/releases/download/v2.7.1/stack-2.7.1-linux-x86_64.tar.gz.asc -o stack.tar.gz.asc
 
 # generated with:
 # gpg --keyserver ha.pool.sks-keyservers.net --recv-keys C5705533DA4F78D8664B5DC0575159689BEFB442 && \
@@ -34,13 +38,17 @@ RUN tar -xf stack.tar.gz -C /usr/local/bin --strip-components=1 && \
 RUN useradd --shell /bin/bash -u 500 -o -c "" -m user
 USER user
 
-ARG STACKAGE_VERSION=lts-16.18
+ARG STACKAGE_VERSION=lts-18.2
 
 RUN /usr/local/bin/stack setup --resolver $STACKAGE_VERSION
 
 VOLUME /home/user/.stack
 
 USER root
+
+# Install node-js and npm to build UI
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
+RUN apt-get update -y && apt-get install -y nodejs
 
 # assumes entry.sh is in the context
 COPY entry.sh /usr/local/bin/entry.sh

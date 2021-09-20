@@ -1,40 +1,45 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+
 -- | A "database" stored as a simple flat-file containing one line of JSON-formatted data per record.
 module Sensei.DB.File
-  ( FileDB(..), runDB,
+  ( FileDB (..),
+    runDB,
     getDataFile,
-    readProfileFile, writeProfileFile,
+    readProfileFile,
+    writeProfileFile,
+
     -- * Utility for migration
-    readAll
+    readAll,
   )
 where
 
-import Control.Monad.Reader
 import qualified Control.Exception.Safe as Exc
+import Control.Monad.Reader
 import Data.Aeson hiding (Options)
-import Data.Bifunctor
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import Data.Text (Text, pack)
-import Data.Time
+import Data.Functor ((<&>))
+import Data.Text (Text)
+import Sensei.API
 import Sensei.DB
 import Sensei.IO
-import Sensei.API
 import System.Directory
 import System.FilePath ((</>))
 import System.IO
 
-data FileDBPaths = FileDBPaths { storageFile :: FilePath,
-                                 configDir :: FilePath
-                               }
+data FileDBPaths = FileDBPaths
+  { storageFile :: FilePath,
+    configDir :: FilePath
+  }
 
 {-# DEPRECATED FileDB "This backend is deprecated in favor of Sensei.DB.SQLite" #-}
-newtype FileDB a = FileDB { unFileDB :: ReaderT FileDBPaths IO a }
+
+newtype FileDB a = FileDB {unFileDB :: ReaderT FileDBPaths IO a}
   deriving (Functor, Applicative, Monad, Exc.MonadThrow, Exc.MonadCatch, MonadIO)
 
 runDB :: FilePath -> FilePath -> FileDB a -> IO a
@@ -58,7 +63,8 @@ instance DB FileDB where
   readNotes u _ = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
   searchNotes = undefined
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
-  readProfile = FileDB $ (asks configDir >>= liftIO . readProfileFile)
+  readProfile _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)
+  insertProfile _ = undefined
 
 -- | Initialise a log store at given path
 initLogStorageFile ::
@@ -67,10 +73,12 @@ initLogStorageFile output = do
   hasFile <- doesFileExist output
   unless hasFile $ openFile output WriteMode >>= hClose
 
-readAll :: FileDB [Event]
+readAll :: FileDB [EventView]
 readAll = FileDB $ do
   file <- asks storageFile
-  liftIO $ withBinaryFile file ReadMode $ loop (:) "" []
+  liftIO $ withBinaryFile file ReadMode $ \ hdl -> reverse . snd <$> loop appendEventView "" (0, []) hdl
+  where
+    appendEventView e (index, acc) = (index + 1, EventView index e : acc)
 
 writeEventFile :: Event -> FilePath -> IO ()
 writeEventFile event file =
@@ -84,27 +92,27 @@ writeJSON file jsonData =
 
 -- | Read all the views for a given `UserProfile`
 readViewsFile :: UserProfile -> FilePath -> IO [FlowView]
-readViewsFile UserProfile {userName, userTimezone, userEndOfDay} file =
-  withBinaryFile file ReadMode $ loop (flowViewBuilder userName userTimezone userEndOfDay) userName []
+readViewsFile UserProfile {userName, userTimezone, userEndOfDay, userProjects} file =
+  withBinaryFile file ReadMode $ \ hdl -> reverse <$> loop (flowViewBuilder userName userTimezone userEndOfDay userProjects) userName [] hdl
 
-loop :: FromJSON b => (b -> [a] -> [a]) -> Text -> [a] -> Handle -> IO [a]
+loop :: FromJSON b => (b -> a -> a) -> Text -> a -> Handle -> IO a
 loop g usr acc hdl = do
   res <- Exc.try $ BS.hGetLine hdl
   case res of
-    Left (_ex :: Exc.IOException) -> pure (reverse acc)
+    Left (_ex :: Exc.IOException) -> pure acc
     Right ln ->
       case eitherDecode (LBS.fromStrict ln) of
         Left _err -> loop g usr acc hdl
         Right b -> loop g usr (g b acc) hdl
 
-readNotesFile :: UserProfile -> FilePath -> IO [(LocalTime, Text)]
-readNotesFile UserProfile {userName, userTimezone} file =
-  withBinaryFile file ReadMode $ loop (notesViewBuilder userName userTimezone) userName []
+readNotesFile :: UserProfile -> FilePath -> IO [NoteView]
+readNotesFile UserProfile {userName, userTimezone, userProjects} file =
+  withBinaryFile file ReadMode $ \ hdl -> reverse <$> loop (notesViewBuilder userName userTimezone userProjects) userName [] hdl
 
 -- | Read all the views for a given `UserProfile`
 readCommandsFile :: UserProfile -> FilePath -> IO [CommandView]
-readCommandsFile UserProfile {userName, userTimezone} file =
-  withBinaryFile file ReadMode $ loop (commandViewBuilder userTimezone) userName []
+readCommandsFile UserProfile {userName, userTimezone, userProjects} file =
+  withBinaryFile file ReadMode $ \ hdl -> reverse <$> loop (commandViewBuilder userTimezone userProjects) userName [] hdl
 
 -- | Read user profile file from given directory
 -- The `UserProfile` is expected to be stored as a JSON-encoded file named `config.json`
@@ -113,13 +121,13 @@ readCommandsFile UserProfile {userName, userTimezone} file =
 -- Note the /current user/ is the owner of the process executing this function which
 -- should be the same as the one running @ep@ command line.
 readProfileFile ::
-  FilePath -> IO (Either Text UserProfile)
+  FilePath -> IO UserProfile
 readProfileFile home = do
   let configFile = home </> "config.json"
-  existF <- doesFileExist configFile
-  if (not existF)
-    then pure $ Left (pack $ "config file " <> configFile <> " does not exist")
-    else first pack . eitherDecode <$> LBS.readFile configFile
+  content <- eitherDecode <$> LBS.readFile configFile
+  case content of
+    Left e -> Exc.throwIO $ userError ("invalid configuration file '" <> configFile <> "': " <> show e)
+    Right p -> pure p
 
 writeProfileFile ::
   UserProfile -> FilePath -> IO ()
@@ -133,7 +141,7 @@ senseiLog = (</> ".sensei.log") <$> getHomeDirectory
 
 getDataFile :: IO FilePath
 getDataFile = do
-  newLog <- getDataDirectory >>= pure . (</> "sensei.log")
+  newLog <- getDataDirectory <&> (</> "sensei.log")
   maybeMigrateOldLog newLog
   pure newLog
   where

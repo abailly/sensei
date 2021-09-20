@@ -7,6 +7,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Sensei.FlowView where
 
@@ -16,25 +18,41 @@ import qualified Data.List as List
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
+import Data.Text.ToText(ToText(..))
 import Data.Time
 import GHC.Generics
 import Sensei.Flow
+import Sensei.Project
 import Sensei.Summary
 import Sensei.Time
 import Sensei.Utils
 
+
+-- | A view on a single event
+data EventView = EventView { index :: Natural, event :: Event }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
 -- | A single note
 data NoteView = NoteView
   { noteStart :: LocalTime,
-    noteContent :: Text
+    noteView :: Text,
+    noteProject :: ProjectName,
+    noteTags :: [Tag]
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
+newtype Tag = Tag Text
+  deriving newtype (Eq, Show, ToJSON, FromJSON)
+
+instance ToText Tag where
+  toText (Tag t) = t
+  
 -- | A view of an executed command
 data CommandView = CommandView
   { commandStart :: LocalTime,
     commandProcess :: Text,
-    commandElapsed :: NominalDiffTime
+    commandElapsed :: NominalDiffTime,
+    commandProject :: ProjectName
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
@@ -46,15 +64,16 @@ instance HasSummary CommandView Text where
       |> fmap (\cmds@(f :| _) -> (commandProcess f, sum $ fmap commandElapsed cmds))
 
 mkCommandView ::
-  TimeZone -> Event -> Maybe CommandView
-mkCommandView tz (EventTrace Trace {..}) =
+  TimeZone -> ProjectsMap -> Event -> Maybe CommandView
+mkCommandView tz projectsMap (EventTrace Trace {..}) =
   Just
     CommandView
       { commandStart = utcToLocalTime tz _traceTimestamp,
         commandProcess = _traceProcess,
-        commandElapsed = _traceElapsed
+        commandElapsed = _traceElapsed,
+        commandProject = projectsMap `selectProject` _traceDirectory
       }
-mkCommandView _ _ = Nothing
+mkCommandView _ _ _ = Nothing
 
 commandInPeriod ::
   Maybe LocalTime -> Maybe LocalTime -> CommandView -> Bool
@@ -67,7 +86,8 @@ commandInPeriod _ _ = undefined
 data FlowView = FlowView
   { flowStart :: LocalTime,
     flowEnd :: LocalTime,
-    viewType :: FlowType
+    viewType :: FlowType,
+    flowProject :: ProjectName
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
@@ -76,17 +96,17 @@ flowInPeriod ::
 flowInPeriod (Just lb) (Just ub) = withinPeriod lb ub flowStart
 flowInPeriod _ _ = undefined
 
-appendFlow :: TimeZone -> TimeOfDay -> Event -> [FlowView] -> [FlowView]
-appendFlow _ _ (EventFlow (Flow {_flowType = End})) [] = []
-appendFlow tz _ (EventFlow (Flow {_flowType = End, ..})) (v : vs) =
+appendFlow :: TimeZone -> TimeOfDay -> ProjectsMap -> EventView -> [FlowView] -> [FlowView]
+appendFlow _ _ _ (EventView{event = EventFlow (Flow {_flowType = End})}) [] = []
+appendFlow tz _ _ (EventView{event = EventFlow (Flow {_flowType = End, ..})}) (v : vs) =
   v {flowEnd = utcToLocalTime tz _flowTimestamp} : vs
-appendFlow tz dayEnd (EventFlow (Flow {..})) views =
-  let view = FlowView st st _flowType
+appendFlow tz dayEnd projectsMap (EventView{event = EventFlow (Flow {..})}) views =
+  let view = FlowView st st _flowType (projectsMap `selectProject` _flowDir)
       st = utcToLocalTime tz _flowTimestamp
    in case views of
         (v : vs) -> view : fillFlowEnd dayEnd v st : vs
         [] -> [view]
-appendFlow _ _ _ views = views
+appendFlow _ _ _ _ views = views
 
 -- OUCH
 fillFlowEnd :: TimeOfDay -> FlowView -> LocalTime -> FlowView
@@ -111,23 +131,23 @@ fillFlowEnd endOfDay v st
 -- 2. All `FlowView` are for the same day
 normalizeViewsForDay :: LocalTime -> LocalTime -> [FlowView] -> [FlowView]
 normalizeViewsForDay startOfDay endOfDay [] =
-  [FlowView startOfDay endOfDay Other]
-normalizeViewsForDay startOfDay endOfDay views@(st : _) =
+  [FlowView startOfDay endOfDay Other ""]
+normalizeViewsForDay startOfDay endOfDay views@(FlowView {flowStart, flowProject} : _) =
   let st' =
-        if flowStart st > startOfDay
-          then [FlowView startOfDay (flowStart st) Other]
+        if flowStart > startOfDay
+          then [FlowView {flowStart = startOfDay, flowEnd = flowStart, viewType = Other, flowProject}]
           else []
       end' = normalizeLastView endOfDay views
    in st' <> end'
 
 normalizeLastView :: LocalTime -> [FlowView] -> [FlowView]
 normalizeLastView _ [] = []
-normalizeLastView endOfDay [end] =
-  if flowEnd end < endOfDay
+normalizeLastView endOfDay [end@FlowView {flowStart, flowEnd, flowProject}] =
+  if flowEnd < endOfDay
     then
-      if flowEnd end == flowStart end
+      if flowEnd == flowStart
         then [end {flowEnd = endOfDay}]
-        else [end, FlowView (flowEnd end) endOfDay Other]
+        else [end, FlowView {flowStart = flowEnd, flowEnd = endOfDay, viewType = Other, flowProject}]
     else [end]
 normalizeLastView endOfDay (v : rest@(_ : _)) = v : normalizeLastView endOfDay rest
 

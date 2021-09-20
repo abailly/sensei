@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Swagger-based documentation for `booking` API
@@ -7,7 +8,9 @@ import Control.Lens
 import Data.Swagger hiding (Reference)
 import Data.Text (pack)
 import Data.Time
-import Sensei.API
+import Preface.Codec (Base64, Encoded, Hex)
+import Sensei.API as Sensei
+import Sensei.Server.Auth (SerializedToken)
 import Sensei.Version
 import Servant.Swagger
 import System.Exit
@@ -46,6 +49,8 @@ instance ToParamSchema FlowType where
       & type_ ?~ SwaggerString
       & enum_ ?~ ["End", "Note", "Other", "<any string>"]
 
+instance ToSchema EventView
+
 instance ToSchema FlowView
 
 instance ToSchema NoteView
@@ -62,9 +67,9 @@ instance ToSchema Group
 
 instance ToParamSchema Reference where
   toParamSchema _ =
-        mempty
-          & enum_ ?~ ["latest", "head", "<any natural number>"]
-          & type_ .~ Just SwaggerString
+    mempty
+      & enum_ ?~ ["latest", "head", "<any natural number>"]
+      & type_ .~ Just SwaggerString
 
 instance ToSchema a => ToSchema (GroupViews a) where
   declareNamedSchema proxy =
@@ -73,9 +78,67 @@ instance ToSchema a => ToSchema (GroupViews a) where
 instance ToSchema Versions
 
 instance ToSchema Event
+
 instance ToSchema Flow
+
 instance ToSchema Trace
+
 instance ToSchema NoteFlow
+
+instance ToSchema SerializedToken where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "SerializedToken") $
+        mempty
+          & description
+            ?~ "A JWT Token in its serialized form, eg. 3 sequneces of base64-encoded strings separated by dots \
+               \ which contain JSON objects. See https://jwt.io/introduction for more details."
+          & type_ ?~ SwaggerString
+
+instance ToSchema (Encoded Base64) where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Base64") $
+        mempty
+          & description
+            ?~ "A base64-encoded bytestring."
+          & type_ ?~ SwaggerString
+
+instance ToSchema (Encoded Hex) where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Hex") $
+        mempty
+          & description
+            ?~ "A hex-encoded bytestring."
+          & type_ ?~ SwaggerString
+
+instance ToSchema Regex where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Regex") $
+        mempty
+          & description
+            ?~ "A regular expression."
+          & type_ ?~ SwaggerString
+
+instance ToSchema ProjectName where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "ProjectName") $
+        mempty
+          & description
+            ?~ "A project name."
+          & type_ ?~ SwaggerString
+
+instance ToSchema Sensei.Tag where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Tag") $
+        mempty
+          & description
+            ?~ "An arbitrary tag"
+          & type_ ?~ SwaggerString
 
 senseiSwagger :: Swagger
 senseiSwagger =

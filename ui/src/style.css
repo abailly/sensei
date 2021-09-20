@@ -12,6 +12,7 @@ pre {
 
 div#navbar {
     position: fixed;
+    z-index: 100;
     top: 0;
     left: 0;
     width: 100%;
@@ -87,12 +88,36 @@ table.tbl-log td {
     font-size: 80%;
 }
 
+.note-full h4 {
+    display: inline-block;
+    width: 6%;
+    vertical-align: top;
+    color: gray;
+    font-size: 80%;
+    font-style: italic;
+}
+
 .note-content {
     display: inline-block;
     width: 94%;
     vertical-align: top;
 }
 
+.note-full h4.note-tags {
+    width: 20%;
+}
+
+.note-tag {
+    display: inline-block;
+    background-color: #e13c36;
+    color: white;
+    vertical-align: top;
+    font-size: 80%;
+    font-style: italic;
+    border-radius: 4px;
+    margin: .2em;
+    padding: 0.2em .6em 0.2em .6em;
+};
 
 .timeline-controls {
     padding-bottom: 12px;
@@ -292,7 +317,7 @@ div [id^='note-button-'] i {
     text-align: center;
 }
 
-div [id^='note-desc-'] div, h4 {
+div [id^='note-desc-'] div h4 {
     padding-bottom: 8px;
     border-bottom: 1px solid #e9ecef;
 }
@@ -349,4 +374,46 @@ span.date {
     border-left: 0.5rem outset gray;
     padding-left: 0.5rem;
     text-style: italic;
+}
+
+div#login {
+    width: 50%;
+    min-width: 10em;
+    margin: 1em auto 1em auto;
+}
+
+div#login .field label {
+    width: 30%;
+    text-align: right;
+    margin-right: 1em;
+    display: inline-block;
+}
+
+div#login .field input {
+    width: 60%;
+}
+
+div#login div {
+    margin-bottom: .5em;
+}
+
+div#login .control {
+    padding-left: calc(30% + 1em);
+}
+
+div#login .control button {
+    background-color: black;
+    color: white;
+    font-weight: bold;
+    padding: .3em;
+    border-radius: 4px;
+}
+
+button.btn-next , button.btn-prev {
+    background-color: black;
+    color: white;
+    font-weight: bold;
+    padding: .3em;
+    border-radius: 4px;
+    margin: .3em;
 }

@@ -12,7 +12,7 @@ resource "google_dns_record_set" "sensei" {
   type         = "A"
   ttl          = 300
 
-  rrdatas = ["${google_compute_address.sensei-address.address}"]
+  rrdatas = [google_compute_address.sensei-address.address]
 }
 
 output "name_servers" {

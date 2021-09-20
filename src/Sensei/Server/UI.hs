@@ -1,13 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
--- |Serves either statically embedded files or files from local
--- filesystem depending on the environment
+
+-- | Serves either statically embedded files or files from local
+--  filesystem depending on the environment
 module Sensei.Server.UI where
 
+import qualified Data.ByteString as BS
+import Data.FileEmbed
 import Network.Wai
 import Network.Wai.Application.Static
 import Sensei.Server.Config
-import qualified Data.ByteString as BS
-import Data.FileEmbed
 
 uiFiles :: [(FilePath, BS.ByteString)]
 uiFiles = $(makeRelativeToProject "ui/dist" >>= embedDir)

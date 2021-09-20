@@ -43,7 +43,7 @@ resource "null_resource" "sensei" {
 
   provisioner "remote-exec" {
     inline = [
-      "IMAGE_ID=${var.image_id} docker-compose -f /home/curry/docker-compose.yml up -d"
+      "IMAGE_ID=${var.image_id} SENSEI_SERVER_KEY='${var.server_key}' docker-compose -f /home/curry/docker-compose.yml up -d"
     ]
 
     connection {

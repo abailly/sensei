@@ -1,6 +1,11 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Handles migration of DB schema and data in SQLite.
 --  This is heavily inspired by <https://github.com/ameingast/postgresql-simple-migration postgressql-simple-migration>
@@ -10,9 +15,18 @@ module Sensei.DB.SQLite.Migration where
 
 import Control.Exception.Safe
 import Control.Monad.Reader
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text, pack)
+import qualified Data.Text as Text
 import Database.SQLite.Simple
+import GHC.Generics (Generic)
+import Preface.Log (LoggerEnv, logInfo)
 import Preface.Utils
+
+-- Orphans
+deriving newtype instance ToJSON Query
+
+deriving newtype instance FromJSON Query
 
 createMigrationTable :: Query
 createMigrationTable =
@@ -35,6 +49,7 @@ tableExists tblName cnx = do
 data MigrationResult
   = MigrationSuccessful
   | MigrationFailed {reason :: Text}
+  deriving (Eq, Show, Read, Generic, ToJSON, FromJSON)
 
 initialMigration :: Connection -> IO MigrationResult
 initialMigration cnx = do
@@ -44,17 +59,18 @@ initialMigration cnx = do
 
 data Migration
   = InitialMigration
-  | Migration {name :: Text, apply :: Query, rollback :: Query}
+  | Migration {name :: Text, apply :: [Query], rollback :: Query}
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 instance Hashable Migration where
   hashOf InitialMigration = hashOf ("InitialMigration" :: Text)
-  hashOf Migration {..} = hashOf name <> hashOf (fromQuery apply) <> hashOf (fromQuery rollback)
+  hashOf Migration {..} = hashOf name <> hashOf (Text.concat $ fmap fromQuery apply) <> hashOf (fromQuery rollback)
 
 createLog :: Migration
 createLog =
   Migration
     "createLog"
-    ( mconcat
+    [ mconcat
         [ "create table if not exists event_log ",
           "( id integer primary key",
           ", timestamp text not null",
@@ -63,14 +79,14 @@ createLog =
           ", flow_data text not null",
           ");"
         ]
-    )
+    ]
     "drop table event_log;"
 
 createConfig :: Migration
 createConfig =
   Migration
     "createLog"
-    ( mconcat
+    [ mconcat
         [ "create table if not exists config_log ",
           "( id integer primary key",
           ", timestamp text not null",
@@ -80,22 +96,82 @@ createConfig =
           ", value text not null",
           ");"
         ]
-    )
+    ]
     "drop table config_log;"
 
 createNotesSearch :: Migration
 createNotesSearch =
   Migration
     "createNotesSearch"
-    "create virtual table notes_search using fts5(id, note);"
+    ["create virtual table notes_search using fts5(id, note);"]
     "drop table notes_search;"
 
 populateSearch :: Migration
 populateSearch =
   Migration
     "populateSearch"
-    "insert into notes_search select id,json_extract(flow_data, '$._flowNote') from event_log where flow_type = 'Note';"
+    ["insert into notes_search select id,json_extract(flow_data, '$._flowNote') from event_log where flow_type = 'Note';"]
     "delete from notes_search;"
+
+createUsers :: Migration
+createUsers =
+  Migration
+    "createUsersTable"
+    [ mconcat
+        [ "create table if not exists users ",
+          "( id integer primary key",
+          ", uid text not null",
+          ", user text not null",
+          ", profile text not null",
+          ");"
+        ]
+    ]
+    "drop table users;"
+
+addUserInEventLog :: Migration
+addUserInEventLog =
+  Migration
+    "addUserInEventLog"
+    [ mconcat
+        [ "alter table event_log  ",
+          " add column user text not null default '';"
+        ]
+    ]
+    ( mconcat
+        [ "alter table event_log  ",
+          " drop column user;"
+        ]
+    )
+
+updateUserInEventLog :: Migration
+updateUserInEventLog =
+  Migration
+    "updateUserInEventLog"
+    [ "create table tmp_users ( id integer primary key, user text not null);",
+      "insert into tmp_users select l.id as id,  j.value  as user from event_log as l, json_each(l.flow_data,'$._flowUser') as j;",
+      "insert into tmp_users select l.id as id,  j.value  as user from event_log as l, json_each(l.flow_data,'$.traceUser') as j;",
+      "update event_log set user = (select user from tmp_users where tmp_users.id = id);",
+      "drop table tmp_users;"
+    ]
+    ""
+
+addUniqueConstraintToUsers :: Migration
+addUniqueConstraintToUsers =
+  Migration
+    "addUniqueConstraintToUsers"
+    [ mconcat
+        [ "create table if not exists tmp_users ",
+          "( id integer primary key",
+          ", uid text unique not null",
+          ", user text unique not null",
+          ", profile text not null",
+          ");"
+        ],
+      "insert into tmp_users select * from users;",
+      "drop table users;",
+      "alter table tmp_users rename to users;"
+    ]
+    ""
 
 runMigration ::
   Connection -> MigrationResult -> Migration -> IO MigrationResult
@@ -125,10 +201,22 @@ applyMigration InitialMigration cnx = initialMigration cnx
 applyMigration m@Migration {..} cnx = do
   let h = hashOf m
       q = "insert into schema_migrations (filename, checksum) values (?,?)"
-  execute_ cnx apply
-  execute cnx q (name, toText h)
+  withExclusiveTransaction cnx $ do
+    mapM_ (execute_ cnx) apply
+    execute cnx q (name, toText h)
   pure MigrationSuccessful
 
-runMigrations :: Connection -> [Migration] -> IO MigrationResult
-runMigrations cnx =
-  foldM (runMigration cnx) MigrationSuccessful
+data RunMigration
+  = RunningMigration {migration :: Migration}
+  | RanMigration {migration :: Migration, result :: MigrationResult}
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+runMigrations :: LoggerEnv -> Connection -> [Migration] -> IO MigrationResult
+runMigrations logger cnx =
+  foldM doRunMigration MigrationSuccessful
+  where
+    doRunMigration result migration = do
+      logInfo logger (RunningMigration migration)
+      result' <- runMigration cnx result migration
+      logInfo logger (RanMigration migration result')
+      pure result'

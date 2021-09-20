@@ -1,5 +1,5 @@
 name:                sensei
-version:             0.30.0
+version:             0.37.0
 synopsis:            A tool to collect information about one's coding process
 homepage:            https://github.com/abailly/sensei#readme
 license:             BSD3
@@ -10,6 +10,7 @@ copyright:           2020 Arnaud Bailly
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
+                     CHANGELOG.md
 cabal-version:       >=2.0
 
 -- To avoid duplicated efforts in documentation and dealing with the
@@ -23,10 +24,9 @@ library
                      , Sensei.Client
                      , Sensei.App
                      , Sensei.Server
-                     , Sensei.Server.Links
-                     , Sensei.Server.UI
-                     , Sensei.Server.Config
-                     , Sensei.Group, Sensei.CLI
+                     , Sensei.Group
+                     , Sensei.CLI
+                     , Sensei.IO
                      , Sensei.Time
                      , Sensei.Version
                      , Sensei.Wrapper
@@ -36,8 +36,10 @@ library
                      , Sensei.DB.Log
                      , Sensei.DB.SQLite
   other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
+                 Sensei.Server.Auth, Sensei.Server.Options, Sensei.Server.Links, Sensei.Server.UI, Sensei.Server.Config,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
-                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.IO, Sensei.Server.Tags
+                 Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags, Sensei.CLI.Options,
+                 Sensei.Project
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , aeson-pretty
@@ -48,14 +50,17 @@ library
                      , case-insensitive
                      , colour
                      , containers
+                     , cryptonite
                      , directory
                      , file-embed
                      , filepath
                      , hdaemonize
                      , http-client
+                     , http-client-tls
                      , http-link-header
                      , http-types
                      , insert-ordered-containers
+                     , jose
                      , lens
                      , mtl
                      , optparse-applicative
@@ -63,15 +68,18 @@ library
                      , prettyprinter
                      , process
                      , random
+                     , regex-tdfa
                      , safe-exceptions
                      , servant
+                     , servant-auth
                      , servant-client
                      , servant-client-core
-                     , servant-mock
                      , servant-server
                      , servant-server-base
+                     , servant-auth-server
                      , servant-swagger
                      , sqlite-simple
+                     , stm
                      , swagger2
                      , template-haskell
                      , text
@@ -103,6 +111,7 @@ test-suite sensei-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       Sensei.CLISpec
+                     , Sensei.ClientSpec
                      , Sensei.ColorSpec
                      , Sensei.FlowSpec
                      , Sensei.FlowAPISpec
@@ -110,9 +119,11 @@ test-suite sensei-test
                      , Sensei.LogSpec
                      , Sensei.DurationSpec
                      , Sensei.ServerSpec
+                     , Sensei.Server.AuthSpec
                      , Sensei.Server.LinksSpec
                      , Sensei.Builder
                      , Sensei.TestHelper
+                     , Sensei.ProjectSpec
                      , Sensei.UISpec
                      , Sensei.UserSpec
                      , Sensei.VersionSpec
@@ -120,13 +131,16 @@ test-suite sensei-test
                      , Sensei.WrapperSpec
                      , Sensei.DB.Model
                      , Sensei.DB.SQLiteSpec
+                     , Sensei.Generators
   build-depends:       aeson
                      , base
                      , binary
                      , bytestring
+                     , base64-bytestring
                      , case-insensitive
                      , colour
                      , containers
+                     , cookie
                      , directory
                      , filepath
                      , hspec
@@ -135,6 +149,7 @@ test-suite sensei-test
                      , http-link-header
                      , http-media
                      , http-types
+                     , jose
                      , lens
                      , mtl
                      , prettyprinter
@@ -145,6 +160,7 @@ test-suite sensei-test
                      , servant-client-core
                      , servant-server
                      , servant-server-base
+                     , sqlite-simple
                      , text
                      , time
                      , time-lens

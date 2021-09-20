@@ -6,34 +6,37 @@ import { pagination } from './page.js';
 
 function formatTraceEntry(entry) {
   return <tr class='log-entry entry-trace'>
-    <td>{entry.traceTimestamp}</td>
+    <td>{entry.index}</td>
+    <td>{entry.event.traceTimestamp}</td>
     <td>Trace</td>
-    <td>{entry.traceDirectory}</td>
-    <td>{JSON.stringify(entry)}</td>
+    <td>{entry.event.traceDirectory}</td>
+    <td>{JSON.stringify(entry.event)}</td>
   </tr>;
 }
 
 function formatNoteEntry(entry) {
   return <tr class='log-entry entry-note'>
-    <td>{entry.noteTimestamp}</td>
+    <td>{entry.index}</td>
+    <td>{entry.event.noteTimestamp}</td>
     <td>Note</td>
-    <td>{entry.noteDir}</td>
-    <td>{entry.noteContent}</td>
+    <td>{entry.event.noteDir}</td>
+    <td>{entry.event.noteView}</td>
   </tr>;
 }
 
 function formatFlowEntry(entry) {
   const color = colorOf(entry.flowType);
   return <tr class='log-entry entry-flow' style={`background-color: ${color};`} >
-    <td>{entry.flowTimestamp}</td>
+    <td>{entry.index}</td>
+    <td>{entry.event.flowTimestamp}</td>
     <td>Flow</td>
-    <td>{entry.flowDir}</td>
-    <td>{entry.flowType}</td>
+    <td>{entry.event.flowDir}</td>
+    <td>{entry.event.flowType}</td>
   </tr>;
 }
 
 function formatLogEntry(entry) {
-  switch (entry.tag) {
+  switch (entry.event.tag) {
     case 'Trace': return formatTraceEntry(entry);
     case 'Note': return formatNoteEntry(entry);
     case 'Flow': return formatFlowEntry(entry);
@@ -46,12 +49,12 @@ function formatLogEntry(entry) {
 */
 export default function logs(router, container, page) {
   clearElement(container);
-  get(`/api/log/${config.user}?page=${page}`, (logEntries, links) => {
+  get(router, `/api/log/${config.user}?page=${page}`, (logEntries, links) => {
     const logDiv = pagination('log', router, links);
     const logTable =
       <table class='tbl-log'>
         <thead>
-          <tr><th>Timestamp</th><th>Type</th><th>Dir</th><th>Details</th></tr>
+          <tr><th>Index</th><th>Timestamp</th><th>Type</th><th>Dir</th><th>Details</th></tr>
         </thead>
         <tbody>
           {

@@ -45,13 +45,13 @@ const flowData = [
 
 const notes = [{
     "noteStart": "2020-11-16T09:30:00",
-    "noteContent": "# Note\r## Première note"
+    "noteView": "# Note\r## Première note"
 }, {
     "noteStart": "2020-11-16T10:55:00",
-    "noteContent": "# Note\r## Seconde note"
+    "noteView": "# Note\r## Seconde note"
 }, {
     "noteStart": "2020-11-16T12:20:00",
-    "noteContent": "# Note\r## Troisième note"
+    "noteView": "# Note\r## Troisième note"
 }];
 
 describe('Timeline', () => {

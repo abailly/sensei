@@ -1,12 +1,9 @@
-resolver: lts-18.0
+resolver: lts-18.2
 packages:
 - .
 ghc-options:
   "$locals": -fwrite-ide-info
 extra-deps:
 - git: https://github.com/pankzsoft/servant-server-base.git
-  commit: 6ad315372262aba52df07b577eb2a965458861c6
-- sqlite-simple-0.4.18.0@sha256:3ceea56375c0a3590c814e411a4eb86943f8d31b93b110ca159c90689b6b39e5,3002
-- servant-mock-0.8.7@sha256:64cb3e52bbd51ab6cb25e3f412a99ea712c6c26f1efd117f01a8d1664df49c67,2306
-- direct-sqlite-2.3.26@sha256:04e835402f1508abca383182023e4e2b9b86297b8533afbd4e57d1a5652e0c23,3718
+  commit: f20e1cbcc314963c43b11d7f9b3ff2e6922e45c5
 allow-newer: true
