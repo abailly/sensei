@@ -18,11 +18,13 @@ function formatTags(tags) {
 };
 
 function formatNoteDiv(note) {
-  const noteDiv = <div class='note-full'>
-    <h3>{formatISODateTime(LocalDateTime.parse(note.noteStart))} </h3>
-    <h4>{note.noteProject}</h4>
-    {formatTags(note.noteTags)}
-  </div>;
+  const noteDate = formatISODateTime(LocalDateTime.parse(note.noteStart));
+  const noteDiv =
+    <div class='note-full'>
+      <h3><a href={'/notes/' + noteDate}>{noteDate}</a></h3>
+      <h4>{note.noteProject}</h4>
+      {formatTags(note.noteTags)}
+    </div>;
 
   const content = <div class='note-content'>
   </div>;
