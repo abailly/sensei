@@ -116,6 +116,7 @@ test-suite sensei-test
                      , Sensei.FlowSpec
                      , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
+                     , Sensei.GraphSpec
                      , Sensei.LogSpec
                      , Sensei.DurationSpec
                      , Sensei.ServerSpec
@@ -134,6 +135,7 @@ test-suite sensei-test
                      , Sensei.DB.SQLiteSpec
                      , Sensei.Generators
   build-depends:       aeson
+                     , algebraic-graphs
                      , base
                      , binary
                      , bytestring
@@ -166,6 +168,7 @@ test-suite sensei-test
                      , time
                      , time-lens
                      , unix
+                     , vector
                      , wai
                      , wai-extra
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror -fno-warn-orphans
