@@ -48,6 +48,7 @@ module Sensei.DB.SQLite
     SQLiteDB,
     SQLiteDBError (..),
     withBackup,
+    splitDB,
   )
 where
 
@@ -160,6 +161,23 @@ migrateFileDB dbFile configDir = do
       writeAll (fmap API.event events)
       pure $ Right oldLog
 
+-- |Split a single multi-user DB into a number of separate
+-- single-user DBs plus a 'users.sqlite' DB.
+-- Returns a tuple with the users DB and the list of path to the created DBs.
+splitDB :: FilePath -> FilePath -> LoggerEnv -> IO (FilePath, [FilePath])
+splitDB sourceDB targetDir logger = do
+  users <- SQLite.withConnection sourceDB $ \cnx ->
+    SQLite.query_ cnx "select id,uid,user from users;"
+  evs <- runDB sourceDB targetDir logger $ readAll
+  usersDB <- forM users $ \ (_ :: Int, uid :: String, user :: Text) -> do
+    let targetDB = (targetDir </> "sensei" <.> uid <.> "sqlite")
+    runDB (targetDir </> "sensei" <.> uid <.> "sqlite") targetDir logger $ do
+      initSQLiteDB
+      writeAll (filter ((== user) . eventUser) evs)
+    pure targetDB
+
+  pure $ ( "", usersDB)
+  
 -- * Instances
 
 instance ToRow Event where
@@ -169,7 +187,16 @@ instance ToRow Event where
         payload = toField $ decodeUtf8' $ LBS.toStrict $ encode e
         typ = typeOf e
      in [ts, SQLInteger (fromIntegral currentVersion), toField u, toField (typ :: Text), payload]
-
+        
+instance FromRow Event where
+  fromRow = do
+    --id, timestamp, version, flow_type, flow_data
+    _id :: Int <- field
+    _ts :: UTCTime <- field
+    _ver :: Integer <- field
+    _ty :: Text <- field
+    either error id . eitherDecode . encodeUtf8 <$> field
+    
 typeOf :: Event -> Text
 typeOf EventTrace {} = "__TRACE__"
 typeOf (EventFlow Flow {_flowType}) = toText _flowType
@@ -369,6 +396,15 @@ writeAll ::
 writeAll events = do
   SQLiteConfig {logger} <- ask
   withConnection $ \cnx -> forM_ events (insert cnx logger)
+
+readAll ::
+  HasCallStack =>
+  SQLiteDB [Event]
+readAll = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log order by timestamp asc"
+    query_ cnx logger q 
 
 updateNotesIndex ::
   HasCallStack =>
