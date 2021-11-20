@@ -192,12 +192,16 @@ spec = describe "SQLite DB" $ do
         withTempDir $ \dir -> do
           copyFile "test-split.sqlite" tmp
 
-          (_userDB, dbs) <- splitDB tmp dir fakeLogger
+          (userDB, dbs) <- splitDB tmp dir fakeLogger
   
-          res <- forM dbs $ \ db -> do
+          eventsCountPerUser <- forM dbs $ \ db -> do
             SQLite.withConnection db $ \cnx ->
               SQLite.query_ cnx "select count(*) from event_log;"
 
-          res `shouldBe` [[[1 :: Int]],[[1]]]
+          usersCount <- SQLite.withConnection userDB $ \cnx ->
+              SQLite.query_ cnx "select count(*) from users;"
+
+          eventsCountPerUser `shouldBe` [[[1 :: Int]],[[1]]]
+          usersCount `shouldBe` [[2 :: Int]]
 
 
