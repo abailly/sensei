@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.DB.SQLiteSpec where
@@ -134,6 +135,15 @@ spec = describe "SQLite DB" $ do
           getCurrentTime defaultProfile
 
         res `shouldBe` time2
+
+      it "retrieves user by its ID" $ \tempdb -> do
+
+        (uid, profile) <- runDB tempdb "." fakeLogger $ do
+          initLogStorage
+          uid <- insertProfile defaultProfile
+          (uid,) <$> readProfileById uid
+
+        profile `shouldBe` defaultProfile {userId = uid}
 
       it "indexes newly inserted note on the fly" $ \tempdb -> do
         let noteTime = UTCTime (toEnum 50000) 1000

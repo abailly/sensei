@@ -278,6 +278,7 @@ instance DB SQLiteDB where
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
   readProfile = readProfileSQL
+  readProfileById = readProfileByIdSQL
   writeProfile = writeProfileSQL
   insertProfile = insertProfileSQL
 
@@ -547,6 +548,22 @@ readProfileSQL userName = do
         Right p -> pure p
       [] -> throwM $ SQLiteDBError q ("No user " <> userName)
       _ -> throwM $ SQLiteDBError q ("Several users with " <> userName <> ", this is a bug")
+
+readProfileByIdSQL ::
+  HasCallStack =>
+  Encoded Hex ->
+  SQLiteDB UserProfile
+readProfileByIdSQL uid = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select profile from users where uid = ?"
+    res <- query cnx logger q (Only $ toText uid)
+    case res of
+      [[profile]] -> case eitherDecode . encodeUtf8 $ profile of
+        Left e -> throwM $ SQLiteDBError q (pack $ "Fail to decode user profile: " <> e)
+        Right p -> pure p
+      [] -> throwM $ SQLiteDBError q ("No user with id " <> toText uid)
+      _ -> throwM $ SQLiteDBError q ("Several users with id " <> toText uid <> ", this is a bug")
 
 writeProfileSQL ::
   HasCallStack =>

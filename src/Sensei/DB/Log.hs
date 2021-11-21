@@ -16,6 +16,7 @@ import Data.Aeson.Extra (FromJSON)
 import Data.Text (Text)
 import Data.Time (NominalDiffTime, UTCTime)
 import GHC.Generics (Generic)
+import Preface.Codec
 import Preface.Log
 import Sensei.API
 import Sensei.DB
@@ -34,6 +35,7 @@ data DBLog
   | ReadViews {user :: Text}
   | ReadCommands {user :: Text}
   | ReadProfile {user :: Text}
+  | ReadProfileById {uid :: Encoded Hex}
   | WriteProfile {user :: Text}
   | InsertProfile {profile :: UserProfile}
   deriving (Eq, Show, Generic)
@@ -69,5 +71,7 @@ instance (DB m, MonadIO m) => DB (ReaderT LoggerEnv m) where
     ReaderT $ \l -> withLog l (ReadCommands (userName u)) (readCommands u)
   readProfile n =
     ReaderT $ \l -> withLog l (ReadProfile n) (readProfile n)
+  readProfileById u =
+    ReaderT $ \l -> withLog l (ReadProfileById u) (readProfileById u)
   insertProfile p =
     ReaderT $ \l -> withLog l (InsertProfile p) (insertProfile p)
