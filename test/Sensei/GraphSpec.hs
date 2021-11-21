@@ -4,7 +4,8 @@
 
 module Sensei.GraphSpec where
 
-import Algebra.Graph (Graph, overlay, connect, edgeList, empty, vertex)
+import Algebra.Graph (Graph, overlay, connect, vertices, edgeList, vertexList, empty, vertex)
+import Data.Maybe(mapMaybe)
 import Data.Text (Text)
 import Test.Hspec
 
@@ -13,12 +14,13 @@ spec = do
   it "can build a simple graph" $ do
     let ops = mkG [ goal "Foo"
             , goal "Bar"
+            , pop
             , goal "Baz"
             ]
 
         graph = asGraph ops
 
-    edgeList graph `shouldBe` [("Bar", "Foo"), ("Baz", "Bar")]
+    edgeList graph `shouldBe` [("Bar", "Foo"), ("Baz", "Foo")]
 
 mkG :: [Op ] -> G
 mkG = go (G empty empty)
@@ -26,11 +28,18 @@ mkG = go (G empty empty)
     go g [] = g
     go (G full current) (op:ops) = 
       case op of
-        Goal v -> go (G ((vertex v `connect` current) `overlay` full) (vertex v)) ops
-        Pop -> undefined
+        Goal v -> go (G ((newGoal `connect` current) `overlay` full) newGoal) ops
+          where newGoal = vertex v
+        Pop -> go (G full parent) ops
+          where
+            vs = vertexList current
+            es = edgeList full
+            parent = vertices $ mapMaybe (flip lookup es) vs
+              
+
 
 data G =
-  G { unG :: Graph Text, currentG :: Graph Text }
+  G { unG :: Graph Text, currentG :: Graph Text}
                    
 asGraph :: G -> Graph Text
 asGraph = unG
