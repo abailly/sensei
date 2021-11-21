@@ -98,6 +98,10 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   -- This function may fail of there's no profile or the format is incorrect.
   readProfile :: Text -> m UserProfile
 
+  -- | Read a user's profile by its User ID
+  -- This function may fail of there's no profile or the format is incorrect.
+  readProfileById :: Encoded Hex -> m UserProfile
+
   -- | Write an existing user's profile to the DB
   writeProfile :: UserProfile -> m ()
 
