@@ -64,38 +64,35 @@ spec = describe "Users Management" $ do
             eitherDecode jsonProfile
                 `shouldBe` Right defaultProfile
 
-        it "can deserialize version 7 JSON" $ do
-            let uid = toHex "foo"
-                jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userCommands\":null,\"userProfileVersion\":7,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null,\"userPassword\":[\"\",\"\"],\"userId\":\"" <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid)) <> "\"}"
-            eitherDecode jsonProfile
-                `shouldBe` Right defaultProfile{userId = uid}
-
-        it "can deserialize version 9 JSON" $ do
-            let uid = toHex "foo"
-                jsonProfile =
-                    "{\"userStartOfDay\":\"08:00:00\",\"userProjects\":{},\"userCommands\":null,\"userProfileVersion\":9,\"userEndOfDay\":\"18:30:00\",\"userPassword\":[\"\",\"\"],\"userName\":\"arnaud\",\"userId\":\""
-                        <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid))
-                        <> "\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null}"
-            eitherDecode jsonProfile
-                `shouldBe` Right defaultProfile{userId = uid}
-
-        it "can deserialize version 10 JSON" $ do
-            let uid = toHex "foo"
-                jsonProfile =
-                    "{\"userStartOfDay\":\"08:00:00\",\"userProjects\":{},\"userCommands\":null,\"userProfileVersion\":10,\"userEndOfDay\":\"18:30:00\",\"userPassword\":[\"\",\"\"],\"userName\":\"arnaud\",\"userId\":\""
-                        <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid))
-                        <> "\",\"userTimezone\":\"Europe/Paris\",\"userFlowTypes\":null}"
-            eitherDecode jsonProfile
-                `shouldBe` Right defaultProfile{userId = uid}
+        it "can deserialize version 7 JSON" $
+            do
+                let uid = toHex "foo"
+                    jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userCommands\":null,\"userProfileVersion\":7,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null,\"userPassword\":[\"\",\"\"],\"userId\":\"" <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid)) <> "\"}"
+                eitherDecode jsonProfile
+                    `shouldBe` Right defaultProfile{userId = uid}
+        it "can deserialize version 9 JSON" $
+            do
+                let uid = toHex "foo"
+                    jsonProfile =
+                        "{\"userStartOfDay\":\"08:00:00\",\"userProjects\":{},\"userCommands\":null,\"userProfileVersion\":9,\"userEndOfDay\":\"18:30:00\",\"userPassword\":[\"\",\"\"],\"userName\":\"arnaud\",\"userId\":\""
+                            <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid))
+                            <> "\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null}"
+                eitherDecode jsonProfile
+                    `shouldBe` Right defaultProfile{userId = uid}
+        it "can deserialize version 10 JSON" $
+            do
+                let uid = toHex "foo"
+                    jsonProfile =
+                        "{\"userStartOfDay\":\"08:00:00\",\"userProjects\":{},\"userCommands\":null,\"userProfileVersion\":10,\"userEndOfDay\":\"18:30:00\",\"userPassword\":[\"\",\"\"],\"userName\":\"arnaud\",\"userId\":\""
+                            <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid))
+                            <> "\",\"userTimezone\":\"Europe/Paris\",\"userFlowTypes\":null}"
+                eitherDecode jsonProfile
+                    `shouldBe` Right defaultProfile{userId = uid}
 
     withApp app $
         describe "Users API" $ do
-            it "GET /api/users/<user> returns default profile" $ do
-                getJSON "/api/users/arnaud"
-                    `shouldMatchJSONBody` \p -> p{userId = ""} == defaultProfile
-
             it "GET /api/users/<user> returns default profile with user id" $ do
-                uid <- userId <$> runRequest (getUserProfileC "arnaud")
+                uid <- userId <$> runRequest getUserProfileC
                 uid `matches` \(Encoded e) -> BS.length e == 16
 
             it "POST /api/users with profile sets create user profile and returns user id" $ do

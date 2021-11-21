@@ -67,7 +67,7 @@ handleWrapperResult _ (Right ex) = exitWith ex
 
 defaultCommands :: Map.Map String String
 defaultCommands =
-    Map.fromList $
+    Map.fromList
         [ ("docker", "/usr/local/bin/docker")
         , ("dotnet", "/usr/local/share/dotnet/dotnet")
         , ("npm", "/usr/local/bin/npm")
@@ -90,7 +90,7 @@ tryWrapProg ::
     Text ->
     m (Either WrapperError ExitCode)
 tryWrapProg io@WrapperIO{..} curUser prog args currentDir = do
-    commands <- fromMaybe defaultCommands . userCommands <$> send (getUserProfileC curUser)
+    commands <- fromMaybe defaultCommands . userCommands <$> send getUserProfileC
     case Map.lookup prog commands of
         Just realPath -> do
             isFile <- fileExists realPath

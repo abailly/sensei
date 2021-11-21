@@ -62,7 +62,7 @@ runClient ::
   Text ->
   IO ()
 runClient io args realUser config st currentDir = do
-  res <- try @Client.ClientError $ send io (Client.getUserProfileC $ realUser)
+  res <- try @Client.ClientError $ send io Client.getUserProfileC
   let flows = case res of
         Left _err -> Nothing
         Right profile -> userDefinedFlows profile
