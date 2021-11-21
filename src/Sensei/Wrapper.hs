@@ -90,7 +90,7 @@ tryWrapProg ::
   Text ->
   m (Either WrapperError ExitCode)
 tryWrapProg io@WrapperIO {..} curUser prog args currentDir = do
-  commands <- fromMaybe defaultCommands . userCommands <$> send (getUserProfileC curUser)
+  commands <- fromMaybe defaultCommands . userCommands <$> send getUserProfileC
   case Map.lookup prog commands of
     Just realPath -> do
       isFile <- fileExists realPath

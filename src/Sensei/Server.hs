@@ -22,6 +22,7 @@ module Sensei.Server
     queryFlowS,
     getLogS,
     getUserProfileS,
+    getUserProfileIdS,
     putUserProfileS,
     createUserProfileS,
     getFreshTokenS,
@@ -185,6 +186,14 @@ getUserProfileS ::
   forall m. (DB m) => Text -> m UserProfile
 getUserProfileS userName = do
   result <- try @_ @(DBError m) $ readProfile userName
+  case result of
+    Left e -> throwM $ err400 {errBody = encodeUtf8 $ pack $ show e}
+    Right p -> pure p
+
+getUserProfileIdS ::
+  forall m. (DB m) => Encoded Hex -> m UserProfile
+getUserProfileIdS userId = do
+  result <- try @_ @(DBError m) $ readProfileById userId
   case result of
     Left e -> throwM $ err400 {errBody = encodeUtf8 $ pack $ show e}
     Right p -> pure p
