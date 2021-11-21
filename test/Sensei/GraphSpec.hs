@@ -4,9 +4,7 @@
 
 module Sensei.GraphSpec where
 
-import Algebra.Graph (Graph, overlay, connect, vertices, edgeList, vertexList, empty, vertex)
-import Data.Maybe(mapMaybe)
-import Data.Text (Text)
+import Sensei.Graph
 import Test.Hspec
 
 spec :: Spec
@@ -16,38 +14,11 @@ spec = do
             , goal "Bar"
             , pop
             , goal "Baz"
+            , shift
+            , goal "Quux"
             ]
 
         graph = asGraph ops
 
-    edgeList graph `shouldBe` [("Bar", "Foo"), ("Baz", "Foo")]
+    edgeList graph `shouldBe` [("Bar", "Foo"), ("Baz", "Foo"), ("Quux", "Bar"), ("Quux", "Baz")]
 
-mkG :: [Op ] -> G
-mkG = go (G empty empty)
-  where
-    go g [] = g
-    go (G full current) (op:ops) = 
-      case op of
-        Goal v -> go (G ((newGoal `connect` current) `overlay` full) newGoal) ops
-          where newGoal = vertex v
-        Pop -> go (G full parent) ops
-          where
-            vs = vertexList current
-            es = edgeList full
-            parent = vertices $ mapMaybe (flip lookup es) vs
-              
-
-
-data G =
-  G { unG :: Graph Text, currentG :: Graph Text}
-                   
-asGraph :: G -> Graph Text
-asGraph = unG
-
-data Op = Goal Text | Pop
-
-goal :: Text -> Op
-goal = Goal
-
-pop :: Op
-pop = Pop

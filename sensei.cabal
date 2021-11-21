@@ -24,6 +24,7 @@ library
                      , Sensei.Client
                      , Sensei.App
                      , Sensei.Server
+                     , Sensei.Graph
                      , Sensei.Group
                      , Sensei.CLI
                      , Sensei.IO
@@ -43,6 +44,7 @@ library
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , aeson-pretty
+                     , algebraic-graphs
                      , ansi-terminal
                      , async
                      , base
@@ -135,7 +137,6 @@ test-suite sensei-test
                      , Sensei.DB.SQLiteSpec
                      , Sensei.Generators
   build-depends:       aeson
-                     , algebraic-graphs
                      , base
                      , binary
                      , bytestring
