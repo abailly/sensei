@@ -113,9 +113,6 @@ senseiApp env rootUser signal publicAuthKey output configDir logger = do
       prof <- try @_ @SQLiteDBError $ readProfile userName
       when (isLeft prof) $ void $ insertProfile (defaultProfile {userName})
 
-    validateAuth jwtConfig (Authenticated (AuthToken userId _)) = baseServer userId jwtConfig signal
-    validateAuth _ _ = throwAll err401 {errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
-
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
     runApp = Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger
 
@@ -123,28 +120,31 @@ senseiApp env rootUser signal publicAuthKey output configDir logger = do
     handleDBError io =
       io `catch` \(SQLiteDBError _q txt) -> throwM $ err500 {errBody = fromStrict $ encodeUtf8 txt}
 
-baseServer ::
-  (MonadIO m, DB m) =>
-  Encoded Hex -> 
-  JWTSettings ->
-  MVar () ->
-  ServerT (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
-baseServer _profile jwtSettings signal =
-  killS signal
-    :<|> setCurrentTimeS
-    :<|> getCurrentTimeS
-    :<|> ( getFlowS
-             :<|> updateFlowStartTimeS
-             :<|> queryFlowPeriodSummaryS
-             :<|> notesDayS
-             :<|> commandsDayS
-             :<|> queryFlowDayS
-             :<|> queryFlowS
-         )
-    :<|> searchNoteS
-    :<|> (postEventS :<|> getLogS)
-    :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileS :<|> putUserProfileS)
-    :<|> getVersionsS
+    validateAuth jwtConfig (Authenticated (AuthToken userId _)) = 
+      baseServer jwtConfig userId
+    validateAuth _ _ = throwAll err401 {errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
+
+    baseServer ::
+      (MonadIO m, DB m) =>
+      JWTSettings ->
+      Encoded Hex -> 
+      ServerT (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
+    baseServer jwtSettings userId =
+      killS signal
+        :<|> setCurrentTimeS
+        :<|> getCurrentTimeS
+        :<|> ( getFlowS
+                 :<|> updateFlowStartTimeS
+                 :<|> queryFlowPeriodSummaryS
+                 :<|> notesDayS
+                 :<|> commandsDayS
+                 :<|> queryFlowDayS
+                 :<|> queryFlowS
+             )
+        :<|> searchNoteS
+        :<|> (postEventS :<|> getLogS)
+        :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileIdS userId :<|> putUserProfileS)
+        :<|> getVersionsS
 
 -- | This orphan instance is needed because of the 'validateAuth' function above
 instance MonadError ServerError SQLiteDB where

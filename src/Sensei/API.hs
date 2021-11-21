@@ -165,8 +165,7 @@ type GetFreshToken =
     :> Get '[JSON] SerializedToken
 
 type GetUserProfile =
-  Summary "Retrieve a user's profile."
-    :> Capture "user" Text :? "The user to get profile of"
+  Summary "Retrieve current user's profile."
     :> Get '[JSON] UserProfile
 
 type UpdateUserProfile =

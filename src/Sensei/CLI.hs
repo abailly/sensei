@@ -83,8 +83,8 @@ ep config (RecordOptions (FromFile fileName)) curUser _ _ = do
             send config $ postEventC (UserName curUser) evs
         )
         $ chunks events
-ep config (UserOptions GetProfile) usrName _ _ =
-  send config (getUserProfileC usrName) >>= display
+ep config (UserOptions GetProfile) _ _ _ =
+  send config getUserProfileC >>= display
 ep config (UserOptions (SetProfile file)) usrName _ _ = do
   profile <- eitherDecode <$> LBS.readFile file
   case profile of
@@ -103,7 +103,7 @@ ep config (AuthOptions CreateToken) _ _ _ = do
   token <- getConfigDirectory >>= createToken
   writeConfig config {authToken = Just token}
 ep config (AuthOptions SetPassword) userName _ _ = do
-  oldProfile <- send config (getUserProfileC userName)
+  oldProfile <- send config getUserProfileC
   pwd <- readPassword
   newProfile <- setPassword oldProfile pwd
   void $ send config (setUserProfileC userName newProfile)

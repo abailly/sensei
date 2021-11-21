@@ -73,7 +73,7 @@ searchNotesC :: Text -> Maybe Text -> ClientMonad [NoteView]
 getLogC :: Text -> Maybe Natural -> ClientMonad (Headers '[Header "Link" Text] [EventView])
 getFreshTokenC :: Text -> ClientMonad SerializedToken
 createUserProfileC :: UserProfile -> ClientMonad (Encoded Hex)
-getUserProfileC :: Text -> ClientMonad UserProfile
+getUserProfileC :: ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
 ( getFlowC :<|> updateFlowC

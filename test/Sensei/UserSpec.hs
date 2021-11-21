@@ -77,7 +77,7 @@ spec = describe "Users Management" $ do
           `shouldMatchJSONBody` \p -> p {userId = ""} == defaultProfile
 
       it "GET /api/users/<user> returns default profile with user id" $ do
-        uid <- userId <$> runRequest (getUserProfileC "arnaud")
+        uid <- userId <$> runRequest getUserProfileC
         uid `matches` \(Encoded e) -> BS.length e == 16
 
       it "POST /api/users with profile sets create user profile and returns user id" $ do
