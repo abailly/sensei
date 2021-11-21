@@ -180,12 +180,13 @@ instance FromRow EventView where
     _ts :: UTCTime <- field
     ver :: Integer <- field
     ty :: Text <- field
-    event <- if ver >= 5
-             then either error id . eitherDecode . encodeUtf8 <$> field
-             else case ty of
-               "__TRACE__" -> decodeTracev4 <$> field
-               "Note" -> decodeNotev4 <$> field
-               _ -> decodeFlowv4 ty <$> field
+    event <-
+      if ver >= 5
+        then either error id . eitherDecode . encodeUtf8 <$> field
+        else case ty of
+          "__TRACE__" -> decodeTracev4 <$> field
+          "Note" -> decodeNotev4 <$> field
+          _ -> decodeFlowv4 ty <$> field
     pure $ EventView {..}
     where
       decodeTracev4 txt =

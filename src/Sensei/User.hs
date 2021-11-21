@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -23,7 +23,7 @@ import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.Color
 import Sensei.Flow
 import Sensei.Project (ProjectName, Regex)
-import Servant(ToHttpApiData, FromHttpApiData)
+import Servant (FromHttpApiData, ToHttpApiData)
 
 newtype UserName = UserName {unUserName :: Text}
   deriving newtype (Eq, Show, IsString, ToJSON, FromJSON, ToHttpApiData, FromHttpApiData)

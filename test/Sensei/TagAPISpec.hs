@@ -9,5 +9,5 @@ import Test.Hspec
 
 spec :: Spec
 spec = withApp app $ do
-    it "POST /api/tag/<event id> with tags text register tags for given event" $ \ _ -> do
-      pending
+  it "POST /api/tag/<event id> with tags text register tags for given event" $ \_ -> do
+    pending

@@ -8,7 +8,7 @@ import Control.Monad.Reader
 import Data.List (isInfixOf, isPrefixOf)
 import qualified Database.SQLite.Simple as SQLite
 import Preface.Log
-import Preface.Utils(toText)
+import Preface.Utils (toText)
 import Sensei.API
 import Sensei.DB
 import qualified Sensei.DB.File as File
@@ -144,11 +144,14 @@ spec = describe "SQLite DB" $ do
           writeEvent (EventNote note1)
           searchNotes defaultProfile "foo"
 
-        res `shouldBe` [NoteView { noteStart = utcToLocalTime (userTimezone defaultProfile) noteTime,
-                                   noteView = content,
-                                   noteProject = "dir",
-                                   noteTags = []
-                                 }]
+        res
+          `shouldBe` [ NoteView
+                         { noteStart = utcToLocalTime (userTimezone defaultProfile) noteTime,
+                           noteView = content,
+                           noteProject = "dir",
+                           noteTags = []
+                         }
+                     ]
 
   around withTempFile $
     describe "Migrations" $ do
@@ -178,7 +181,7 @@ spec = describe "SQLite DB" $ do
           uid <- runDB tmp dir fakeLogger $ do
             initLogStorage
             insertProfile defaultProfile
-          
+
           void $ File.writeProfileFile defaultProfile dir
 
           runDB tmp dir fakeLogger initLogStorage
