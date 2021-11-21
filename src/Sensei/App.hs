@@ -26,6 +26,7 @@ import Data.Swagger (Swagger)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Network.CORS (WithCORS (..))
+import Preface.Codec
 import Preface.Log
 import Preface.Server
 import Sensei.API
@@ -113,7 +114,7 @@ senseiApp env rootUser signal publicAuthKey output configDir logger = do
         prof <- try @_ @SQLiteDBError $ readProfile userName
         when (isLeft prof) $ void $ insertProfile (defaultProfile{userName})
 
-    validateAuth jwtConfig cookieConfig (Authenticated _) = baseServer jwtConfig cookieConfig signal
+    validateAuth jwtConfig cookieConfig (Authenticated (AuthToken userId _)) = baseServer userId jwtConfig cookieConfig signal
     validateAuth _ _ _ = throwAll err401{errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
 
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
@@ -125,11 +126,12 @@ senseiApp env rootUser signal publicAuthKey output configDir logger = do
 
 baseServer ::
     (MonadIO m, DB m) =>
+    Encoded Hex ->
     JWTSettings ->
     CookieSettings ->
     MVar () ->
     ServerT (KillServer :<|> LogoutAPI :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
-baseServer jwtSettings cookieSettings signal =
+baseServer _profile jwtSettings cookieSettings signal =
     killS signal
         :<|> logoutS cookieSettings
         :<|> setCurrentTimeS
