@@ -71,8 +71,10 @@ spec = describe "Authentication Operations" $ do
 
       SerializedToken bsToken <- createToken dir
 
-      take 2 (B64.decode <$> BS.split (fromIntegral $ ord '.') bsToken)
-        `shouldBe` [Right "{\"alg\":\"PS512\"}", Right "{\"dat\":{\"auOrgID\":1,\"auID\":1}}"]
+      -- NOTE: seems like JWT's base64 components are not properly padded which breaks
+      -- strict Base64.decode function
+      take 2 (B64.decodeLenient <$> BS.split (fromIntegral $ ord '.') bsToken)
+        `shouldBe` ["{\"alg\":\"PS512\"}", "{\"dat\":{\"auOrgID\":1,\"auID\":\"\"}}"]
 
   it "can update profile with hashed password given cleartext password" $ do
     let profile = defaultProfile
