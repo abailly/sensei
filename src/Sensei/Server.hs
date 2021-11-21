@@ -236,12 +236,13 @@ putUserProfileS user profile
     | otherwise = NoContent <$ writeProfile profile
 
 getFreshTokenS ::
-    MonadIO m =>
+    (DB m, MonadIO m) =>
     JWTSettings ->
     Text ->
     m SerializedToken
-getFreshTokenS js _userName =
-    liftIO $ makeToken js (AuthToken 1 1)
+getFreshTokenS js userName = do
+    UserProfile{userId} <- getUserProfileS userName
+    liftIO $ makeToken js (AuthToken userId 1)
 
 getVersionsS ::
     (Monad m) => m Versions
