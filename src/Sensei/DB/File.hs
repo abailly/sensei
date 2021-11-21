@@ -47,22 +47,23 @@ runDB storage config =
 instance DB FileDB where
     type DBError FileDB = Exc.IOException
 
-    initLogStorage = FileDB (asks storageFile >>= liftIO . initLogStorageFile)
+    initLogStorage = FileDB $ (asks storageFile >>= liftIO . initLogStorageFile)
     getCurrentTime = undefined
     setCurrentTime = undefined
-    writeEvent t = FileDB (asks storageFile >>= liftIO . writeEventFile t)
+    writeEvent t = FileDB $ (asks storageFile >>= liftIO . writeEventFile t)
     updateLatestFlow = undefined
-    writeProfile u = FileDB (asks configDir >>= liftIO . writeProfileFile u)
+    writeProfile u = FileDB $ (asks configDir >>= liftIO . writeProfileFile u)
     readEvents _ _ = do
         events <- readAll
         pure $ EventsQueryResult events 0 0 0 0
     readFlow _ _ = pure Nothing
-    readViews u = FileDB (asks storageFile >>= liftIO . readViewsFile u)
-    readNotes u _ = FileDB (asks storageFile >>= liftIO . readNotesFile u)
+    readViews u = FileDB $ (asks storageFile >>= liftIO . readViewsFile u)
+    readNotes u _ = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
     readGoals _ = undefined
     searchNotes = undefined
-    readCommands u = FileDB (asks storageFile >>= liftIO . readCommandsFile u)
-    readProfile _ = FileDB (asks configDir >>= liftIO . readProfileFile)
+    readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
+    readProfile _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)
+    readProfileById _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)
     insertProfile _ = undefined
 
 -- | Initialise a log store at given path

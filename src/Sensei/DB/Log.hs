@@ -3,7 +3,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -14,16 +13,11 @@ import Control.Monad.Reader (MonadIO, ReaderT (ReaderT))
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (FromJSON)
 import Data.Text (Text)
-import Data.Time (NominalDiffTime, UTCTime)
 import GHC.Generics (Generic)
-import Preface.Log (LoggerEnv (withLog))
-import Sensei.API (
-    Event,
-    Reference,
-    TimeRange,
-    UserProfile (userName),
- )
-import Sensei.DB (DB (..), Pagination)
+import Preface.Codec
+import Preface.Log
+import Sensei.API hiding (getCurrentTime)
+import Sensei.DB
 
 data DBLog
     = InitLogStorage
@@ -39,6 +33,7 @@ data DBLog
     | ReadViews {user :: Text}
     | ReadCommands {user :: Text}
     | ReadProfile {user :: Text}
+    | ReadProfileById {uid :: Encoded Hex}
     | WriteProfile {user :: Text}
     | InsertProfile {profile :: UserProfile}
     deriving (Eq, Show, Generic)
@@ -74,5 +69,7 @@ instance (DB m, MonadIO m) => DB (ReaderT LoggerEnv m) where
         ReaderT $ \l -> withLog l (ReadCommands (userName u)) (readCommands u)
     readProfile n =
         ReaderT $ \l -> withLog l (ReadProfile n) (readProfile n)
+    readProfileById u =
+        ReaderT $ \l -> withLog l (ReadProfileById u) (readProfileById u)
     insertProfile p =
         ReaderT $ \l -> withLog l (InsertProfile p) (insertProfile p)

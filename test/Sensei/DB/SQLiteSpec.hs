@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Sensei.DB.SQLiteSpec where
 
@@ -134,6 +135,14 @@ spec = describe "SQLite DB" $ do
 
                 res `shouldBe` time2
 
+            it "retrieves user by its ID" $ \tempdb -> do
+                (uid, profile) <- runDB tempdb "." fakeLogger $ do
+                    initLogStorage
+                    uid <- insertProfile defaultProfile
+                    (uid,) <$> readProfileById uid
+
+                profile `shouldBe` defaultProfile{userId = uid}
+
             it "indexes newly inserted note on the fly" $ \tempdb -> do
                 let noteTime = UTCTime (toEnum 50000) 1000
                     content = "foo bar baz cat"
@@ -142,7 +151,6 @@ spec = describe "SQLite DB" $ do
                     initLogStorage
                     writeEvent (EventNote note1)
                     searchNotes defaultProfile "foo"
-
                 res
                     `shouldBe` [ NoteView
                                     { noteStart = utcToLocalTimeTZ (tzByLabel $ userTimezone defaultProfile) noteTime
