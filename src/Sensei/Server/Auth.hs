@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -117,7 +118,7 @@ newtype TokenID = TokenID {unTokenID :: Bytes 16}
 
 -- | A token issued for authenticated users
 data AuthenticationToken = AuthToken
-  { auID :: Int,
+  { auID :: Encoded Hex,
     auOrgID :: Int
   }
   deriving (Eq, Show, Generic)
@@ -204,7 +205,7 @@ createKeys directory = makeNewKey >>= \jwk -> BS.writeFile (directory </> "sense
 createToken :: FilePath -> IO SerializedToken
 createToken directory = do
   key <- getKey (directory </> "sensei.jwk")
-  makeToken (defaultJWTSettings key) (AuthToken 1 1)
+  makeToken (defaultJWTSettings key) (AuthToken "" 1)
 
 makeToken :: JWTSettings -> AuthenticationToken -> IO SerializedToken
 makeToken settings authId =
@@ -230,9 +231,9 @@ setPassword oldProfile newPassword = do
   pure $ oldProfile {userPassword = (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword)}
 
 authenticateUser :: Text -> UserProfile -> AuthResult AuthenticationToken
-authenticateUser password UserProfile {userPassword = (userSalt, hashedPassword)}
+authenticateUser password UserProfile {userId, userPassword = (userSalt, hashedPassword)}
   | encrypt (fromBase64 userSalt) (encodeUtf8 password) == fromBase64 hashedPassword =
-    SAS.Authenticated $ AuthToken 1 1 -- TODO: associate a proper id to a user
+    SAS.Authenticated $ AuthToken userId 1
   | otherwise = SAS.BadPassword
 
 newtype SerializedToken = SerializedToken {unToken :: ByteString}

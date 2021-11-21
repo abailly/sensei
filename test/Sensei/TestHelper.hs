@@ -190,7 +190,7 @@ shouldNotThrow :: forall e a. (Exception e, HasCallStack) => IO a -> Proxy e -> 
 shouldNotThrow action _ = void action `catch` \(err :: e) -> expectationFailure ("Expected action to not throw " <> show err)
 
 validAuthToken :: LBS.ByteString
-validAuthToken = unsafePerformIO $ authTokenFor (AuthToken 1 1) sampleKey
+validAuthToken = unsafePerformIO $ authTokenFor (AuthToken "" 1) sampleKey
 {-# NOINLINE validAuthToken #-}
 
 validSerializedToken :: SerializedToken
