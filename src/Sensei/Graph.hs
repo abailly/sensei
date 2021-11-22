@@ -1,10 +1,13 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Sensei.Graph
   ( mkG,
     G (..),
+    currentGoals,
     asGraph,
     goal,
     pop,
     shift,
+    done,
     module Algebra.Graph,
   )
 where
@@ -22,6 +25,14 @@ mkG = go (G empty empty)
         Goal v -> go (G ((newGoal `connect` current) `overlay` full) newGoal) ops
           where
             newGoal = vertex v
+        Done -> go (G full parents) ops
+          where
+            vs = vertexList current
+            es = edgeList full
+            parents = case vs of
+              [v] -> vertices $ findAll v es
+              [] -> empty
+              (_:others) -> vertices others
         Pop -> go (G full parent) ops
           where
             vs = vertexList current
@@ -42,10 +53,13 @@ findAll a ((a', b) : as)
 
 data G = G {unG :: Graph Text, currentG :: Graph Text}
 
+currentGoals :: G -> [Text]
+currentGoals G{currentG} = vertexList currentG
+
 asGraph :: G -> Graph Text
 asGraph = unG
 
-data Op = Goal Text | Pop | Shift
+data Op = Goal Text | Pop | Shift | Done
 
 goal :: Text -> Op
 goal = Goal
@@ -55,3 +69,6 @@ pop = Pop
 
 shift :: Op
 shift = Shift
+
+done :: Op
+done = Done
