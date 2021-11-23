@@ -151,7 +151,8 @@ spec = withApp app $
             FlowSummary
               { summaryPeriod = (startPeriod, endPeriod),
                 summaryFlows = [(FlowType "Learning", 62000), (Other, 1000)],
-                summaryCommands = [("foo", 10), ("git", 100)]
+                summaryCommands = [("foo", 10), ("git", 100)],
+                summaryProjects = [("directory", 63000)]
               }
           startPeriod = LocalTime aDay midnight
           endPeriod = startPeriod & modL month (+ 1)
@@ -164,7 +165,8 @@ spec = withApp app $
             FlowSummary
               { summaryPeriod = (startPeriod, endPeriod),
                 summaryFlows = [],
-                summaryCommands = []
+                summaryCommands = [],
+                summaryProjects = []
               }
           startPeriod = LocalTime aDay midnight
           endPeriod = startPeriod & modL month (+ 1)

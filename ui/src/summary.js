@@ -3,7 +3,6 @@ import { config } from "./config";
 import { dom } from './dom.js';
 import { colorOf } from './color.js';
 
-
 function makeSummaryTable(dataPoints, title) {
   var titles = [title];
   var data = [title];
@@ -26,6 +25,10 @@ function makeSummaryFlowsTable(summaryData) {
 
 function makeSummaryCommandsTable(summaryData) {
   return { data: makeSummaryTable(summaryData.summaryCommands, "Commands") };
+}
+
+function makeSummaryProjectsTable(summaryData) {
+  return { data: makeSummaryTable(summaryData.summaryProjects, "Projects") };
 }
 
 function drawSummaryChart(container, summaryTable) {
@@ -73,4 +76,5 @@ export function drawSummary(container, router, summaryData, links) {
 
   drawSummaryChart(fdiv, makeSummaryFlowsTable(summaryData));
   drawSummaryChart(cdiv, makeSummaryCommandsTable(summaryData));
+  drawSummaryChart(cdiv, makeSummaryProjectsTable(summaryData));
 }

@@ -95,6 +95,11 @@ flowInPeriod ::
 flowInPeriod (Just lb) (Just ub) = withinPeriod lb ub flowStart
 flowInPeriod _ _ = undefined
 
+projectInPeriod ::
+  Maybe LocalTime -> Maybe LocalTime -> FlowView -> Bool
+projectInPeriod (Just lb) (Just ub) = withinPeriod lb ub flowStart
+projectInPeriod _ _ = undefined
+
 appendFlow :: TimeZone -> TimeOfDay -> ProjectsMap -> EventView -> [FlowView] -> [FlowView]
 appendFlow _ _ _ (EventView {event = EventFlow (Flow {_flowType = End})}) [] = []
 appendFlow tz _ _ (EventView {event = EventFlow (Flow {_flowType = End, ..})}) (v : vs) =
@@ -160,6 +165,13 @@ instance HasSummary FlowView FlowType where
 duration :: FlowView -> NominalDiffTime
 duration FlowView {flowStart, flowEnd} = diffLocalTime flowEnd flowStart
 
+instance HasSummary FlowView ProjectName where
+  summarize views =
+    views
+      |> List.sortBy (compare `on` flowProject)
+      |> NE.groupBy ((==) `on` flowProject)
+      |> fmap (\flows@(f :| _) -> (flowProject f, sum $ fmap duration flows))
+
 makeSummary :: Maybe LocalTime -> Maybe LocalTime -> [FlowView] -> [CommandView] -> FlowSummary
 makeSummary fromTime toTime views commands =
   let summaryFlows =
@@ -169,6 +181,10 @@ makeSummary fromTime toTime views commands =
       summaryCommands =
         commands
           |> filter (commandInPeriod fromTime toTime)
+          |> summarize
+      summaryProjects =
+        views
+          |> filter (projectInPeriod fromTime toTime)
           |> summarize
       summaryPeriod = makePeriod fromTime toTime
    in FlowSummary {..}
