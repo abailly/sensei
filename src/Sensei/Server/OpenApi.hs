@@ -65,6 +65,12 @@ instance ToParamSchema Group
 
 instance ToSchema Group
 
+instance ToSchema Op where
+  declareNamedSchema proxy =
+    genericDeclareNamedSchemaUnrestricted defaultSchemaOptions proxy
+
+instance ToSchema GoalOp
+
 instance ToParamSchema Reference where
   toParamSchema _ =
     mempty

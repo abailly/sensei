@@ -86,7 +86,8 @@ getVersionsC :: ClientMonad Versions
   :<|> searchNotesC
   :<|> (postEventC :<|> getLogC)
   :<|> (getFreshTokenC :<|> createUserProfileC :<|> getUserProfileC :<|> setUserProfileC)
-  :<|> getVersionsC = clientIn (Proxy @SenseiAPI) Proxy
+  :<|> getVersionsC
+  :<|> _ = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
 send config@ClientConfig {serverUri, startServerLocally} act = do

@@ -23,7 +23,7 @@ spec = do
         graph = asGraph ops
 
     edgeList graph `shouldBe` [("Bar", "Foo"), ("Baz", "Foo"), ("Quux", "Bar"), ("Quux", "Baz")]
-    
+
   it "retrieve current goal(s)" $ do
     let ops =
           mkG
@@ -50,7 +50,7 @@ spec = do
             ]
 
     currentGoals ops `shouldBe` ["Bar", "Baz"]
-    
+
   it "remove one goal from goals when 'done'" $ do
     let ops =
           mkG
@@ -64,4 +64,17 @@ spec = do
               done
             ]
 
-    currentGoals ops `shouldBe` ["Baz"]
+F    currentGoals ops `shouldBe` ["Baz"]
+
+  it "remove set children as current on 'push'" $ do
+    let ops =
+          mkG
+            [ goal "Foo",
+              goal "Bar",
+              pop,
+              goal "Baz",
+              pop,
+              push
+            ]
+
+    currentGoals ops `shouldBe` ["Bar", "Baz"]
