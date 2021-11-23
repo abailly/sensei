@@ -25,6 +25,8 @@ data Options
 data QueryOptions
   = FlowQuery {queryDay :: Day, summarize :: Bool, groups :: [Group]}
   | GetAllLogs
+  | ShiftTimestamp TimeDifference
+  | GetFlow Reference
   deriving (Eq, Show)
 
 data RecordOptions
@@ -42,8 +44,6 @@ data UserOptions
   = GetProfile
   | SetProfile {profileFile :: FilePath}
   | GetVersions
-  | ShiftTimestamp TimeDifference
-  | GetFlow Reference
   deriving (Show, Eq)
 
 data AuthOptions
@@ -99,13 +99,36 @@ commandsParser flows =
 
 authOptions :: Parser Options
 authOptions =
-  AuthOptions <$> (createKeysParser <|> publicKeyParser <|> createTokenParser <|> getTokenParser <|> setPasswordParser)
+  AuthOptions
+    <$> ( createKeysParser
+            <|> publicKeyParser
+            <|> createTokenParser
+            <|> getTokenParser
+            <|> setPasswordParser
+        )
 
 queryOptions :: Parser Options
 queryOptions =
   QueryOptions
     <$> ( FlowQuery <$> dayParser <*> summarizeParser <*> many groupParser
             <|> pure GetAllLogs <* allLogsParser
+            <|> ( ShiftTimestamp
+                    <$> option
+                      (eitherReader parse)
+                      ( long "shift-timestamp"
+                          <> short 'S'
+                          <> help "shift the latest flow by the given time difference"
+                      )
+                )
+            <|> ( GetFlow
+                    <$> option
+                      (eitherReader parseRef)
+                      ( long "get-flow"
+                          <> short 'F'
+                          <> value Latest
+                          <> help "Query some flow or group of FlowViews from underlying storage (default: latest)"
+                      )
+                )
         )
 
 recordOptions :: Maybe [FlowType] -> Parser Options
@@ -252,23 +275,6 @@ userActionParser =
           <> short 'v'
           <> help "retrieve the current versions of client and server"
       )
-    <|> ( ShiftTimestamp
-            <$> option
-              (eitherReader parse)
-              ( long "shift-time"
-                  <> short 'S'
-                  <> help "shift the latest flow by the given time difference"
-              )
-        )
-    <|> ( GetFlow
-            <$> option
-              (eitherReader parseRef)
-              ( long "query"
-                  <> short 'Q'
-                  <> value Latest
-                  <> help "Query some flow or group of FlowViews from underlying storage (default: latest)"
-              )
-        )
 
 createKeysParser :: Parser AuthOptions
 createKeysParser =

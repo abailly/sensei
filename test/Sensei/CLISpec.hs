@@ -36,11 +36,11 @@ spec = describe "Command-Line Interface" $ do
     it "parses 'user -v' as versions display" $ do
       runOptionsParser Nothing ["user", "-v"] `shouldBe` Right (UserOptions GetVersions)
 
-    it "parses 'user -S -10m' as 10 minutes shift" $ do
-      runOptionsParser Nothing ["user", "-S", "-10m"] `shouldBe` Right (UserOptions $ ShiftTimestamp (Minutes (-10)))
+    it "parses 'query -S -10m' as 10 minutes shift" $ do
+      runOptionsParser Nothing ["query", "-S", "-10m"] `shouldBe` Right (QueryOptions $ ShiftTimestamp (Minutes (-10)))
 
-    it "parses 'user -Q latest' as retrieval of latest flow" $ do
-      runOptionsParser Nothing ["user", "-Q", "latest"] `shouldBe` Right (UserOptions $ GetFlow Latest)
+    it "parses 'query -F latest' as retrieval of latest flow" $ do
+      runOptionsParser Nothing ["query", "-F", "latest"] `shouldBe` Right (QueryOptions $ GetFlow Latest)
 
     it "parses 'notes -N --search foo' as search query" $ do
       runOptionsParser Nothing ["notes", "-N", "--search", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (NotesQuery (QuerySearch "foo") Section))

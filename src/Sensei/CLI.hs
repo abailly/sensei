@@ -92,9 +92,9 @@ ep config (UserOptions (SetProfile file)) usrName _ _ = do
 ep config (UserOptions GetVersions) _ _ _ = do
   vs <- send config getVersionsC
   display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
-ep config (UserOptions (ShiftTimestamp diff)) curUser _ _ =
+ep config (QueryOptions (ShiftTimestamp diff)) curUser _ _ =
   send config (updateFlowC curUser diff) >>= display
-ep config (UserOptions (GetFlow q)) curUser _ _ =
+ep config (QueryOptions (GetFlow q)) curUser _ _ =
   send config (getFlowC curUser q) >>= display
 ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
 ep _config (AuthOptions PublicKey) _ _ _ = getConfigDirectory >>= getPublicKey >>= display
