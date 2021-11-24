@@ -22,6 +22,7 @@ import Data.Text.ToText (ToText (..))
 import Data.Time
 import GHC.Generics
 import Sensei.Flow
+import Sensei.Event(Event(..))
 import Sensei.Project
 import Sensei.Summary
 import Sensei.Time

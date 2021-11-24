@@ -14,6 +14,7 @@ module Sensei.API
     senseiAPI,
     module Sensei.Color,
     module Sensei.Duration,
+    module Sensei.Event,
     module Sensei.Flow,
     module Sensei.Summary,
     module Sensei.FlowView,
@@ -34,6 +35,7 @@ import Data.Time
 import Preface.Codec (Encoded, Hex)
 import Sensei.Color
 import Sensei.Duration
+import Sensei.Event
 import Sensei.Flow
 import Sensei.FlowView
 import Sensei.Goal
