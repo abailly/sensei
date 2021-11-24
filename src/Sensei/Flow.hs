@@ -106,7 +106,6 @@ instance FromJSON NoteFlow where
 instance ToJSON NoteFlow where
   toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 1}
 
-
 -- | Supported rendering formats for notes
 data NoteFormat
   = -- | Timestamp of note is on its own line, followed by note as it is typed
@@ -159,4 +158,3 @@ instance FromHttpApiData Reference where
 
 parseRef :: String -> Either String Reference
 parseRef = first Text.unpack . parseUrlPiece . Text.pack
-

@@ -21,9 +21,9 @@ import GHC.Generics (Generic)
 import Numeric.Natural
 import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.Color
-import Sensei.Event(currentVersion)
 import Sensei.Flow
 import Sensei.Project (ProjectName, Regex)
+import Sensei.Version (currentVersion)
 import Servant (FromHttpApiData, ToHttpApiData)
 
 newtype UserName = UserName {unUserName :: Text}

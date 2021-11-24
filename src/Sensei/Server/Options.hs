@@ -6,7 +6,6 @@ module Sensei.Server.Options where
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Options.Applicative
-import Sensei.API
 import Sensei.Version
 
 data Options

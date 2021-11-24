@@ -88,6 +88,7 @@ import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.SQLite.Migration
 import Sensei.IO
+import Sensei.Version (currentVersion)
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
@@ -173,6 +174,7 @@ typeOf :: Event -> Text
 typeOf EventTrace {} = "__TRACE__"
 typeOf (EventFlow Flow {_flowType}) = toText _flowType
 typeOf EventNote {} = "Note"
+typeOf EventGoal {} = "Goal"
 
 instance FromRow EventView where
   fromRow = do

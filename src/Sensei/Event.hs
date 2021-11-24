@@ -9,8 +9,7 @@
 
 -- | A representation of all types of `Event` related to users' activity.
 module Sensei.Event
-(Event(..),
-     currentVersion,
+  ( Event (..),
     eventUser,
     setUser,
     user',
@@ -20,36 +19,29 @@ module Sensei.Event
     parseEventFromv4,
     parseNoteFromv4,
     parseFlowFromv4,
-)
-  where
+  )
+where
 
 import Control.Applicative
 import Control.Lens (Lens', set)
 import Data.Aeson hiding (Options)
 import Data.Aeson.Types
-import Data.Text (Text)
 import qualified Data.HashMap.Strict as H
+import Data.Text (Text)
 import Data.Time
 import GHC.Generics
 import Numeric.Natural
-import Sensei.FlowType
 import Sensei.Flow
-
-
--- | Current version of data storage format.
---
--- This version /must/ be incremented on each change to the structure of `Event` and
--- other stored data structures which
--- impacts their serialized representation. Of course, deserialisation
--- functions should be provided in order to migrate data from previous versions.
-currentVersion :: Natural
-currentVersion = 8
+import Sensei.FlowType
+import Sensei.Goal
+import Sensei.Version (currentVersion)
 
 -- | Common type grouping all kind of core events that are stored in the DB
 data Event
   = EventFlow Flow
   | EventTrace Trace
   | EventNote NoteFlow
+  | EventGoal GoalOp
   deriving (Eq, Show, Generic)
 
 instance FromJSON Event where
@@ -120,28 +112,37 @@ instance ToJSON Event where
      in Object $
           H.insert "tag" "Note" $
             H.insert "version" (toJSON currentVersion) obj
+  toJSON (EventGoal g) =
+    let Object obj = toJSON g
+     in Object $
+          H.insert "tag" "Goal" $
+            H.insert "version" (toJSON currentVersion) obj
 
 eventTimestamp ::
   Event -> UTCTime
 eventTimestamp (EventFlow f) = _flowTimestamp f
 eventTimestamp (EventTrace t) = _traceTimestamp t
 eventTimestamp (EventNote n) = _noteTimestamp n
+eventTimestamp (EventGoal g) = _goalTimestamp g
 
 eventUser ::
   Event -> Text
 eventUser (EventFlow f) = _flowUser f
 eventUser (EventTrace t) = _traceUser t
 eventUser (EventNote n) = _noteUser n
+eventUser (EventGoal g) = _goalUser g
 
 setUser :: Text -> Event -> Event
 setUser u (EventFlow f) = EventFlow $ f {_flowUser = u}
 setUser u (EventTrace t) = EventTrace $ t {_traceUser = u}
 setUser u (EventNote n) = EventNote $ n {_noteUser = u}
+setUser u (EventGoal g) = EventGoal $ g {_goalUser = u}
 
 user' :: Lens' Event Text
 user' fu (EventFlow f@Flow {_flowUser}) = (\u -> EventFlow (set flowUser u f)) <$> fu _flowUser
 user' fu (EventTrace t@Trace {_traceUser}) = (\u -> EventTrace (set traceUser u t)) <$> fu _traceUser
 user' fu (EventNote n@NoteFlow {_noteUser}) = (\u -> EventNote (set noteUser u n)) <$> fu _noteUser
+user' fu (EventGoal n@GoalOp {_goalUser}) = (\u -> EventGoal (set goalUser u n)) <$> fu _goalUser
 
 isTrace :: Event -> Bool
 isTrace EventTrace {} = True

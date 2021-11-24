@@ -10,7 +10,7 @@ import Data.Time (UTCTime, diffUTCTime)
 import qualified Data.Time as Time
 import Sensei.Client (ClientConfig, ClientMonad, getUserProfileC, postEventC)
 import qualified Sensei.Client as Client
-import Sensei.Event(Event(..))
+import Sensei.Event (Event (..))
 import Sensei.Flow
 import Sensei.User
 import System.Directory (doesFileExist)

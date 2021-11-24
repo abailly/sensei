@@ -67,7 +67,7 @@ import Sensei.Server.OpenApi
 import Sensei.Server.Options
 import Sensei.Server.UI
 import Sensei.Time hiding (getCurrentTime)
-import Sensei.Version (Versions (..), senseiVersion)
+import Sensei.Version (Versions (..), currentVersion, senseiVersion)
 import Servant
 import Servant.Auth.Server as SAS
 
@@ -209,7 +209,7 @@ getVersionsS ::
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
 
 postGoalS :: Monad m => Text -> GoalOp -> m NoContent
-postGoalS _userName _ = pure NoContent
+postGoalS _userName _op = undefined
 
 getGoalsS :: Monad m => Text -> m Goals
 getGoalsS _userName = undefined
