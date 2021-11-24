@@ -189,14 +189,21 @@ type CreateUserProfile =
 type GoalAPI =
   ( "goals"
     :> Tags "Goal"
-    :> PostGoalAPI )
-
+    :> (PostGoalAPI :<|> GetGoalsAPI )
+  )
+  
 type PostGoalAPI =
   Summary
     "Update goals graph of given user, using some operation."
     :> Capture "user" Text :? "Name of user to modify goal for"
     :> ReqBody '[JSON] GoalOp
     :> Post '[JSON] NoContent
+    
+type GetGoalsAPI =
+  Summary
+    "Retrieve the complete graph of goals."
+    :> Capture "user" Text :? "Name of user to query goals for"
+    :> Get '[JSON] Goals
     
 type LoginAPI =
   Summary "Allows users to login passing in credentials."

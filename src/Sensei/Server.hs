@@ -27,6 +27,7 @@ module Sensei.Server
     getFreshTokenS,
     getVersionsS,
     postGoalS,
+    getGoalsS,
     loginS,
     module Sensei.Server.OpenApi,
 
@@ -209,6 +210,9 @@ getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion curren
 
 postGoalS :: Monad m => Text -> GoalOp -> m NoContent
 postGoalS _userName _ = pure NoContent
+
+getGoalsS :: Monad m => Text -> m Goals
+getGoalsS _userName = undefined
 
 loginS ::
   (MonadIO m, DB m) =>

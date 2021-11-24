@@ -143,7 +143,7 @@ baseServer jwtSettings signal =
     :<|> (postEventS :<|> getLogS)
     :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileS :<|> putUserProfileS)
     :<|> getVersionsS
-    :<|> postGoalS
+    :<|> (postGoalS :<|> getGoalsS)
 
 -- | This orphan instance is needed because of the 'validateAuth' function above
 instance MonadError ServerError SQLiteDB where

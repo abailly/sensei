@@ -71,6 +71,16 @@ instance ToSchema Op where
 
 instance ToSchema GoalOp
 
+instance ToSchema Goals
+
+instance ToSchema Goal where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Goal") $
+        mempty
+          & description .~ Just "A single goal"
+          & type_ .~ Just SwaggerString
+
 instance ToParamSchema Reference where
   toParamSchema _ =
     mempty

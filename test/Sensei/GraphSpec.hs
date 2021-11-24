@@ -64,7 +64,7 @@ spec = do
               done
             ]
 
-F    currentGoals ops `shouldBe` ["Baz"]
+    currentGoals ops `shouldBe` ["Baz"]
 
   it "remove set children as current on 'push'" $ do
     let ops =
