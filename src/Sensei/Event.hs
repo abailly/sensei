@@ -53,6 +53,7 @@ instance FromJSON Event where
           t <- obj .: "tag"
           case t of
             "Note" -> EventNote <$> parseJSON (Object obj)
+            "Goal" -> EventGoal <$> parseJSON (Object obj)
             "Trace" -> EventTrace <$> parseJSON (Object obj)
             "Flow" -> EventFlow <$> parseJSON (Object obj)
             o -> fail ("cannot parse Event with tag " <> o)

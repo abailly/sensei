@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Sensei.Goal
@@ -11,6 +12,7 @@ module Sensei.Goal
     goalTimestamp,
     goalDir,
     Goals (..),
+    makeGoals,
     Goal (..),
     Op,
     goal,
@@ -29,6 +31,9 @@ import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Sensei.Graph
   ( Op,
+    G(..),
+    mkG,
+    adjacencyList,
     done,
     goal,
     pop,
@@ -54,3 +59,9 @@ newtype Goal = Goal Text
 -- | A representation of goals in the form of a directed graph.
 data Goals = Goals {goalsGraph :: [(Goal, [Goal])]}
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+makeGoals :: [GoalOp] -> Goals
+makeGoals ops =
+  let G{unG} = mkG $ map _goalOp ops
+      toGoal (v, es) = (Goal v, map Goal es)
+  in Goals $ map toGoal $ adjacencyList unG

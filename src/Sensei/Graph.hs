@@ -17,7 +17,8 @@ module Sensei.Graph
   )
 where
 
-import Algebra.Graph (Graph, connect, edgeList, empty, overlay, vertex, vertexList, vertices)
+import Algebra.Graph (Graph,
+                      connect, edgeList, adjacencyList, empty, overlay, vertex, vertexList, vertices)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Data.Tuple (swap)

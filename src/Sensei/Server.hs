@@ -208,11 +208,13 @@ getVersionsS ::
   (Monad m) => m Versions
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
 
-postGoalS :: Monad m => Text -> GoalOp -> m NoContent
-postGoalS _userName _op = undefined
+postGoalS :: DB m => Text -> GoalOp -> m NoContent
+postGoalS _userName op = NoContent <$ writeEvent (EventGoal op)
 
-getGoalsS :: Monad m => Text -> m Goals
-getGoalsS _userName = undefined
+getGoalsS :: DB m => Text -> m Goals
+getGoalsS userName = do
+  profile <- getUserProfileS userName
+  makeGoals <$> readGoals profile
 
 loginS ::
   (MonadIO m, DB m) =>
