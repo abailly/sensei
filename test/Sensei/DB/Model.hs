@@ -13,10 +13,11 @@ module Sensei.DB.Model where
 import Control.Exception.Safe (try)
 import Control.Lens (set, (^.))
 import Control.Monad.State
+import Control.Applicative(liftA2)
 import Data.Foldable (toList)
 import Data.Function (on)
 import qualified Data.Map as Map
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, mapMaybe)
 import Data.Sequence as Seq
 import Data.Text (Text)
 import Data.Time
@@ -45,6 +46,7 @@ data Action a where
   ReadEvents :: Pagination -> Action EventsQueryResult
   ReadFlow :: Reference -> Action (Maybe EventView)
   ReadNotes :: TimeRange -> Action [NoteView]
+  ReadGoals :: Action [GoalOp]
   ReadViews :: Action [FlowView]
   ReadCommands :: Action [CommandView]
   NewUser :: UserProfile -> Action ()
@@ -55,6 +57,7 @@ instance Show (Action a) where
   show (ReadEvents page) = "ReadEvents " <> show page
   show (ReadFlow ref) = "ReadFlow " <> show ref
   show (ReadNotes range) = "ReadNotes " <> show range
+  show ReadGoals = "ReadGoals"
   show ReadViews = "ReadViews"
   show ReadCommands = "ReadCommands"
   show (NewUser u) = "NewUser " <> show u
@@ -96,6 +99,7 @@ shrinkAction (SomeAction (ReadEvents p)) = SomeAction . ReadEvents <$> shrink p
 shrinkAction (SomeAction (ReadFlow r)) = SomeAction . ReadFlow <$> shrink r
 shrinkAction (SomeAction (ReadNotes _t)) = [] -- SomeAction . ReadNotes <$> shrink t
 shrinkAction (SomeAction (ReadViews)) = []
+shrinkAction (SomeAction ReadGoals) = []
 shrinkAction (SomeAction (ReadCommands)) = []
 shrinkAction (SomeAction (NewUser p)) = SomeAction . NewUser <$> shrink p
 shrinkAction (SomeAction (SwitchUser _)) = []
@@ -114,6 +118,7 @@ generateAction baseTime model count =
             (1, arbitrary >>= \p -> pure (SomeAction (ReadEvents p))),
             (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k)))),
             (1, pure $ SomeAction ReadViews),
+            (1, pure $ SomeAction ReadGoals),
             (1, SomeAction . NewUser <$> generateUserProfile),
             (3, switchUser m),
             (1, pure $ SomeAction ReadCommands)
@@ -166,6 +171,10 @@ interpret ReadViews = do
   UserProfile {userName, userTimezone, userEndOfDay, userProjects} <- gets currentProfile
   fs <- getEvents
   pure $ Just $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] fs
+interpret ReadGoals = do
+  UserProfile {userName} <- gets currentProfile
+  fs <- Seq.filter (liftA2 (&&) isGoal ((== userName) . eventUser) . event) <$> getEvents
+  pure $ Just $ mapMaybe (getGoal . event) $ toList fs
 interpret ReadCommands = do
   UserProfile {userTimezone, userProjects} <- gets currentProfile
   ts <- getEvents
@@ -218,6 +227,7 @@ runDB user (ReadEvents p) = readProfileOrDefault user >>= \u -> readEvents u p
 runDB user (ReadFlow r) = readProfileOrDefault user >>= \u -> readFlow u r
 runDB user (ReadNotes rge) = readProfileOrDefault user >>= \u -> readNotes u rge
 runDB user ReadViews = readProfileOrDefault user >>= readViews
+runDB user ReadGoals = readProfileOrDefault user >>= readGoals
 runDB user ReadCommands = readProfileOrDefault user >>= readCommands
 runDB _ (NewUser u) = void $ insertProfile u
 runDB _ (SwitchUser _) = pure ()

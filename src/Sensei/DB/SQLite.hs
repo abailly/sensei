@@ -71,6 +71,7 @@ import qualified Data.Aeson.Types as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor ((<&>))
+import Data.Maybe(mapMaybe)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
@@ -272,6 +273,7 @@ instance DB SQLiteDB where
   readFlow u r = readFlowSQL u r
   readEvents u p = readEventsSQL u p
   readNotes u rge = readNotesSQL u rge
+  readGoals u = readGoalsSQL u
   searchNotes u txt = searchNotesSQL u txt
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
@@ -506,6 +508,17 @@ readViewsSQL UserProfile {..} = do
     let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
     flows <- query_ cnx logger q
     pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] flows
+
+readGoalsSQL ::
+  HasCallStack =>
+  UserProfile ->
+  SQLiteDB [GoalOp]
+readGoalsSQL UserProfile {userName} = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type = 'Goal' order by timestamp"
+    flows <- query_ cnx logger q
+    pure $ filter ((== userName) . _goalUser) $ mapMaybe (getGoal . event) flows
 
 readCommandsSQL ::
   HasCallStack =>

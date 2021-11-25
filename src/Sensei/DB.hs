@@ -84,6 +84,9 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
   readNotes :: UserProfile -> TimeRange -> m [NoteView]
 
+  -- | Read all goal operations from DB
+  readGoals :: UserProfile -> m [GoalOp]
+
   -- | Full-text search of notes
   searchNotes :: UserProfile -> Text -> m [NoteView]
 

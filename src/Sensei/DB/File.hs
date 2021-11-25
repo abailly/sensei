@@ -61,6 +61,7 @@ instance DB FileDB where
   readFlow _ _ = pure Nothing
   readViews u = FileDB $ (asks storageFile >>= liftIO . readViewsFile u)
   readNotes u _ = FileDB $ (asks storageFile >>= liftIO . readNotesFile u)
+  readGoals _ = undefined
   searchNotes = undefined
   readCommands u = FileDB $ (asks storageFile >>= liftIO . readCommandsFile u)
   readProfile _ = FileDB $ (asks configDir >>= liftIO . readProfileFile)

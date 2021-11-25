@@ -14,7 +14,7 @@ module Sensei.Event
     setUser,
     user',
     eventTimestamp,
-    isTrace,
+    isTrace, isGoal, getGoal,
     filterNotes,
     parseEventFromv4,
     parseNoteFromv4,
@@ -32,7 +32,6 @@ import Data.Time
 import GHC.Generics
 import Numeric.Natural
 import Sensei.Flow
-import Sensei.FlowType
 import Sensei.Goal
 import Sensei.Version (currentVersion)
 
@@ -147,6 +146,15 @@ user' fu (EventGoal n@GoalOp {_goalUser}) = (\u -> EventGoal (set goalUser u n))
 isTrace :: Event -> Bool
 isTrace EventTrace {} = True
 isTrace _ = False
+
+isGoal :: Event -> Bool
+isGoal EventGoal{}= True
+isGoal _ = False
+
+getGoal :: Event -> Maybe GoalOp
+getGoal (EventGoal g) = Just g
+getGoal _ = Nothing
+
 
 -- | Project a stream of 'Event' into a stream of 'NoteFlow'
 filterNotes :: [Event] -> [NoteFlow]
