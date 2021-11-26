@@ -20,6 +20,7 @@ data Options
   | UserOptions UserOptions
   | AuthOptions AuthOptions
   | CommandOptions CommandOptions
+  | GoalOptions Op
   deriving (Show, Eq)
 
 data QueryOptions
@@ -95,6 +96,7 @@ commandsParser flows =
                   \ and the args."
               )
           )
+        <> command "goal" (info goalOptions (progDesc "Define and manipulate goals graph"))
     )
 
 authOptions :: Parser Options
@@ -146,6 +148,9 @@ userOptions = UserOptions <$> (profileParser *> userActionParser)
 
 commandOptions :: Parser Options
 commandOptions = CommandOptions <$> commandParser
+
+goalOptions :: Parser Options
+goalOptions = GoalOptions <$> goalParser
 
 {-# NOINLINE today #-}
 today :: Day
@@ -334,6 +339,40 @@ commandParser =
     <$> strArgument (help "command name")
     <*> many (strArgument (help "command argument(s)"))
 
+goalParser :: Parser Op
+goalParser =
+  pushGoalParser <|> popGoalParser <|> doneGoalParser <|> shiftGoalParser <|> setGoalParser
+  where
+    pushGoalParser =   flag'
+      push
+      ( long "push"
+          <> short 'p'
+          <> help "Set parent(s) of current goal(s) as current"
+      )
+
+    popGoalParser =   flag'
+      pop
+      ( long "pop"
+          <> short 'P'
+          <> help "Set children of current goal(s) as current"
+      )
+
+    shiftGoalParser =   flag'
+      shift
+      ( long "shift"
+          <> short 's'
+          <> help "Set children of parent of current goal as current"
+      )
+
+    doneGoalParser =   flag'
+      done
+      ( long "done"
+          <> short 'd'
+          <> help "Mark first current goal as done, setting parents as current if all done"
+      )
+
+    setGoalParser = goal <$> strArgument (help "Set given goal as a children of current goal(s)" )
+    
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options
 parseSenseiOptions flows = execParser (optionsParserInfo flows)

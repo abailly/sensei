@@ -120,6 +120,7 @@ ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   handleWrapperResult exe =<< case maybeExePath of
     Just exePath -> Right <$> wrapProg io userName exePath args currentDir
     Nothing -> tryWrapProg io userName exe args currentDir
+ep _config (GoalOptions _op) _userName _ _currentDir = undefined
 
 println :: BS.ByteString -> IO ()
 println bs =

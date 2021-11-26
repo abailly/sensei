@@ -73,3 +73,24 @@ spec = describe "Command-Line Interface" $ do
     it "fail to parse 'command foo bar -x' as it contains interpreted option" $ do
       runOptionsParser Nothing ["command", "foo", "bar", "-x"]
         `shouldSatisfy` isLeft
+
+    it "parses 'goal foo' as goal option" $ do
+      runOptionsParser Nothing ["goal", "foo"]
+        `shouldBe` Right (GoalOptions $ goal "foo")
+
+    it "parses 'goal -p' as goal push option" $ do
+      runOptionsParser Nothing ["goal", "-p"]
+        `shouldBe` Right (GoalOptions push)
+
+    it "parses 'goal -P' as goal pop option" $ do
+      runOptionsParser Nothing ["goal", "-P"]
+        `shouldBe` Right (GoalOptions pop)
+
+    it "parses 'goal -s' as goal shift option" $ do
+      runOptionsParser Nothing ["goal", "-s"]
+        `shouldBe` Right (GoalOptions shift)
+
+    it "parses 'goal -d' as goal done option" $ do
+      runOptionsParser Nothing ["goal", "-d"]
+        `shouldBe` Right (GoalOptions done)
+
