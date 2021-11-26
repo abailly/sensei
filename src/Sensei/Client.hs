@@ -30,6 +30,7 @@ module Sensei.Client
     getUserProfileC,
     setUserProfileC,
     getVersionsC,
+    postGoalC,
     send,
   )
 where
@@ -76,6 +77,7 @@ createUserProfileC :: UserProfile -> ClientMonad (Encoded Hex)
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
+postGoalC :: Text -> GoalOp -> ClientMonad NoContent
 ( getFlowC :<|> updateFlowC
     :<|> queryFlowPeriodSummaryC
     :<|> notesDayC
@@ -87,7 +89,7 @@ getVersionsC :: ClientMonad Versions
   :<|> (postEventC :<|> getLogC)
   :<|> (getFreshTokenC :<|> createUserProfileC :<|> getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC
-  :<|> (_ :<|> _) = clientIn (Proxy @SenseiAPI) Proxy
+  :<|> (postGoalC :<|> _) = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
 send config@ClientConfig {serverUri, startServerLocally} act = do

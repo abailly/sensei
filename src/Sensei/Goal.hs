@@ -30,12 +30,12 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Sensei.Graph
-  ( Op,
-    G(..),
-    mkG,
+  ( G (..),
+    Op,
     adjacencyList,
     done,
     goal,
+    mkG,
     pop,
     push,
     shift,
@@ -62,6 +62,6 @@ data Goals = Goals {goalsGraph :: [(Goal, [Goal])]}
 
 makeGoals :: [GoalOp] -> Goals
 makeGoals ops =
-  let G{unG} = mkG $ map _goalOp ops
+  let G {unG} = mkG $ map _goalOp ops
       toGoal (v, es) = (Goal v, map Goal es)
-  in Goals $ map toGoal $ adjacencyList unG
+   in Goals $ map toGoal $ adjacencyList unG

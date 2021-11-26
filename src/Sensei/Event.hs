@@ -14,7 +14,9 @@ module Sensei.Event
     setUser,
     user',
     eventTimestamp,
-    isTrace, isGoal, getGoal,
+    isTrace,
+    isGoal,
+    getGoal,
     filterNotes,
     parseEventFromv4,
     parseNoteFromv4,
@@ -149,13 +151,12 @@ isTrace EventTrace {} = True
 isTrace _ = False
 
 isGoal :: Event -> Bool
-isGoal EventGoal{}= True
+isGoal EventGoal {} = True
 isGoal _ = False
 
 getGoal :: Event -> Maybe GoalOp
 getGoal (EventGoal g) = Just g
 getGoal _ = Nothing
-
 
 -- | Project a stream of 'Event' into a stream of 'NoteFlow'
 filterNotes :: [Event] -> [NoteFlow]

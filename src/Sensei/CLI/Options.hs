@@ -343,36 +343,40 @@ goalParser :: Parser Op
 goalParser =
   pushGoalParser <|> popGoalParser <|> doneGoalParser <|> shiftGoalParser <|> setGoalParser
   where
-    pushGoalParser =   flag'
-      push
-      ( long "push"
-          <> short 'p'
-          <> help "Set parent(s) of current goal(s) as current"
-      )
+    pushGoalParser =
+      flag'
+        push
+        ( long "push"
+            <> short 'p'
+            <> help "Set parent(s) of current goal(s) as current"
+        )
 
-    popGoalParser =   flag'
-      pop
-      ( long "pop"
-          <> short 'P'
-          <> help "Set children of current goal(s) as current"
-      )
+    popGoalParser =
+      flag'
+        pop
+        ( long "pop"
+            <> short 'P'
+            <> help "Set children of current goal(s) as current"
+        )
 
-    shiftGoalParser =   flag'
-      shift
-      ( long "shift"
-          <> short 's'
-          <> help "Set children of parent of current goal as current"
-      )
+    shiftGoalParser =
+      flag'
+        shift
+        ( long "shift"
+            <> short 's'
+            <> help "Set children of parent of current goal as current"
+        )
 
-    doneGoalParser =   flag'
-      done
-      ( long "done"
-          <> short 'd'
-          <> help "Mark first current goal as done, setting parents as current if all done"
-      )
+    doneGoalParser =
+      flag'
+        done
+        ( long "done"
+            <> short 'd'
+            <> help "Mark first current goal as done, setting parents as current if all done"
+        )
 
-    setGoalParser = goal <$> strArgument (help "Set given goal as a children of current goal(s)" )
-    
+    setGoalParser = goal <$> strArgument (help "Set given goal as a children of current goal(s)")
+
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options
 parseSenseiOptions flows = execParser (optionsParserInfo flows)

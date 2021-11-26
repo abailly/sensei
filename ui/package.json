@@ -1,6 +1,6 @@
 {
   "name": "sensei-ui",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "description": "Web client application for Sensei",
   "private": true,
   "scripts": {

@@ -120,7 +120,18 @@ ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   handleWrapperResult exe =<< case maybeExePath of
     Just exePath -> Right <$> wrapProg io userName exePath args currentDir
     Nothing -> tryWrapProg io userName exe args currentDir
-ep _config (GoalOptions _op) _userName _ _currentDir = undefined
+ep config (GoalOptions op) userName timestamp currentDir =
+  void $
+    send
+      config
+      ( postGoalC userName $
+          GoalOp
+            { _goalOp = op,
+              _goalUser = userName,
+              _goalTimestamp = timestamp,
+              _goalDir = currentDir
+            }
+      )
 
 println :: BS.ByteString -> IO ()
 println bs =
