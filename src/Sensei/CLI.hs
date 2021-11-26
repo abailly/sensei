@@ -13,6 +13,7 @@ module Sensei.CLI
     NotesQuery (..),
     AuthOptions (..),
     CommandOptions (..),
+    GoalOptions (..),
     runOptionsParser,
     parseSenseiOptions,
 
@@ -120,7 +121,7 @@ ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   handleWrapperResult exe =<< case maybeExePath of
     Just exePath -> Right <$> wrapProg io userName exePath args currentDir
     Nothing -> tryWrapProg io userName exe args currentDir
-ep config (GoalOptions op) userName timestamp currentDir =
+ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
   void $
     send
       config
@@ -132,6 +133,8 @@ ep config (GoalOptions op) userName timestamp currentDir =
               _goalDir = currentDir
             }
       )
+ep config (GoalOptions GetGraph) userName _ _ =
+  send config (getGoalsC userName) >>= display
 
 println :: BS.ByteString -> IO ()
 println bs =

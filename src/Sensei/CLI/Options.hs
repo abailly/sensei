@@ -20,7 +20,7 @@ data Options
   | UserOptions UserOptions
   | AuthOptions AuthOptions
   | CommandOptions CommandOptions
-  | GoalOptions Op
+  | GoalOptions GoalOptions
   deriving (Show, Eq)
 
 data QueryOptions
@@ -57,6 +57,9 @@ data AuthOptions
   deriving (Show, Eq)
 
 data CommandOptions = Command {exe :: String, args :: [String]}
+  deriving (Show, Eq)
+
+data GoalOptions = GetGraph | UpdateGraph Op
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -339,9 +342,10 @@ commandParser =
     <$> strArgument (help "command name")
     <*> many (strArgument (help "command argument(s)"))
 
-goalParser :: Parser Op
+goalParser :: Parser GoalOptions
 goalParser =
-  pushGoalParser <|> popGoalParser <|> doneGoalParser <|> shiftGoalParser <|> setGoalParser
+  (UpdateGraph <$> (pushGoalParser <|> popGoalParser <|> doneGoalParser <|> shiftGoalParser <|> setGoalParser))
+  <|> pure GetGraph
   where
     pushGoalParser =
       flag'
@@ -375,7 +379,12 @@ goalParser =
             <> help "Mark first current goal as done, setting parents as current if all done"
         )
 
-    setGoalParser = goal <$> strArgument (help "Set given goal as a children of current goal(s)")
+    setGoalParser =  
+        goal <$>
+        strOption
+        ( long "add-goal"
+            <> short 'g'
+            <> help "Set given goal as a children of current goal(s)")
 
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options

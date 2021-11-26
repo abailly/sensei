@@ -74,23 +74,27 @@ spec = describe "Command-Line Interface" $ do
       runOptionsParser Nothing ["command", "foo", "bar", "-x"]
         `shouldSatisfy` isLeft
 
-    it "parses 'goal foo' as goal option" $ do
-      runOptionsParser Nothing ["goal", "foo"]
-        `shouldBe` Right (GoalOptions $ goal "foo")
+    it "parses 'goal -g foo' as goal option" $ do
+      runOptionsParser Nothing ["goal", "-g", "foo"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph $ goal "foo")
 
     it "parses 'goal -p' as goal push option" $ do
       runOptionsParser Nothing ["goal", "-p"]
-        `shouldBe` Right (GoalOptions push)
+        `shouldBe` Right (GoalOptions $ UpdateGraph push)
 
     it "parses 'goal -P' as goal pop option" $ do
       runOptionsParser Nothing ["goal", "-P"]
-        `shouldBe` Right (GoalOptions pop)
+        `shouldBe` Right (GoalOptions $ UpdateGraph pop)
 
     it "parses 'goal -s' as goal shift option" $ do
       runOptionsParser Nothing ["goal", "-s"]
-        `shouldBe` Right (GoalOptions shift)
+        `shouldBe` Right (GoalOptions $ UpdateGraph shift)
 
     it "parses 'goal -d' as goal done option" $ do
       runOptionsParser Nothing ["goal", "-d"]
-        `shouldBe` Right (GoalOptions done)
+        `shouldBe` Right (GoalOptions $ UpdateGraph done)
+
+    it "parses 'goal' as get goal graph option" $ do
+      runOptionsParser Nothing ["goal"]
+        `shouldBe` Right (GoalOptions GetGraph)
 
