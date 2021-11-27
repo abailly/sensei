@@ -15,7 +15,7 @@ import System.Posix.User (getRealUserID)
 -- | Id of current user
 type UID = String
 
-stackage_version = "lts-18.2"
+stackage_version = "lts-18.13"
 
 docker_repository = "pankzsoft"
 

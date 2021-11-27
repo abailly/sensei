@@ -38,7 +38,7 @@ RUN tar -xf stack.tar.gz -C /usr/local/bin --strip-components=1 && \
 RUN useradd --shell /bin/bash -u 500 -o -c "" -m user
 USER user
 
-ARG STACKAGE_VERSION=lts-18.2
+ARG STACKAGE_VERSION=lts-18.13
 
 RUN /usr/local/bin/stack setup --resolver $STACKAGE_VERSION
 
