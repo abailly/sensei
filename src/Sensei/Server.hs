@@ -116,8 +116,7 @@ searchNoteS ::
 searchNoteS _ Nothing = pure []
 searchNoteS usr (Just search) = do
   usrProfile <- getUserProfileS usr
-  rawNotes <- searchNotes usrProfile search
-  pure rawNotes
+  searchNotes usrProfile search
 
 commandsDayS ::
   (DB m) => Text -> Day -> m [CommandView]

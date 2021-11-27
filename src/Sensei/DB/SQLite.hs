@@ -325,8 +325,9 @@ migrateSQLiteDB logger sqliteFile =
             addUniqueConstraintToUsers
           ]
       case migResult of
-        MigrationSuccessful -> pure ()
         MigrationFailed err -> throwIO $ SQLiteDBError "" err
+        MigrationSuccessful -> pure ()
+        MigrationAlreadyApplied -> pure ()
 
 withBackup :: FilePath -> (FilePath -> IO a) -> IO a
 withBackup file action = do

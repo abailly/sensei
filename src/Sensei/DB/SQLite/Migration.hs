@@ -48,6 +48,7 @@ tableExists tblName cnx = do
 
 data MigrationResult
   = MigrationSuccessful
+  | MigrationAlreadyApplied
   | MigrationFailed {reason :: Text}
   deriving (Eq, Show, Read, Generic, ToJSON, FromJSON)
 
@@ -180,7 +181,7 @@ runMigration cnx _ m = do
   hasRun <- checkHasRun m cnx
   ( if not hasRun
       then applyMigration m cnx
-      else pure MigrationSuccessful
+      else pure MigrationAlreadyApplied
     )
     `catches` [ Handler $ \(e :: FormatError) -> pure $ MigrationFailed (pack $ show e),
                 Handler $ \(e :: ResultError) -> pure $ MigrationFailed (pack $ show e),
