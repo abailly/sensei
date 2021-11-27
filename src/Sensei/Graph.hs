@@ -4,9 +4,10 @@
 
 module Sensei.Graph
   ( mkG,
-    G (..),
+    G,
     Op,
     currentGoals,
+    doneGoals,
     asGraph,
     goal,
     pop,
@@ -34,35 +35,45 @@ import Data.Tuple (swap)
 import GHC.Generics (Generic)
 
 mkG :: [Op] -> G
-mkG = go (G empty empty)
+mkG = go (G empty empty empty)
   where
     go g [] = g
-    go (G full current) (op : ops) =
+    go G {fullG, currentG, doneG} (op : ops) =
       case op of
-        Goal v -> go (G ((newGoal `connect` current) `overlay` full) newGoal) ops
+        Goal v ->
+          go
+            G
+              { fullG = ((newGoal `connect` currentG) `overlay` fullG),
+                currentG = newGoal,
+                doneG
+              }
+            ops
           where
             newGoal = vertex v
-        Done -> go (G full parents) ops
+        Done -> go G {fullG, currentG = parents, doneG = newDone} ops
           where
-            vs = vertexList current
-            es = edgeList full
+            vs = vertexList currentG
+            es = edgeList fullG
+            newDone = case vs of
+              (v : _) -> vertex v `overlay` doneG
+              [] -> doneG
             parents = case vs of
               [v] -> vertices $ findAll v es
               [] -> empty
               (_ : others) -> vertices others
-        Pop -> go (G full parent) ops
+        Pop -> go G {fullG, currentG = parent, doneG} ops
           where
-            vs = vertexList current
-            es = edgeList full
+            vs = vertexList currentG
+            es = edgeList fullG
             parent = vertices $ concatMap (`findAll` es) vs
-        Push -> go (G full $ children es vs) ops
+        Push -> go G {fullG, currentG = children es vs, doneG} ops
           where
-            vs = vertexList current
-            es = edgeList full
-        Shift -> go (G full $ children es parents) ops
+            vs = vertexList currentG
+            es = edgeList fullG
+        Shift -> go G {fullG, currentG = children es parents, doneG} ops
           where
-            es = edgeList full
-            parents = concatMap (flip findAll es) $ vertexList current
+            es = edgeList fullG
+            parents = concatMap (flip findAll es) $ vertexList currentG
 
 children :: [(Text, Text)] -> [Text] -> Graph Text
 children es = vertices . concatMap (`findAll` (map swap es))
@@ -73,13 +84,20 @@ findAll a ((a', b) : as)
   | a == a' = b : findAll a as
   | otherwise = findAll a as
 
-data G = G {unG :: Graph Text, currentG :: Graph Text}
+data G = G
+  { fullG :: Graph Text,
+    currentG :: Graph Text,
+    doneG :: Graph Text
+  }
 
 currentGoals :: G -> [Text]
 currentGoals G {currentG} = vertexList currentG
 
+doneGoals :: G -> [Text]
+doneGoals G {doneG} = vertexList doneG
+
 asGraph :: G -> Graph Text
-asGraph = unG
+asGraph = fullG
 
 data Op = Goal Text | Pop | Push | Shift | Done
   deriving (Eq, Show, Generic, ToJSON, FromJSON)

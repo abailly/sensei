@@ -66,6 +66,21 @@ spec = do
 
     currentGoals ops `shouldBe` ["Baz"]
 
+  it "add one goal to 'doneSet' when 'done'" $ do
+    let ops =
+          mkG
+            [ goal "Foo",
+              goal "Bar",
+              pop,
+              goal "Baz",
+              shift,
+              goal "Quux",
+              done,
+              done
+            ]
+
+    doneGoals ops `shouldBe` ["Bar", "Quux"]
+
   it "remove set children as current on 'push'" $ do
     let ops =
           mkG
