@@ -9,15 +9,15 @@ packages:
     version: 0.1.0.0
     git: https://github.com/pankzsoft/servant-server-base.git
     pantry-tree:
-      size: 1898
-      sha256: 5fba29309787038ea1fd787c6d72c8ed959e6e6b2675385e8f23d11472401f98
-    commit: f20e1cbcc314963c43b11d7f9b3ff2e6922e45c5
+      size: 1959
+      sha256: 0b1f3267d9b16980bd89921f62ec577dbd1f6a44b256f7e8893c767c9bac7df9
+    commit: 2a4469f708862293b5ddfb9ffede3141c2631d4e
   original:
     git: https://github.com/pankzsoft/servant-server-base.git
-    commit: f20e1cbcc314963c43b11d7f9b3ff2e6922e45c5
+    commit: 2a4469f708862293b5ddfb9ffede3141c2631d4e
 snapshots:
 - completed:
-    size: 585392
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/2.yaml
-    sha256: 7abb45c0cc5eb349448b66d8753655542d45d387ad26970419282eab3d860724
-  original: lts-18.2
+    size: 586268
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/13.yaml
+    sha256: d9e658a22cfe8d87a64fdf219885f942fef5fe2bcb156a9800174911c5da2443
+  original: lts-18.13

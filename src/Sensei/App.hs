@@ -87,8 +87,8 @@ sensei output = do
   serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
   rootUser <- fmap pack <$> lookupEnv "SENSEI_SERVER_ROOT_USER"
   env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-  server <- startAppServer serverName NoCORS serverPort (senseiApp env rootUser signal key output configDir)
-  waitServer server `race_` (takeMVar signal >> stopServer server)
+  withAppServer serverName NoCORS serverPort (senseiApp env rootUser signal key output configDir) $ \server ->
+    waitServer server `race_` (takeMVar signal >> stopServer server)
 
 senseiApp :: Maybe Env -> Maybe Text -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
 senseiApp env rootUser signal publicAuthKey output configDir logger = do
