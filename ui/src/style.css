@@ -426,3 +426,7 @@ button.btn-next:hover , button.btn-prev:hover {
     background-color: gray;
     color: black;
 }
+div.goals {
+  width: 90vw;
+  height: 90vh;
+}

@@ -46,6 +46,7 @@
     "@js-joda/timezone": "^2.5.0",
     "navigo": "^7.1.2",
     "parse-link-header": "^1.0.1",
-    "showdown": "^1.9.1"
+    "showdown": "^1.9.1",
+    "vis-network": "^9.1.0"
   }
 }
