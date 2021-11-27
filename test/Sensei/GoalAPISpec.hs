@@ -41,4 +41,7 @@ spec = withApp app $ do
     postJSON_ "/api/goals/arnaud" g1
     postJSON_ "/api/goals/arnaud" g2
     getJSON "/api/goals/arnaud"
-      `shouldRespondJSONBody` Goals {goalsGraph = [("other goal", ["some goal"]), ("some goal", [])]}
+      `shouldRespondJSONBody` Goals
+        { goalsGraph = [("other goal", ["some goal"]), ("some goal", [])],
+          current = ["other goal"]
+        }

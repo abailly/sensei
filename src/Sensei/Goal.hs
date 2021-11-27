@@ -33,6 +33,7 @@ import Sensei.Graph
   ( G (..),
     Op,
     adjacencyList,
+    currentGoals,
     done,
     goal,
     mkG,
@@ -57,11 +58,17 @@ newtype Goal = Goal Text
   deriving newtype (IsString, ToJSON, FromJSON)
 
 -- | A representation of goals in the form of a directed graph.
-data Goals = Goals {goalsGraph :: [(Goal, [Goal])]}
+data Goals = Goals
+  { goalsGraph :: [(Goal, [Goal])],
+    current :: [Goal]
+  }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 makeGoals :: [GoalOp] -> Goals
 makeGoals ops =
-  let G {unG} = mkG $ map _goalOp ops
+  let g = mkG $ map _goalOp ops
       toGoal (v, es) = (Goal v, map Goal es)
-   in Goals $ map toGoal $ adjacencyList unG
+   in Goals
+        { goalsGraph = map toGoal $ adjacencyList (unG g),
+          current = map Goal $ currentGoals g
+        }

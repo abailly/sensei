@@ -4,13 +4,17 @@ import { get } from './request';
 import *  as vis from 'vis-network';
 
 
-function drawGoalsGraph(container, { goalsGraph }) {
+function drawGoalsGraph(container, { goalsGraph, current }) {
   console.log(goalsGraph);
   // create an array with nodes
   var nodesMap = {};
   const nodes = goalsGraph.map((adj, index) => {
     nodesMap[adj[0]] = index;
-    return { id: index, label: adj[0] };
+    var color = 'lightblue';
+    if (current.indexOf(adj[0]) >= 0) {
+      color = 'red';
+    }
+    return { id: index, label: adj[0], color };
   });
 
   var edges = [];
