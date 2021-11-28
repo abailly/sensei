@@ -4,7 +4,7 @@ import { get } from './request';
 import *  as vis from 'vis-network';
 
 
-function drawGoalsGraph(container, { goalsGraph, current }) {
+function drawGoalsGraph(container, { goalsGraph, current, completed }) {
   console.log(goalsGraph);
   // create an array with nodes
   var nodesMap = {};
@@ -13,6 +13,9 @@ function drawGoalsGraph(container, { goalsGraph, current }) {
     var color = 'lightblue';
     if (current.indexOf(adj[0]) >= 0) {
       color = 'red';
+    }
+    if (completed.indexOf(adj[0]) >= 0) {
+      color = 'green';
     }
     return { id: index, label: adj[0], color };
   });
