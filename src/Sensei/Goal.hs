@@ -14,12 +14,7 @@ module Sensei.Goal
     Goals (..),
     makeGoals,
     Goal (..),
-    Op,
-    goal,
-    pop,
-    push,
-    shift,
-    done,
+    module Sensei.Graph,
   )
 where
 
@@ -31,6 +26,7 @@ import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Sensei.Graph
   ( Op,
+    add,
     adjacencyList,
     asGraph,
     currentGoals,

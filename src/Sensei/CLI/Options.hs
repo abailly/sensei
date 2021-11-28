@@ -344,8 +344,16 @@ commandParser =
 
 goalParser :: Parser GoalOptions
 goalParser =
-  (UpdateGraph <$> (pushGoalParser <|> popGoalParser <|> doneGoalParser <|> shiftGoalParser <|> setGoalParser))
-  <|> pure GetGraph
+  ( UpdateGraph
+      <$> ( pushGoalParser
+              <|> popGoalParser
+              <|> doneGoalParser
+              <|> shiftGoalParser
+              <|> setGoalParser
+              <|> addGoalParser
+          )
+  )
+    <|> pure GetGraph
   where
     pushGoalParser =
       flag'
@@ -379,12 +387,21 @@ goalParser =
             <> help "Mark first current goal as done, setting parents as current if all done"
         )
 
-    setGoalParser =  
-        goal <$>
-        strOption
-        ( long "add-goal"
-            <> short 'g'
-            <> help "Set given goal as a children of current goal(s)")
+    setGoalParser =
+      goal
+        <$> strOption
+          ( long "set-goal"
+              <> short 'g'
+              <> help "Set given goal as a children of current goal(s)"
+          )
+
+    addGoalParser =
+      add
+        <$> strOption
+          ( long "add-goal"
+              <> short 'a'
+              <> help "Mark current goal as done and set given goal as its parent"
+          )
 
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options

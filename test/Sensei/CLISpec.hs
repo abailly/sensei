@@ -94,7 +94,10 @@ spec = describe "Command-Line Interface" $ do
       runOptionsParser Nothing ["goal", "-d"]
         `shouldBe` Right (GoalOptions $ UpdateGraph done)
 
+    it "parses 'goal -a \"some goal\"' as goal add option" $ do
+      runOptionsParser Nothing ["goal", "-a", "a goal"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph $ add "a goal")
+
     it "parses 'goal' as get goal graph option" $ do
       runOptionsParser Nothing ["goal"]
         `shouldBe` Right (GoalOptions GetGraph)
-
