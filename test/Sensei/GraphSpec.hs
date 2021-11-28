@@ -81,7 +81,7 @@ spec = do
 
     doneGoals ops `shouldBe` ["Bar", "Quux"]
 
-  it "remove set children as current on 'push'" $ do
+  it "set children as current on 'push'" $ do
     let ops =
           mkG
             [ goal "Foo",
@@ -93,3 +93,32 @@ spec = do
             ]
 
     currentGoals ops `shouldBe` ["Bar", "Baz"]
+
+  it "add 'goal' insert new goal between current and its parent(s)" $ do
+    let ops =
+          mkG
+            [ goal "Foo",
+              goal "Bar",
+              pop,
+              goal "Baz",
+              add "Quux"
+            ]
+
+    doneGoals ops `shouldBe` ["Baz"]
+    currentGoals ops `shouldBe` ["Quux"]
+    edgeList (asGraph ops) `shouldContain` [("Baz", "Quux"), ("Quux", "Foo")]
+
+  it "add 'goal' insert new goal when current empty" $ do
+    let ops =
+          mkG
+            [ goal "Foo",
+              goal "Bar",
+              pop,
+              goal "Baz",
+              done,
+              add "Quux"
+            ]
+
+    doneGoals ops `shouldBe` ["Baz", "Foo"]
+    currentGoals ops `shouldBe` ["Quux"]
+    edgeList (asGraph ops) `shouldContain` [("Foo", "Quux")]

@@ -14,6 +14,7 @@ module Sensei.Graph
     push,
     shift,
     done,
+    add,
     module Algebra.Graph,
   )
 where
@@ -50,14 +51,33 @@ mkG = go (G empty empty empty)
             ops
           where
             newGoal = vertex v
-        Done -> go G {fullG, currentG = parents, doneG = newDone} ops
+        Add v ->
+          go
+            G
+              { fullG =
+                  ( (oldDone `connect` newGoal)
+                      `overlay` (newGoal `connect` parents)
+                      `overlay` fullG
+                  ),
+                currentG = newGoal,
+                doneG = newDone
+              }
+            ops
+          where
+            vs = vertexList currentG
+            es = edgeList fullG
+            newGoal = vertex v
+            (oldDone, newDone, parents) = case vs of
+              (d : _) -> (vertex d, vertex d `overlay` doneG, vertices $ findAll d es)
+              [] -> (empty, doneG, empty)
+        Done -> go G {fullG, currentG = newCurrent, doneG = newDone} ops
           where
             vs = vertexList currentG
             es = edgeList fullG
             newDone = case vs of
               (v : _) -> vertex v `overlay` doneG
               [] -> doneG
-            parents = case vs of
+            newCurrent = case vs of
               [v] -> vertices $ findAll v es
               [] -> empty
               (_ : others) -> vertices others
@@ -99,7 +119,13 @@ doneGoals G {doneG} = vertexList doneG
 asGraph :: G -> Graph Text
 asGraph = fullG
 
-data Op = Goal Text | Pop | Push | Shift | Done
+data Op
+  = Goal Text
+  | Pop
+  | Push
+  | Shift
+  | Done
+  | Add Text
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 goal :: Text -> Op
@@ -116,3 +142,6 @@ shift = Shift
 
 done :: Op
 done = Done
+
+add :: Text -> Op
+add = Add
