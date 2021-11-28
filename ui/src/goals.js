@@ -4,9 +4,7 @@ import { get } from './request';
 import *  as vis from 'vis-network';
 
 
-function drawGoalsGraph(container, { goalsGraph, current, completed }) {
-  console.log(goalsGraph);
-  // create an array with nodes
+export function computeGoalsGraph({ goalsGraph, current, completed }) {
   var nodesMap = {};
   const nodes = goalsGraph.map((adj, index) => {
     nodesMap[adj[0]] = index;
@@ -28,11 +26,15 @@ function drawGoalsGraph(container, { goalsGraph, current, completed }) {
       edges.push({ from: index, to: idx });
     }));
 
-  var data = {
+  return {
     nodes,
     edges,
   };
-  var options = {
+}
+
+function drawGoalsGraph(container, goals) {
+  const data = computeGoalsGraph(goals);
+  const options = {
     edges: {
       arrows: "to",
     },
