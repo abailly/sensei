@@ -38,10 +38,20 @@ spec = withApp app $ do
               _goalTimestamp = UTCTime aDay 0,
               _goalDir = "some/directory"
             }
+        g3 =
+          GoalOp
+            { _goalOp = done,
+              _goalUser = "arnaud",
+              _goalTimestamp = UTCTime aDay 0,
+              _goalDir = "some/directory"
+            }
     postJSON_ "/api/goals/arnaud" g1
     postJSON_ "/api/goals/arnaud" g2
+    postJSON_ "/api/goals/arnaud" g3
+
     getJSON "/api/goals/arnaud"
       `shouldRespondJSONBody` Goals
         { goalsGraph = [("other goal", ["some goal"]), ("some goal", [])],
-          current = ["other goal"]
+          current = ["some goal"],
+          completed = ["other goal"]
         }
