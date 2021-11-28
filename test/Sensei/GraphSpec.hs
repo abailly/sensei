@@ -107,6 +107,7 @@ spec = do
     doneGoals ops `shouldBe` ["Baz"]
     currentGoals ops `shouldBe` ["Quux"]
     edgeList (asGraph ops) `shouldContain` [("Baz", "Quux"), ("Quux", "Foo")]
+    edgeList (asGraph ops) `shouldNotContain` [("Baz", "Foo")]
 
   it "add 'goal' insert new goal when current empty" $ do
     let ops =

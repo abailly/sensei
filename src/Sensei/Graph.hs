@@ -26,6 +26,7 @@ import Algebra.Graph
     edgeList,
     empty,
     overlay,
+    removeEdge,
     vertex,
     vertexList,
     vertices,
@@ -57,7 +58,7 @@ mkG = go (G empty empty empty)
               { fullG =
                   ( (oldDone `connect` newGoal)
                       `overlay` (newGoal `connect` parents)
-                      `overlay` fullG
+                      `overlay` updatedG
                   ),
                 currentG = newGoal,
                 doneG = newDone
@@ -67,9 +68,15 @@ mkG = go (G empty empty empty)
             vs = vertexList currentG
             es = edgeList fullG
             newGoal = vertex v
-            (oldDone, newDone, parents) = case vs of
-              (d : _) -> (vertex d, vertex d `overlay` doneG, vertices $ findAll d es)
-              [] -> (empty, doneG, empty)
+            (updatedG, oldDone, newDone, parents) = case vs of
+              (d : _) ->
+                let parentVs = findAll d es
+                 in ( foldr (\p g -> removeEdge d p g) fullG parentVs,
+                      vertex d,
+                      vertex d `overlay` doneG,
+                      vertices $ parentVs
+                    )
+              [] -> (fullG, empty, doneG, empty)
         Done -> go G {fullG, currentG = newCurrent, doneG = newDone} ops
           where
             vs = vertexList currentG
