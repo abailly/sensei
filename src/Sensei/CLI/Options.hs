@@ -361,7 +361,7 @@ goalParser =
         push
         ( long "push"
             <> short 'p'
-            <> help "Set parent(s) of current goal(s) as current"
+            <> help "Set children of current goal(s) as current"
         )
 
     popGoalParser =
@@ -369,7 +369,7 @@ goalParser =
         pop
         ( long "pop"
             <> short 'P'
-            <> help "Set children of current goal(s) as current"
+            <> help "Set parent(s) of current goal(s) as current"
         )
 
     shiftGoalParser =
