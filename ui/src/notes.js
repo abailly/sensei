@@ -3,7 +3,7 @@ import { get } from './request';
 import { dom, clear, clearElement } from './dom';
 import { pagination } from './page';
 import { formatISODateTime } from "./date";
-import { LocalDateTime } from "@js-joda/core";
+import { LocalDate, LocalDateTime } from "@js-joda/core";
 import markdown from "./markdown";
 
 
@@ -17,21 +17,23 @@ function formatTags(tags) {
   </h4>;
 };
 
-function formatNoteDiv(note) {
-  const noteDate = formatISODateTime(LocalDateTime.parse(note.noteStart));
-  const noteDiv =
-    <div class='note-full'>
-      <h3><a href={'/notes/' + noteDate}>{noteDate}</a></h3>
-      <h4>{note.noteProject}</h4>
-      {formatTags(note.noteTags)}
+function formatNoteDiv(router) {
+  return function(note) {
+    const noteDateTime = formatISODateTime(LocalDateTime.parse(note.noteStart));
+    const noteDate = formatISODateTime(LocalDate.parse(note.noteStart));
+    const noteDiv =
+          <div class='note-full'>
+          <h3><a href={router.link('/notes/' + noteDate)}>{noteDateTime}</a></h3>
+          <h4>{note.noteProject}</h4>
+          {formatTags(note.noteTags)}
     </div>;
 
-  const content = <div class='note-content'>
-  </div>;
+    const content = <div class='note-content'></div>;
 
-  content.innerHTML = markdown(note.noteView);
-  noteDiv.appendChild(content);
-  return noteDiv;
+    content.innerHTML = markdown(note.noteView);
+    noteDiv.appendChild(content);
+    return noteDiv;
+  };
 }
 
 /**
@@ -64,7 +66,7 @@ function list(router, container, page) {
       <div id='daily-notes'>
         <h2>Notes for {page} </h2>
         {
-          notesList.map(formatNoteDiv)
+          notesList.map(formatNoteDiv(router))
         }
       </div>;
     container.appendChild(notesPage);
@@ -85,7 +87,7 @@ function search(router, container) {
       get(router, `/api/notes/${config.user}?search=${encodeURI(q)}`, (searchResult) => {
         const resList = <div>
           {
-            searchResult.map(formatNoteDiv)
+            searchResult.map(formatNoteDiv(router))
           }
         </div>;
         results.appendChild(resList);
