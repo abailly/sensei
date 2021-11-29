@@ -1,3 +1,9 @@
+# 0.39.0
+
+* Fix link from notes' date
+* Visualise goals graph, improve API, and provide command-line handler to manipulate goals
+* Bump stack to lts-18.13
+
 # 0.38.0
 
 * Introduce `/api/goals` API to set and handle a _goals graph_

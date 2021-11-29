@@ -169,7 +169,7 @@ runShake pwd uid = shakeArgs options $ do
         "-e",
         "LOCAL_USER_ID=" <> uid,
         "pankzsoft/haskell-base",
-        "npm i && npm run build"
+        "npm i && npm run build && npm test"
       ]
 
 needDirectoryFiles dir patterns =
