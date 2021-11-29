@@ -104,12 +104,11 @@ spec = do
               add "Quux"
             ]
 
-    doneGoals ops `shouldBe` ["Baz"]
-    currentGoals ops `shouldBe` ["Quux"]
+    currentGoals ops `shouldBe` ["Baz"]
     edgeList (asGraph ops) `shouldContain` [("Baz", "Quux"), ("Quux", "Foo")]
     edgeList (asGraph ops) `shouldNotContain` [("Baz", "Foo")]
 
-  it "add 'goal' insert new goal when current empty" $ do
+  it "add 'goal' insert new goal after current given it has no parents" $ do
     let ops =
           mkG
             [ goal "Foo",
@@ -120,6 +119,21 @@ spec = do
               add "Quux"
             ]
 
+    doneGoals ops `shouldBe` ["Baz"]
+    currentGoals ops `shouldBe` ["Foo"]
+    edgeList (asGraph ops) `shouldContain` [("Foo", "Quux")]
+
+  it "add 'goal' insert new goal as current given it has no current" $ do
+    let ops =
+          mkG
+            [ goal "Foo",
+              goal "Bar",
+              pop,
+              goal "Baz",
+              done,
+              done,
+              add "Quux"
+            ]
+
     doneGoals ops `shouldBe` ["Baz", "Foo"]
     currentGoals ops `shouldBe` ["Quux"]
-    edgeList (asGraph ops) `shouldContain` [("Foo", "Quux")]

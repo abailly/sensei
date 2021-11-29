@@ -56,27 +56,26 @@ mkG = go (G empty empty empty)
           go
             G
               { fullG =
-                  ( (oldDone `connect` newGoal)
+                  ( (currentG `connect` newGoal)
                       `overlay` (newGoal `connect` parents)
                       `overlay` updatedG
                   ),
-                currentG = newGoal,
-                doneG = newDone
+                currentG = newCurrent,
+                doneG
               }
             ops
           where
             vs = vertexList currentG
             es = edgeList fullG
             newGoal = vertex v
-            (updatedG, oldDone, newDone, parents) = case vs of
+            (updatedG, newCurrent, parents) = case vs of
               (d : _) ->
                 let parentVs = findAll d es
                  in ( foldr (\p g -> removeEdge d p g) fullG parentVs,
-                      vertex d,
-                      vertex d `overlay` doneG,
+                      currentG,
                       vertices $ parentVs
                     )
-              [] -> (fullG, empty, doneG, empty)
+              [] -> (fullG, newGoal, empty)
         Done -> go G {fullG, currentG = newCurrent, doneG = newDone} ops
           where
             vs = vertexList currentG
