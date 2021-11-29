@@ -2,8 +2,8 @@ import { config } from "./config";
 import { get } from './request';
 import { dom, clear, clearElement } from './dom';
 import { pagination } from './page';
-import { formatISODateTime } from "./date";
-import { LocalDate, LocalDateTime } from "@js-joda/core";
+import { formatISODateTime, formatISODate } from "./date";
+import { LocalDateTime } from "@js-joda/core";
 import markdown from "./markdown";
 
 
@@ -19,14 +19,15 @@ function formatTags(tags) {
 
 function formatNoteDiv(router) {
   return function(note) {
-    const noteDateTime = formatISODateTime(LocalDateTime.parse(note.noteStart));
-    const noteDate = formatISODateTime(LocalDate.parse(note.noteStart));
+    const theDate = LocalDateTime.parse(note.noteStart);
+    const noteDateTime = formatISODateTime(theDate);
+    const noteDate = formatISODate(theDate);
     const noteDiv =
-          <div class='note-full'>
-          <h3><a href={router.link('/notes/' + noteDate)}>{noteDateTime}</a></h3>
-          <h4>{note.noteProject}</h4>
-          {formatTags(note.noteTags)}
-    </div>;
+      <div class='note-full'>
+        <h3><a href={router.link('/notes/' + noteDate)}>{noteDateTime}</a></h3>
+        <h4>{note.noteProject}</h4>
+        {formatTags(note.noteTags)}
+      </div>;
 
     const content = <div class='note-content'></div>;
 

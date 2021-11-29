@@ -25,7 +25,7 @@ describe('Notes', () => {
     container = document.createElement('div');
   });
 
-  test('it should display note date like "2020-10-12 14:30"', () => {
+  test('it should display note date like "2020-10-12"', () => {
     notes.list(router, container, 1);
     expect(container).toMatchSnapshot();
   });
