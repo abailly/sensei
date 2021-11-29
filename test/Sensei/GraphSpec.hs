@@ -137,3 +137,16 @@ spec = do
 
     doneGoals ops `shouldBe` ["Baz", "Foo"]
     currentGoals ops `shouldBe` ["Quux"]
+
+  it "link 'goala' 'goalb' insert link between goals" $ do
+    let ops =
+          mkG
+            [ goal "Foo",
+              goal "Bar",
+              push,
+              goal "Baz",
+              link "Baz" "Foo"
+            ]
+
+    currentGoals ops `shouldBe` ["Baz"]
+    edgeList (asGraph ops) `shouldContain` [("Baz", "Foo")]

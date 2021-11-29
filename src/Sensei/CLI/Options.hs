@@ -351,6 +351,7 @@ goalParser =
               <|> shiftGoalParser
               <|> setGoalParser
               <|> addGoalParser
+              <|> linkGoalParser
           )
   )
     <|> pure GetGraph
@@ -402,6 +403,15 @@ goalParser =
               <> short 'a'
               <> help "Mark current goal as done and set given goal as its parent"
           )
+
+    linkGoalParser =
+      link
+        <$> strOption
+          ( long "link"
+              <> short 'l'
+              <> help "Link 2 goals"
+          )
+        <*> strArgument (help "Target")
 
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options

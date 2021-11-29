@@ -33,6 +33,7 @@ import Sensei.Graph
     done,
     doneGoals,
     goal,
+    link,
     mkG,
     pop,
     push,

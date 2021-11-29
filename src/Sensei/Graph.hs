@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Sensei.Graph
   ( mkG,
@@ -15,6 +16,7 @@ module Sensei.Graph
     shift,
     done,
     add,
+    link,
     module Algebra.Graph,
   )
 where
@@ -23,6 +25,7 @@ import Algebra.Graph
   ( Graph,
     adjacencyList,
     connect,
+    edge,
     edgeList,
     empty,
     overlay,
@@ -100,6 +103,8 @@ mkG = go (G empty empty empty)
           where
             es = edgeList fullG
             parents = concatMap (flip findAll es) $ vertexList currentG
+        Link from to ->
+          go G {fullG = (from `edge` to) `overlay` fullG, ..} ops
 
 children :: [(Text, Text)] -> [Text] -> Graph Text
 children es = vertices . concatMap (`findAll` (map swap es))
@@ -132,6 +137,7 @@ data Op
   | Shift
   | Done
   | Add Text
+  | Link Text Text
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 goal :: Text -> Op
@@ -151,3 +157,6 @@ done = Done
 
 add :: Text -> Op
 add = Add
+
+link :: Text -> Text -> Op
+link = Link

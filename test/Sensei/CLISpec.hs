@@ -101,3 +101,7 @@ spec = describe "Command-Line Interface" $ do
     it "parses 'goal' as get goal graph option" $ do
       runOptionsParser Nothing ["goal"]
         `shouldBe` Right (GoalOptions GetGraph)
+
+    it "parses 'goal -l goal1 goal2' as link goal option" $ do
+      runOptionsParser Nothing ["goal", "-l", "goal1", "goal2"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph $ link "goal1" "goal2")
