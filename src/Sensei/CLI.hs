@@ -122,7 +122,6 @@ ep config (CommandOptions (Command exe args)) userName _ currentDir = do
     Just exePath -> Right <$> wrapProg io userName exePath args currentDir
     Nothing -> tryWrapProg io userName exe args currentDir
 ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
-  void $
     send
       config
       ( postGoalC userName $
@@ -132,7 +131,7 @@ ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
               _goalTimestamp = timestamp,
               _goalDir = currentDir
             }
-      )
+      ) >>= display
 ep config (GoalOptions GetGraph) userName _ _ =
   send config (getGoalsC userName) >>= display
 

@@ -55,3 +55,15 @@ spec = withApp app $ do
           current = ["some goal"],
           completed = ["other goal"]
         }
+
+  it "POST /api/goals/<user> returns current goal(s)" $ do
+    let op =
+          GoalOp
+            { _goalOp = goal "some goal",
+              _goalUser = "arnaud",
+              _goalTimestamp = UTCTime aDay 0,
+              _goalDir = "some/directory"
+            }
+    postJSON "/api/goals/arnaud" op
+      `shouldRespondJSONBody` CurrentGoals ["some goal"]
+

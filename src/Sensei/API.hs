@@ -199,7 +199,7 @@ type PostGoalAPI =
     "Update goals graph of given user, using some operation."
     :> Capture "user" Text :? "Name of user to modify goal for"
     :> ReqBody '[JSON] GoalOp
-    :> Post '[JSON] NoContent
+    :> Post '[JSON] CurrentGoals
 
 type GetGoalsAPI =
   Summary

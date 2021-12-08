@@ -78,7 +78,7 @@ createUserProfileC :: UserProfile -> ClientMonad (Encoded Hex)
 getUserProfileC :: Text -> ClientMonad UserProfile
 setUserProfileC :: Text -> UserProfile -> ClientMonad NoContent
 getVersionsC :: ClientMonad Versions
-postGoalC :: Text -> GoalOp -> ClientMonad NoContent
+postGoalC :: Text -> GoalOp -> ClientMonad CurrentGoals
 getGoalsC :: Text -> ClientMonad Goals
 ( getFlowC :<|> updateFlowC
     :<|> queryFlowPeriodSummaryC

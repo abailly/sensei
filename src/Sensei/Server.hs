@@ -207,8 +207,11 @@ getVersionsS ::
   (Monad m) => m Versions
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
 
-postGoalS :: DB m => Text -> GoalOp -> m NoContent
-postGoalS _userName op = NoContent <$ writeEvent (EventGoal op)
+postGoalS :: DB m => Text -> GoalOp -> m CurrentGoals
+postGoalS userName op = do
+  writeEvent (EventGoal op)
+  CurrentGoals . current <$> getGoalsS userName 
+  
 
 getGoalsS :: DB m => Text -> m Goals
 getGoalsS userName = do

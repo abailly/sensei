@@ -73,6 +73,8 @@ instance ToSchema GoalOp
 
 instance ToSchema Goals
 
+instance ToSchema CurrentGoals
+
 instance ToSchema Goal where
   declareNamedSchema _ =
     return $

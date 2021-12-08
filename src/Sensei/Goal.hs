@@ -13,6 +13,7 @@ module Sensei.Goal
     goalDir,
     Goals (..),
     makeGoals,
+    CurrentGoals(..),
     Goal (..),
     module Sensei.Graph,
   )
@@ -72,3 +73,7 @@ makeGoals ops =
           current = map Goal $ currentGoals g,
           completed = map Goal $ doneGoals g
         }
+
+data CurrentGoals = CurrentGoals { goals :: [Goal] }
+  deriving  (Eq, Show, Generic, ToJSON, FromJSON)
+
