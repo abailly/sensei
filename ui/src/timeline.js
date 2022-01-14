@@ -57,7 +57,7 @@ function createTimelineContainer(router, day, data, notesData) {
 
   notes.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(router, `/api/flows/${config.user}/${day}/notes`, (notesData) => {
+      get(router, `/api/flows/${config.userProfile.userName}/${day}/notes`, (notesData) => {
         timeline.drawNotes(notesData);
       });
     } else {
@@ -67,7 +67,7 @@ function createTimelineContainer(router, day, data, notesData) {
 
   commands.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(router, `/api/flows/${config.user}/${day}/commands`, (commandsData) =>
+      get(router, `/api/flows/${config.userProfile.userName}/${day}/commands`, (commandsData) =>
         drawCommands(commandsDiv, commandsData));
     } else {
       clearElement(commandsDiv);
@@ -77,7 +77,7 @@ function createTimelineContainer(router, day, data, notesData) {
 
   summary.addEventListener('change', (e) => {
     if (e.target.checked) {
-      get(router, `/api/flows/${config.user}/summary?from=${day}&to=${nextDay(LocalDate.parse(day))}`, (summaryData) =>
+      get(router, `/api/flows/${config.userProfile.userName}/summary?from=${day}&to=${nextDay(LocalDate.parse(day))}`, (summaryData) =>
         drawSummary(summaryDiv, router, summaryData));
     } else {
       clearElement(summaryDiv);
@@ -116,7 +116,7 @@ function drawCharts(router) {
 
 function fetchFlowData(router) {
   return function(selectedDate) {
-    get(router, `/api/flows/${config.user}/` + selectedDate, (flowData) => {
+    get(router, `/api/flows/${config.userProfile.userName}/` + selectedDate, (flowData) => {
       createTimelineContainer(router, selectedDate, flowData);
     });
   };
@@ -124,7 +124,7 @@ function fetchFlowData(router) {
 
 function fetchAllFlowData(router) {
   return function() {
-    get(router, `/api/flows/${config.user}?group=Day`, drawCharts(router));
+    get(router, `/api/flows/${config.userProfile.userName}?group=Day`, drawCharts(router));
   };
 };
 

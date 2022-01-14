@@ -16,7 +16,6 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       VERSION: JSON.stringify(require('./package.json').version),
-      USER: "'arnaud'"
     }),
     new FaviconsWebpackPlugin('./src/son-of-man-1964.png')
   ],

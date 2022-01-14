@@ -38,7 +38,7 @@ export function summaries(router, container, from, to, period) {
     const [start, end] = currentYearPeriod(baseDate);
     clear('summaries');
     if (e.target.checked) {
-      get(router, `/api/flows/${config.user}/summary?from=${start}&to=${end}&period=${e.target.value}`, (summaryData, links) =>
+      get(router, `/api/flows/${config.userProfile.userName}/summary?from=${start}&to=${end}&period=${e.target.value}`, (summaryData, links) =>
         drawSummary(summaryDiv, router, summaryData, links));
     }
   });
@@ -47,7 +47,7 @@ export function summaries(router, container, from, to, period) {
     const [start, end] = currentMonthPeriod(baseDate);
     clear('summaries');
     if (e.target.checked) {
-      get(router, `/api/flows/${config.user}/summary?from=${start}&to=${end}&period=Month`, (summaryData, links) =>
+      get(router, `/api/flows/${config.userProfile.userName}/summary?from=${start}&to=${end}&period=Month`, (summaryData, links) =>
         drawSummary(summaryDiv, router, summaryData, links));
     }
   });
@@ -56,13 +56,13 @@ export function summaries(router, container, from, to, period) {
     const [start, end] = currentWeekPeriod(baseDate);
     clear('summaries');
     if (e.target.checked) {
-      get(router, `/api/flows/${config.user}/summary?from=${start}&to=${end}&period=Week`, (summaryData, links) =>
+      get(router, `/api/flows/${config.userProfile.userName}/summary?from=${start}&to=${end}&period=Week`, (summaryData, links) =>
         drawSummary(summaryDiv, router, summaryData, links));
     }
   });
 
   if (from && to && period) {
-    get(router, `/api/flows/${config.user}/summary?from=${from}&to=${to}&period=${period}`, (summaryData, links) =>
+    get(router, `/api/flows/${config.userProfile.userName}/summary?from=${from}&to=${to}&period=${period}`, (summaryData, links) =>
       drawSummary(summaryDiv, router, summaryData, links));
   }
 

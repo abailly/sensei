@@ -53,7 +53,7 @@ export function goals(router, container) {
   clearElement(container);
   container.appendChild(content);
 
-  get(router, `/api/goals/${config.user}`, (goalsData) =>
+  get(router, `/api/goals/${config.userProfile.userName}`, (goalsData) =>
     drawGoalsGraph(content, goalsData));
 
   return content;
