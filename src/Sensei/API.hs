@@ -14,9 +14,11 @@ module Sensei.API
     senseiAPI,
     module Sensei.Color,
     module Sensei.Duration,
+    module Sensei.Event,
     module Sensei.Flow,
     module Sensei.Summary,
     module Sensei.FlowView,
+    module Sensei.Goal,
     module Sensei.Group,
     module Sensei.User,
     module Sensei.Project,
@@ -33,8 +35,10 @@ import Data.Time
 import Preface.Codec (Encoded, Hex)
 import Sensei.Color
 import Sensei.Duration
+import Sensei.Event
 import Sensei.Flow
 import Sensei.FlowView
+import Sensei.Goal
 import Sensei.Group
 import Sensei.Project
 import Sensei.Server.Auth (Auth, AuthenticationToken, Cookie, Credentials, JWT, SerializedToken, SetCookie)
@@ -76,6 +80,7 @@ type DisplayVersions =
 
 type PostEvent =
   Summary "Record a new `Event` in the log."
+    :> Capture "user" UserName :? "User name for which these events are posted"
     :> ReqBody '[JSON] [Event]
     :> Post '[JSON] ()
 
@@ -183,6 +188,25 @@ type CreateUserProfile =
     :> ReqBody '[JSON] UserProfile
     :> Post '[JSON] (Encoded Hex)
 
+type GoalAPI =
+  ( "goals"
+      :> Tags "Goal"
+      :> (PostGoalAPI :<|> GetGoalsAPI)
+  )
+
+type PostGoalAPI =
+  Summary
+    "Update goals graph of given user, using some operation."
+    :> Capture "user" Text :? "Name of user to modify goal for"
+    :> ReqBody '[JSON] GoalOp
+    :> Post '[JSON] CurrentGoals
+
+type GetGoalsAPI =
+  Summary
+    "Retrieve the complete graph of goals."
+    :> Capture "user" Text :? "Name of user to query goals for"
+    :> Get '[JSON] Goals
+
 type LoginAPI =
   Summary "Allows users to login passing in credentials."
     :> Description
@@ -227,6 +251,7 @@ type SenseiAPI =
              :> Tags "User Profile"
              :> (GetFreshToken :<|> CreateUserProfile :<|> GetUserProfile :<|> UpdateUserProfile)
            :<|> Tags "Metadata" :> DisplayVersions
+           :<|> GoalAPI
        )
 
 senseiAPI :: Proxy SenseiAPI

@@ -1,6 +1,6 @@
 {
   "name": "sensei-ui",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "description": "Web client application for Sensei",
   "private": true,
   "scripts": {
@@ -46,6 +46,7 @@
     "@js-joda/timezone": "^2.5.0",
     "navigo": "^7.1.2",
     "parse-link-header": "^1.0.1",
-    "showdown": "^1.9.1"
+    "showdown": "^1.9.1",
+    "vis-network": "^9.1.0"
   }
 }

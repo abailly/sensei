@@ -16,7 +16,7 @@ import System.FilePath (takeBaseName)
 import Text.Regex.TDFA ((=~))
 
 newtype ProjectName = ProjectName {projectName :: Text}
-  deriving newtype (Eq, Show, Read, ToJSON, FromJSON, IsString)
+  deriving newtype (Eq, Ord, Show, Read, ToJSON, FromJSON, IsString)
 
 newtype Regex = Regex {regex :: Text}
   deriving newtype (Eq, Show, Read, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey, IsString)

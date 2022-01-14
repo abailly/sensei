@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -10,6 +12,7 @@ import Control.Applicative
 import Data.Aeson
 import Data.Aeson.Types (Parser)
 import qualified Data.Map as Map
+import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
@@ -20,6 +23,11 @@ import Preface.Codec (Base64, Encoded, Hex)
 import Sensei.Color
 import Sensei.Flow
 import Sensei.Project (ProjectName, Regex)
+import Sensei.Version (currentVersion)
+import Servant (FromHttpApiData, ToHttpApiData)
+
+newtype UserName = UserName {unUserName :: Text}
+  deriving newtype (Eq, Show, IsString, ToJSON, FromJSON, ToHttpApiData, FromHttpApiData)
 
 -- | Customizable parameters for registering and displaying flows.
 --  This configuration defines user-specific configurations that are used

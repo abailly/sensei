@@ -3,9 +3,9 @@ module Sensei.Duration where
 import Control.Monad.Identity (Identity)
 import Data.Aeson
 import Data.Bifunctor
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.String (renderString)
 import Data.Time
+import Prettyprinter
+import Prettyprinter.Render.String (renderString)
 import Text.Parsec
 import Text.Parsec.Language (haskellDef)
 import qualified Text.Parsec.Token as P

@@ -1,9 +1,9 @@
-resolver: lts-18.2
+resolver: lts-18.13
 packages:
 - .
 ghc-options:
   "$locals": -fwrite-ide-info
 extra-deps:
 - git: https://github.com/pankzsoft/servant-server-base.git
-  commit: f20e1cbcc314963c43b11d7f9b3ff2e6922e45c5
+  commit: 2a4469f708862293b5ddfb9ffede3141c2631d4e
 allow-newer: true

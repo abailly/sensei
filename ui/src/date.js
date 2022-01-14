@@ -12,13 +12,18 @@ export function formatISODateTime(dateTime) {
   return dateTime.format(DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm'));
 }
 
-/* Compute next day given some ISO8601 formatted day.
-This is currently done naively, by computing a `Date` from the given day
-string, adding the number of seconds corresponding to a day and reformatting the
-Date back.
+/* Compute next day given some date.
 */
 export function nextDay(day) {
   const result = day.plusDays(1);
+
+  return formatISODate(result);
+}
+
+/* Compute previous day given some date.
+*/
+export function previousDay(day) {
+  const result = day.plusDays(-1);
 
   return formatISODate(result);
 }

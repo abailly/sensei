@@ -10,6 +10,7 @@ import Data.Time (UTCTime, diffUTCTime)
 import qualified Data.Time as Time
 import Sensei.Client (ClientConfig, ClientMonad, getUserProfileC, postEventC)
 import qualified Sensei.Client as Client
+import Sensei.Event (Event (..))
 import Sensei.Flow
 import Sensei.User
 import System.Directory (doesFileExist)
@@ -110,7 +111,7 @@ wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   st <- getCurrentTime
   ex <- runProcess realProg progArgs
   en <- getCurrentTime
-  send (postEventC [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
+  send (postEventC (UserName curUser) [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
   pure ex
 
 toInt :: ExitCode -> Int

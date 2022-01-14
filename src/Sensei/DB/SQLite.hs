@@ -71,6 +71,7 @@ import qualified Data.Aeson.Types as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor ((<&>))
+import Data.Maybe (mapMaybe)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
@@ -88,6 +89,7 @@ import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.SQLite.Migration
 import Sensei.IO
+import Sensei.Version (currentVersion)
 import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO
@@ -173,6 +175,7 @@ typeOf :: Event -> Text
 typeOf EventTrace {} = "__TRACE__"
 typeOf (EventFlow Flow {_flowType}) = toText _flowType
 typeOf EventNote {} = "Note"
+typeOf EventGoal {} = "Goal"
 
 instance FromRow EventView where
   fromRow = do
@@ -180,12 +183,13 @@ instance FromRow EventView where
     _ts :: UTCTime <- field
     ver :: Integer <- field
     ty :: Text <- field
-    event <- if ver >= 5
-             then either error id . eitherDecode . encodeUtf8 <$> field
-             else case ty of
-               "__TRACE__" -> decodeTracev4 <$> field
-               "Note" -> decodeNotev4 <$> field
-               _ -> decodeFlowv4 ty <$> field
+    event <-
+      if ver >= 5
+        then either error id . eitherDecode . encodeUtf8 <$> field
+        else case ty of
+          "__TRACE__" -> decodeTracev4 <$> field
+          "Note" -> decodeNotev4 <$> field
+          _ -> decodeFlowv4 ty <$> field
     pure $ EventView {..}
     where
       decodeTracev4 txt =
@@ -269,6 +273,7 @@ instance DB SQLiteDB where
   readFlow u r = readFlowSQL u r
   readEvents u p = readEventsSQL u p
   readNotes u rge = readNotesSQL u rge
+  readGoals u = readGoalsSQL u
   searchNotes u txt = searchNotesSQL u txt
   readViews u = readViewsSQL u
   readCommands u = readCommandsSQL u
@@ -320,8 +325,9 @@ migrateSQLiteDB logger sqliteFile =
             addUniqueConstraintToUsers
           ]
       case migResult of
-        MigrationSuccessful -> pure ()
         MigrationFailed err -> throwIO $ SQLiteDBError "" err
+        MigrationSuccessful -> pure ()
+        MigrationAlreadyApplied -> pure ()
 
 withBackup :: FilePath -> (FilePath -> IO a) -> IO a
 withBackup file action = do
@@ -503,6 +509,17 @@ readViewsSQL UserProfile {..} = do
     let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and flow_type != 'Note' order by timestamp"
     flows <- query_ cnx logger q
     pure $ reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] flows
+
+readGoalsSQL ::
+  HasCallStack =>
+  UserProfile ->
+  SQLiteDB [GoalOp]
+readGoalsSQL UserProfile {userName} = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type = 'Goal' order by timestamp"
+    flows <- query_ cnx logger q
+    pure $ filter ((== userName) . _goalUser) $ mapMaybe (getGoal . event) flows
 
 readCommandsSQL ::
   HasCallStack =>

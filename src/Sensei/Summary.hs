@@ -10,12 +10,14 @@ import Data.Text (Text)
 import Data.Time
 import GHC.Generics
 import Sensei.Flow
+import Sensei.Project (ProjectName)
 
 -- | A summary of flows and other events for a given period of time
 data FlowSummary = FlowSummary
   { summaryPeriod :: (LocalTime, LocalTime),
     summaryFlows :: [(FlowType, NominalDiffTime)],
-    summaryCommands :: [(Text, NominalDiffTime)]
+    summaryCommands :: [(Text, NominalDiffTime)],
+    summaryProjects :: [(ProjectName, NominalDiffTime)]
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 

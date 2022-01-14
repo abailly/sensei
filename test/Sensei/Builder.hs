@@ -28,7 +28,7 @@ import Sensei.API
 import Sensei.TestHelper
 
 postEvent :: [Event] -> WaiSession () SResponse
-postEvent = postJSON "/api/log"
+postEvent = postJSON "/api/log/arnaud"
 
 postEvent_ :: [Event] -> WaiSession () ()
 postEvent_ = void . postEvent

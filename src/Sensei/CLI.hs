@@ -13,6 +13,7 @@ module Sensei.CLI
     NotesQuery (..),
     AuthOptions (..),
     CommandOptions (..),
+    GoalOptions (..),
     runOptionsParser,
     parseSenseiOptions,
 
@@ -64,10 +65,10 @@ ep config (RecordOptions (SingleFlow ftype)) curUser startDate curDir =
   case ftype of
     Note -> do
       txt <- captureNote
-      send config $ postEventC [EventNote $ NoteFlow curUser startDate curDir txt]
+      send config $ postEventC (UserName curUser) [EventNote $ NoteFlow curUser startDate curDir txt]
     _ ->
-      send config $ postEventC [EventFlow $ Flow ftype curUser startDate curDir]
-ep config (RecordOptions (FromFile fileName)) _ _ _ = do
+      send config $ postEventC (UserName curUser) [EventFlow $ Flow ftype curUser startDate curDir]
+ep config (RecordOptions (FromFile fileName)) curUser _ _ = do
   decoded <- eitherDecode <$> LBS.readFile fileName
   case decoded of
     Left err -> hPutStrLn stderr ("failed to decode events from " <> fileName <> ": " <> err) >> exitWith (ExitFailure 1)
@@ -79,7 +80,7 @@ ep config (RecordOptions (FromFile fileName)) _ _ _ = do
       mapM_
         ( \evs -> do
             putStrLn $ "Sending " <> show (length evs) <> " events: " <> show evs
-            send config $ postEventC evs
+            send config $ postEventC (UserName curUser) evs
         )
         $ chunks events
 ep config (UserOptions GetProfile) usrName _ _ =
@@ -92,9 +93,9 @@ ep config (UserOptions (SetProfile file)) usrName _ _ = do
 ep config (UserOptions GetVersions) _ _ _ = do
   vs <- send config getVersionsC
   display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
-ep config (UserOptions (ShiftTimestamp diff)) curUser _ _ =
+ep config (QueryOptions (ShiftTimestamp diff)) curUser _ _ =
   send config (updateFlowC curUser diff) >>= display
-ep config (UserOptions (GetFlow q)) curUser _ _ =
+ep config (QueryOptions (GetFlow q)) curUser _ _ =
   send config (getFlowC curUser q) >>= display
 ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
 ep _config (AuthOptions PublicKey) _ _ _ = getConfigDirectory >>= getPublicKey >>= display
@@ -120,6 +121,19 @@ ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   handleWrapperResult exe =<< case maybeExePath of
     Just exePath -> Right <$> wrapProg io userName exePath args currentDir
     Nothing -> tryWrapProg io userName exe args currentDir
+ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
+    send
+      config
+      ( postGoalC userName $
+          GoalOp
+            { _goalOp = op,
+              _goalUser = userName,
+              _goalTimestamp = timestamp,
+              _goalDir = currentDir
+            }
+      ) >>= display
+ep config (GoalOptions GetGraph) userName _ _ =
+  send config (getGoalsC userName) >>= display
 
 println :: BS.ByteString -> IO ()
 println bs =

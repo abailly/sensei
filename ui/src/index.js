@@ -3,7 +3,8 @@ import charts from './charts';
 import logs from './logs';
 import notes from './notes';
 import { login } from './auth';
-import { summaries, baseSummaries } from './summaries';
+import { summaries } from './summaries';
+import { goals } from './goals';
 import { setUserProfile } from './user.js';
 import { formatISODate } from './date.js';
 import Navigo from 'navigo';
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   router
     .on('/flows', function() {
-      charts(router, today);
+      router.navigate('/flows/' + today);
     })
     .on('/flows/:date', function(params) {
       charts(router, params.date);
@@ -51,6 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .on('/summaries', function() {
       summaries(router, document.getElementById('main'));
+    })
+    .on('/goals', function() {
+      goals(router, document.getElementById('main'));
     })
     .on(function() {
       // default to flows for today

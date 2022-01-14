@@ -20,11 +20,14 @@ data Options
   | UserOptions UserOptions
   | AuthOptions AuthOptions
   | CommandOptions CommandOptions
+  | GoalOptions GoalOptions
   deriving (Show, Eq)
 
 data QueryOptions
   = FlowQuery {queryDay :: Day, summarize :: Bool, groups :: [Group]}
   | GetAllLogs
+  | ShiftTimestamp TimeDifference
+  | GetFlow Reference
   deriving (Eq, Show)
 
 data RecordOptions
@@ -42,8 +45,6 @@ data UserOptions
   = GetProfile
   | SetProfile {profileFile :: FilePath}
   | GetVersions
-  | ShiftTimestamp TimeDifference
-  | GetFlow Reference
   deriving (Show, Eq)
 
 data AuthOptions
@@ -56,6 +57,9 @@ data AuthOptions
   deriving (Show, Eq)
 
 data CommandOptions = Command {exe :: String, args :: [String]}
+  deriving (Show, Eq)
+
+data GoalOptions = GetGraph | UpdateGraph Op
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -95,17 +99,41 @@ commandsParser flows =
                   \ and the args."
               )
           )
+        <> command "goal" (info goalOptions (progDesc "Define and manipulate goals graph"))
     )
 
 authOptions :: Parser Options
 authOptions =
-  AuthOptions <$> (createKeysParser <|> publicKeyParser <|> createTokenParser <|> getTokenParser <|> setPasswordParser)
+  AuthOptions
+    <$> ( createKeysParser
+            <|> publicKeyParser
+            <|> createTokenParser
+            <|> getTokenParser
+            <|> setPasswordParser
+        )
 
 queryOptions :: Parser Options
 queryOptions =
   QueryOptions
     <$> ( FlowQuery <$> dayParser <*> summarizeParser <*> many groupParser
             <|> pure GetAllLogs <* allLogsParser
+            <|> ( ShiftTimestamp
+                    <$> option
+                      (eitherReader parse)
+                      ( long "shift-timestamp"
+                          <> short 'S'
+                          <> help "shift the latest flow by the given time difference"
+                      )
+                )
+            <|> ( GetFlow
+                    <$> option
+                      (eitherReader parseRef)
+                      ( long "get-flow"
+                          <> short 'F'
+                          <> value Latest
+                          <> help "Query some flow or group of FlowViews from underlying storage (default: latest)"
+                      )
+                )
         )
 
 recordOptions :: Maybe [FlowType] -> Parser Options
@@ -123,6 +151,9 @@ userOptions = UserOptions <$> (profileParser *> userActionParser)
 
 commandOptions :: Parser Options
 commandOptions = CommandOptions <$> commandParser
+
+goalOptions :: Parser Options
+goalOptions = GoalOptions <$> goalParser
 
 {-# NOINLINE today #-}
 today :: Day
@@ -252,23 +283,6 @@ userActionParser =
           <> short 'v'
           <> help "retrieve the current versions of client and server"
       )
-    <|> ( ShiftTimestamp
-            <$> option
-              (eitherReader parse)
-              ( long "shift-time"
-                  <> short 'S'
-                  <> help "shift the latest flow by the given time difference"
-              )
-        )
-    <|> ( GetFlow
-            <$> option
-              (eitherReader parseRef)
-              ( long "query"
-                  <> short 'Q'
-                  <> value Latest
-                  <> help "Query some flow or group of FlowViews from underlying storage (default: latest)"
-              )
-        )
 
 createKeysParser :: Parser AuthOptions
 createKeysParser =
@@ -327,6 +341,77 @@ commandParser =
   Command
     <$> strArgument (help "command name")
     <*> many (strArgument (help "command argument(s)"))
+
+goalParser :: Parser GoalOptions
+goalParser =
+  ( UpdateGraph
+      <$> ( pushGoalParser
+              <|> popGoalParser
+              <|> doneGoalParser
+              <|> shiftGoalParser
+              <|> setGoalParser
+              <|> addGoalParser
+              <|> linkGoalParser
+          )
+  )
+    <|> pure GetGraph
+  where
+    pushGoalParser =
+      flag'
+        push
+        ( long "push"
+            <> short 'p'
+            <> help "Set children of current goal(s) as current"
+        )
+
+    popGoalParser =
+      flag'
+        pop
+        ( long "pop"
+            <> short 'P'
+            <> help "Set parent(s) of current goal(s) as current"
+        )
+
+    shiftGoalParser =
+      flag'
+        shift
+        ( long "shift"
+            <> short 's'
+            <> help "Set children of parent of current goal as current"
+        )
+
+    doneGoalParser =
+      flag'
+        done
+        ( long "done"
+            <> short 'd'
+            <> help "Mark first current goal as done, setting parents as current if all done"
+        )
+
+    setGoalParser =
+      goal
+        <$> strOption
+          ( long "set-goal"
+              <> short 'g'
+              <> help "Set given goal as a children of current goal(s)"
+          )
+
+    addGoalParser =
+      add
+        <$> strOption
+          ( long "add-goal"
+              <> short 'a'
+              <> help "Mark current goal as done and set given goal as its parent"
+          )
+
+    linkGoalParser =
+      link
+        <$> strOption
+          ( long "link"
+              <> short 'l'
+              <> help "Link 2 goals"
+          )
+        <*> strArgument (help "Target")
 
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options

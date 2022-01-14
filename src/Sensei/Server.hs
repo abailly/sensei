@@ -26,6 +26,8 @@ module Sensei.Server
     createUserProfileS,
     getFreshTokenS,
     getVersionsS,
+    postGoalS,
+    getGoalsS,
     loginS,
     module Sensei.Server.OpenApi,
 
@@ -65,7 +67,7 @@ import Sensei.Server.OpenApi
 import Sensei.Server.Options
 import Sensei.Server.UI
 import Sensei.Time hiding (getCurrentTime)
-import Sensei.Version (Versions (..), senseiVersion)
+import Sensei.Version (Versions (..), currentVersion, senseiVersion)
 import Servant
 import Servant.Auth.Server as SAS
 
@@ -86,8 +88,8 @@ getCurrentTimeS usr = do
   Timestamp <$> getCurrentTime usrProfile
 
 postEventS ::
-  (DB m) => [Event] -> m ()
-postEventS = mapM_ writeEvent
+  (DB m) => UserName -> [Event] -> m ()
+postEventS _user = mapM_ writeEvent
 
 updateFlowStartTimeS ::
   (DB m) => Text -> TimeDifference -> m Event
@@ -114,8 +116,7 @@ searchNoteS ::
 searchNoteS _ Nothing = pure []
 searchNoteS usr (Just search) = do
   usrProfile <- getUserProfileS usr
-  rawNotes <- searchNotes usrProfile search
-  pure rawNotes
+  searchNotes usrProfile search
 
 commandsDayS ::
   (DB m) => Text -> Day -> m [CommandView]
@@ -205,6 +206,17 @@ getFreshTokenS js _userName =
 getVersionsS ::
   (Monad m) => m Versions
 getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion currentVersion
+
+postGoalS :: DB m => Text -> GoalOp -> m CurrentGoals
+postGoalS userName op = do
+  writeEvent (EventGoal op)
+  CurrentGoals . current <$> getGoalsS userName 
+  
+
+getGoalsS :: DB m => Text -> m Goals
+getGoalsS userName = do
+  profile <- getUserProfileS userName
+  makeGoals <$> readGoals profile
 
 loginS ::
   (MonadIO m, DB m) =>

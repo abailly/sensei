@@ -72,6 +72,10 @@ table.tbl-log {
     border: 1px solid black;
 }
 
+.controls .pagination {
+    display: inline-block;
+}
+
 table.tbl-log td {
     padding: .3em;
     text-align: left;
@@ -416,4 +420,13 @@ button.btn-next , button.btn-prev {
     padding: .3em;
     border-radius: 4px;
     margin: .3em;
+}
+
+button.btn-next:hover , button.btn-prev:hover {
+    background-color: gray;
+    color: black;
+}
+div.goals {
+  width: 90vw;
+  height: 90vh;
 }

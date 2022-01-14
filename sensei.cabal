@@ -1,5 +1,5 @@
 name:                sensei
-version:             0.37.0
+version:             0.38.0
 synopsis:            A tool to collect information about one's coding process
 homepage:            https://github.com/abailly/sensei#readme
 license:             BSD3
@@ -24,6 +24,7 @@ library
                      , Sensei.Client
                      , Sensei.App
                      , Sensei.Server
+                     , Sensei.Graph
                      , Sensei.Group
                      , Sensei.CLI
                      , Sensei.IO
@@ -35,14 +36,15 @@ library
                      , Sensei.DB.File
                      , Sensei.DB.Log
                      , Sensei.DB.SQLite
-  other-modules: Sensei.Client.Monad, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
+  other-modules: Sensei.Client.Monad, Sensei.Event, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
                  Sensei.Server.Auth, Sensei.Server.Options, Sensei.Server.Links, Sensei.Server.UI, Sensei.Server.Config,
                  Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags, Sensei.CLI.Options,
-                 Sensei.Project
+                 Sensei.Project, Sensei.Goal
   ghc-options:         -Wall -Werror -fno-warn-orphans
   build-depends:       aeson
                      , aeson-pretty
+                     , algebraic-graphs
                      , ansi-terminal
                      , async
                      , base
@@ -116,6 +118,8 @@ test-suite sensei-test
                      , Sensei.FlowSpec
                      , Sensei.FlowAPISpec
                      , Sensei.FlowViewSpec
+                     , Sensei.GoalAPISpec
+                     , Sensei.GraphSpec
                      , Sensei.LogSpec
                      , Sensei.DurationSpec
                      , Sensei.ServerSpec
@@ -125,6 +129,7 @@ test-suite sensei-test
                      , Sensei.TestHelper
                      , Sensei.ProjectSpec
                      , Sensei.UISpec
+                     , Sensei.TagAPISpec
                      , Sensei.UserSpec
                      , Sensei.VersionSpec
                      , Sensei.WaiTestHelper
@@ -165,6 +170,7 @@ test-suite sensei-test
                      , time
                      , time-lens
                      , unix
+                     , vector
                      , wai
                      , wai-extra
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror -fno-warn-orphans

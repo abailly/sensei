@@ -84,6 +84,9 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   --  The `UserProfile` is needed to convert timestamps to the user's local timezone
   readNotes :: UserProfile -> TimeRange -> m [NoteView]
 
+  -- | Read all goal operations from DB
+  readGoals :: UserProfile -> m [GoalOp]
+
   -- | Full-text search of notes
   searchNotes :: UserProfile -> Text -> m [NoteView]
 
@@ -113,7 +116,7 @@ notesViewBuilder :: Text -> TimeZone -> ProjectsMap -> EventView -> [NoteView] -
 notesViewBuilder userName userTimezone projectsMap flow = flowView flow userName f
   where
     f :: EventView -> [NoteView] -> [NoteView]
-    f EventView{event = (EventNote note)} fragments =
+    f EventView {event = (EventNote note)} fragments =
       toNoteView userTimezone projectsMap note : fragments
     f _ fragments = fragments
 
@@ -127,7 +130,7 @@ toNoteView userTimezone projectsMap note =
     }
 
 commandViewBuilder :: TimeZone -> ProjectsMap -> EventView -> [CommandView] -> [CommandView]
-commandViewBuilder userTimezone projectsMap EventView{event = t@(EventTrace _)} acc = fromJust (mkCommandView userTimezone projectsMap t) : acc
+commandViewBuilder userTimezone projectsMap EventView {event = t@(EventTrace _)} acc = fromJust (mkCommandView userTimezone projectsMap t) : acc
 commandViewBuilder _ _ _ acc = acc
 
 -- | Basically a combination of a `filter` and a single step of a fold

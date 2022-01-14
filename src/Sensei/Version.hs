@@ -18,6 +18,7 @@ module Sensei.Version
   ( CheckVersion,
     checkVersion,
     Versions (..),
+    currentVersion,
     senseiVersion,
     senseiVersionLBS,
     senseiVersionTH,
@@ -44,6 +45,15 @@ import Servant
 import Servant.Server.Internal (Delayed (..))
 import Servant.Server.Internal.DelayedIO
 import Text.ParserCombinators.ReadP (readP_to_S)
+
+-- | Current version of data storage format.
+--
+-- This version /must/ be incremented on each change to the structure of `Event` and
+-- other stored data structures which
+-- impacts their serialized representation. Of course, deserialisation
+-- functions should be provided in order to migrate data from previous versions.
+currentVersion :: Natural
+currentVersion = 9
 
 -- | Definition for versions used in some context
 -- We distinguish the versions of various parts of the system: The executable

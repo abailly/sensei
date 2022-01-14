@@ -5,9 +5,12 @@ import { config } from "./config";
 
 jest.mock('./request.js', () => (
   {
-    get: jest.fn((url, callback) => callback([{ noteStart: '2020-10-12T14:30', noteView: 'content' }], {}))
+    get: jest.fn((_router, _url, callback) => callback([{
+      noteStart: '2020-10-12T14:30',
+      noteView: 'content', noteTags: []
+    }], {}))
   }
-))
+));
 
 import notes from './notes';
 import Navigo from "navigo";
@@ -22,7 +25,7 @@ describe('Notes', () => {
     container = document.createElement('div');
   });
 
-  test('it should display note date like 2020-10-12 14:30', () => {
+  test('it should display note date like "2020-10-12"', () => {
     notes.list(router, container, 1);
     expect(container).toMatchSnapshot();
   });

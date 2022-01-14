@@ -36,11 +36,11 @@ spec = describe "Command-Line Interface" $ do
     it "parses 'user -v' as versions display" $ do
       runOptionsParser Nothing ["user", "-v"] `shouldBe` Right (UserOptions GetVersions)
 
-    it "parses 'user -S -10m' as 10 minutes shift" $ do
-      runOptionsParser Nothing ["user", "-S", "-10m"] `shouldBe` Right (UserOptions $ ShiftTimestamp (Minutes (-10)))
+    it "parses 'query -S -10m' as 10 minutes shift" $ do
+      runOptionsParser Nothing ["query", "-S", "-10m"] `shouldBe` Right (QueryOptions $ ShiftTimestamp (Minutes (-10)))
 
-    it "parses 'user -Q latest' as retrieval of latest flow" $ do
-      runOptionsParser Nothing ["user", "-Q", "latest"] `shouldBe` Right (UserOptions $ GetFlow Latest)
+    it "parses 'query -F latest' as retrieval of latest flow" $ do
+      runOptionsParser Nothing ["query", "-F", "latest"] `shouldBe` Right (QueryOptions $ GetFlow Latest)
 
     it "parses 'notes -N --search foo' as search query" $ do
       runOptionsParser Nothing ["notes", "-N", "--search", "foo", "-f", "section"] `shouldBe` Right (NotesOptions (NotesQuery (QuerySearch "foo") Section))
@@ -73,3 +73,35 @@ spec = describe "Command-Line Interface" $ do
     it "fail to parse 'command foo bar -x' as it contains interpreted option" $ do
       runOptionsParser Nothing ["command", "foo", "bar", "-x"]
         `shouldSatisfy` isLeft
+
+    it "parses 'goal -g foo' as goal option" $ do
+      runOptionsParser Nothing ["goal", "-g", "foo"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph $ goal "foo")
+
+    it "parses 'goal -p' as goal push option" $ do
+      runOptionsParser Nothing ["goal", "-p"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph push)
+
+    it "parses 'goal -P' as goal pop option" $ do
+      runOptionsParser Nothing ["goal", "-P"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph pop)
+
+    it "parses 'goal -s' as goal shift option" $ do
+      runOptionsParser Nothing ["goal", "-s"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph shift)
+
+    it "parses 'goal -d' as goal done option" $ do
+      runOptionsParser Nothing ["goal", "-d"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph done)
+
+    it "parses 'goal -a \"some goal\"' as goal add option" $ do
+      runOptionsParser Nothing ["goal", "-a", "a goal"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph $ add "a goal")
+
+    it "parses 'goal' as get goal graph option" $ do
+      runOptionsParser Nothing ["goal"]
+        `shouldBe` Right (GoalOptions GetGraph)
+
+    it "parses 'goal -l goal1 goal2' as link goal option" $ do
+      runOptionsParser Nothing ["goal", "-l", "goal1", "goal2"]
+        `shouldBe` Right (GoalOptions $ UpdateGraph $ link "goal1" "goal2")

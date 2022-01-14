@@ -65,6 +65,24 @@ instance ToParamSchema Group
 
 instance ToSchema Group
 
+instance ToSchema Op where
+  declareNamedSchema proxy =
+    genericDeclareNamedSchemaUnrestricted defaultSchemaOptions proxy
+
+instance ToSchema GoalOp
+
+instance ToSchema Goals
+
+instance ToSchema CurrentGoals
+
+instance ToSchema Goal where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "Goal") $
+        mempty
+          & description .~ Just "A single goal"
+          & type_ .~ Just SwaggerString
+
 instance ToParamSchema Reference where
   toParamSchema _ =
     mempty
@@ -130,6 +148,20 @@ instance ToSchema ProjectName where
           & description
             ?~ "A project name."
           & type_ ?~ SwaggerString
+
+instance ToSchema UserName where
+  declareNamedSchema _ =
+    return $
+      NamedSchema (Just "UserName") $
+        mempty
+          & description
+            ?~ "A user name."
+          & type_ ?~ SwaggerString
+
+instance ToParamSchema UserName where
+  toParamSchema _ =
+    mempty
+      & type_ ?~ SwaggerString
 
 instance ToSchema Sensei.Tag where
   declareNamedSchema _ =

@@ -29,6 +29,7 @@ data DBLog
   | ReadFlow {user :: Text, reference :: Reference}
   | ReadEvents {user :: Text, pagination :: Pagination}
   | ReadNotes {user :: Text, timeRange :: TimeRange}
+  | ReadGoals {user :: Text}
   | SearchNotes {user :: Text, search :: Text}
   | ReadViews {user :: Text}
   | ReadCommands {user :: Text}
@@ -58,6 +59,8 @@ instance (DB m, MonadIO m) => DB (ReaderT LoggerEnv m) where
     ReaderT $ \l -> withLog l (ReadEvents (userName u) p) (readEvents u p)
   readNotes u rge =
     ReaderT $ \l -> withLog l (ReadNotes (userName u) rge) (readNotes u rge)
+  readGoals u =
+    ReaderT $ \l -> withLog l (ReadGoals (userName u)) (readGoals u)
   searchNotes u txt =
     ReaderT $ \l -> withLog l (SearchNotes (userName u) txt) (searchNotes u txt)
   readViews u =
