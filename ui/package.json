@@ -10,10 +10,7 @@
     "start": "webpack-dev-server --mode development"
   },
   "jest": {
-    "verbose": true,
-    "globals": {
-      "USER": "'arnaud'"
-    }
+    "verbose": true
   },
   "keywords": [],
   "author": "",
