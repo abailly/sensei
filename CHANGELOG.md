@@ -1,3 +1,7 @@
+# 0.39.2
+
+* Correctly set user's name at login time with retrieved profile
+
 # 0.39.0
 
 * Fix link from notes' date
