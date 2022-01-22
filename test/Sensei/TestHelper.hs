@@ -57,8 +57,9 @@ import Data.Text.Encoding (decodeUtf8)
 import GHC.Stack (HasCallStack)
 import qualified Network.HTTP.Types.Header as HTTP
 import Network.Wai.Test (SResponse, modifyClientCookies, simpleHeaders)
+import Preface.Codec
 import Preface.Log
-import Sensei.App (senseiApp)
+import Sensei.App (initDB, senseiApp)
 import Sensei.Server
 import Sensei.Version
 import Servant
@@ -68,7 +69,7 @@ import System.IO (hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Temp (mkstemp)
 import Test.Hspec (ActionWith, Expectation, Spec, SpecWith, around, expectationFailure)
-import Test.Hspec.Wai as W (WaiExpectation, WaiSession, request, shouldRespondWith)
+import Test.Hspec.Wai as W (WaiExpectation, WaiSession, getState, request, shouldRespondWith)
 import Test.Hspec.Wai.Internal (WaiSession (..))
 import Test.Hspec.Wai.Matcher as W
 import Web.Cookie (parseCookies)
@@ -81,7 +82,7 @@ app = AppBuilder True False Dev
 withoutStorage :: AppBuilder -> AppBuilder
 withoutStorage builder = builder {withStorage = False}
 
-withApp :: AppBuilder -> SpecWith ((), Application) -> Spec
+withApp :: AppBuilder -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
 
 withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
@@ -92,47 +93,52 @@ withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempDir =
   bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
-buildApp :: AppBuilder -> ActionWith ((), Application) -> IO ()
+buildApp :: AppBuilder -> ActionWith (Encoded Hex, Application) -> IO ()
 buildApp AppBuilder {..} act =
   withTempFile $ \file -> do
     unless withStorage $ removePathForcibly file
     withTempDir $ \config -> do
       signal <- newEmptyMVar
-      application <- senseiApp Nothing (Just "arnaud") signal sampleKey file config fakeLogger
+      userId <- initDB (Just "arnaud") file config fakeLogger
+      application <- senseiApp Nothing signal sampleKey file config fakeLogger
       when withFailingStorage $ removePathForcibly file
-      act ((), application)
+      act (userId, application)
 
 mkTempFile :: HasCallStack => IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
-postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
+postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) SResponse
 postJSON path payload =
-  request "POST" path defaultHeaders (A.encode payload)
+  defaultHeaders >>= \h -> request "POST" path h (A.encode payload)
 
-putJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
-putJSON path payload = request "PUT" path defaultHeaders (A.encode payload)
+putJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+putJSON path payload =
+  defaultHeaders >>= \h -> request "PUT" path h (A.encode payload)
 
-patchJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession () SResponse
-patchJSON path payload = request "PATCH" path defaultHeaders (A.encode payload)
+patchJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+patchJSON path payload =
+  defaultHeaders >>= \h -> request "PATCH" path h (A.encode payload)
 
-postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
+postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) ()
 postJSON_ path payload =
   postJSON path payload `shouldRespondWith` 200
 
-putJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession () ()
+putJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) ()
 putJSON_ path payload = void $ putJSON path payload
 
-getJSON :: ByteString -> WaiSession () SResponse
+getJSON :: ByteString -> WaiSession (Encoded Hex) SResponse
 getJSON path =
-  request "GET" path defaultHeaders mempty
+  defaultHeaders >>= \h -> request "GET" path h mempty
 
-defaultHeaders :: [HTTP.Header]
-defaultHeaders =
-  [ ("Accept", "application/json"),
-    ("Content-Type", "application/json"),
-    ("X-API-Version", toHeader senseiVersion),
-    ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken)
-  ]
+defaultHeaders :: WaiSession (Encoded Hex) [HTTP.Header]
+defaultHeaders = do
+  userId <- getState
+  pure $
+    [ ("Accept", "application/json"),
+      ("Content-Type", "application/json"),
+      ("X-API-Version", toHeader senseiVersion),
+      ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken userId)
+    ]
 
 shouldMatchJSONBody ::
   (HasCallStack, Eq a, Show a, A.FromJSON a) =>
@@ -189,12 +195,12 @@ bodySatisfies p =
 shouldNotThrow :: forall e a. (Exception e, HasCallStack) => IO a -> Proxy e -> Expectation
 shouldNotThrow action _ = void action `catch` \(err :: e) -> expectationFailure ("Expected action to not throw " <> show err)
 
-validAuthToken :: LBS.ByteString
-validAuthToken = unsafePerformIO $ authTokenFor (AuthToken "" 1) sampleKey
+validAuthToken :: Encoded Hex -> LBS.ByteString
+validAuthToken userId = unsafePerformIO $ authTokenFor (AuthToken userId 1) sampleKey
 {-# NOINLINE validAuthToken #-}
 
-validSerializedToken :: SerializedToken
-validSerializedToken = SerializedToken $ LBS.toStrict validAuthToken
+validSerializedToken :: Encoded Hex -> SerializedToken
+validSerializedToken = SerializedToken . LBS.toStrict . validAuthToken
 
 authTokenFor :: AuthenticationToken -> JWK -> IO LBS.ByteString
 authTokenFor claims key = either (error . show) id <$> makeJWT claims (defaultJWTSettings key) Nothing

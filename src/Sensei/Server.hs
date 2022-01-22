@@ -49,8 +49,8 @@ module Sensei.Server (
 
 import Control.Concurrent.MVar (MVar, putMVar)
 import Control.Exception.Safe (throwM, try)
-import Control.Monad (join)
-import Control.Monad.Trans (MonadIO (..))
+import Control.Monad (join, void)
+import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
@@ -231,12 +231,12 @@ getUserProfileS userName = do
         Right p -> pure p
 
 getUserProfileIdS ::
-  forall m. (DB m) => Encoded Hex -> m UserProfile
+    forall m. (DB m) => Encoded Hex -> m UserProfile
 getUserProfileIdS userId = do
-  result <- try @_ @(DBError m) $ readProfileById userId
-  case result of
-    Left e -> throwM $ err400 {errBody = encodeUtf8 $ pack $ show e}
-    Right p -> pure p
+    result <- try @_ @(DBError m) $ readProfileById userId
+    case result of
+        Left e -> throwM $ err400{errBody = encodeUtf8 $ pack $ show e}
+        Right p -> pure p
 
 putUserProfileS ::
     (DB m) => Text -> UserProfile -> m NoContent
@@ -259,7 +259,7 @@ getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion curren
 
 postGoalS :: DB m => Text -> GoalOp -> m CurrentGoals
 postGoalS userName op = do
-    writeEvent (EventGoal op)
+    void $ writeEvent (EventGoal op)
     CurrentGoals . current <$> getGoalsS userName
 
 getGoalsS :: DB m => Text -> m Goals

@@ -23,25 +23,26 @@ module Sensei.Builder (
 import Control.Lens ((%~))
 import Data.Functor (void)
 import Data.Time.Lens (Lens, modL, month, seconds)
+import Preface.Codec
 import Sensei.API
 import Sensei.TestHelper
 
-postEvent :: [Event] -> WaiSession () SResponse
+postEvent :: [Event] -> WaiSession (Encoded Hex) SResponse
 postEvent = postJSON "/api/log/arnaud"
 
-postEvent_ :: [Event] -> WaiSession () ()
+postEvent_ :: [Event] -> WaiSession (Encoded Hex) ()
 postEvent_ = void . postEvent
 
-postFlow :: Flow -> WaiSession () SResponse
+postFlow :: Flow -> WaiSession (Encoded Hex) SResponse
 postFlow = postEvent . pure . EventFlow
 
-postFlow_ :: Flow -> WaiSession () ()
+postFlow_ :: Flow -> WaiSession (Encoded Hex) ()
 postFlow_ = postEvent_ . pure . EventFlow
 
-postNote_ :: NoteFlow -> WaiSession () ()
+postNote_ :: NoteFlow -> WaiSession (Encoded Hex) ()
 postNote_ = postEvent_ . pure . EventNote
 
-postTrace_ :: Trace -> WaiSession () ()
+postTrace_ :: Trace -> WaiSession (Encoded Hex) ()
 postTrace_ = postEvent_ . pure . EventTrace
 
 anOtherFlow :: Flow

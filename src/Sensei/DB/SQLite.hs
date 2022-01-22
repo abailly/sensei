@@ -440,6 +440,15 @@ writeAll events = do
     SQLiteConfig{logger} <- ask
     withConnection $ \cnx -> forM_ events (insert cnx logger)
 
+readAll ::
+  HasCallStack =>
+  SQLiteDB [Event]
+readAll = do
+  SQLiteConfig {logger} <- ask
+  withConnection $ \cnx -> do
+    let q = "select id, timestamp, version, flow_type, flow_data from event_log order by timestamp asc"
+    query_ cnx logger q
+
 updateNotesIndex ::
     HasCallStack =>
     Int ->

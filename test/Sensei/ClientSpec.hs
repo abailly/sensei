@@ -44,10 +44,10 @@ spec = describe "ClientMonad" $ do
                             ]
 
     it "sets Authorization header from ClientConfig info given token is set" $ do
-        let configWithAuth = aConfig{authToken = Just validSerializedToken}
+        let configWithAuth = aConfig{authToken = Just $ validSerializedToken ""}
             [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) configWithAuth)
 
-        toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict validAuthToken)]
+        toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict (validAuthToken ""))]
 
     it "sets X-API-Version header from ClientConfig info given it is set" $ do
         let someVersion = Version [3, 4] ["foo"]
@@ -55,6 +55,16 @@ spec = describe "ClientMonad" $ do
             [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) configWithAuth)
 
         toList (requestHeaders request) `shouldContain` [(mk "X-API-Version", encodeUtf8 $ Text.pack $ showVersion someVersion)]
+
+    it "can deserialise version-less JSON" $ do
+        let jsonProfile =
+                "{\"serverUri\":\"http://localhost:23456\",\
+                \ \"startServerLocally\":true, \
+                \ \"authToken\":"
+                    <> encode (validSerializedToken "")
+                    <> "}"
+        eitherDecode jsonProfile
+            `shouldBe` Right defaultConfig{authToken = Just $ validSerializedToken ""}
 
     describe "Client Config" $ do
         -- it "can serialise/deserialise to/from JSON" $

@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -8,6 +6,8 @@ module Sensei.WrapperSpec where
 
 import Data.Functor
 import qualified Data.Map as Map
+import Data.Time (UTCTime (..))
+import Preface.Codec
 import Sensei.API
 import Sensei.Client hiding (send)
 import Sensei.TestHelper
@@ -16,7 +16,7 @@ import Sensei.Wrapper
 import System.Exit
 import Test.Hspec
 
-io :: WrapperIO (WaiSession ())
+io :: WrapperIO (WaiSession (Encoded Hex))
 io = WrapperIO{..}
   where
     runProcess _ _ = pure ExitSuccess

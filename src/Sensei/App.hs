@@ -20,7 +20,6 @@ import Control.Monad.Reader (ReaderT (runReaderT))
 import Data.Aeson (encode)
 import Data.ByteString.Lazy (fromStrict, toStrict)
 import qualified Data.ByteString.Lazy as LBS
-import Data.Either (isLeft)
 import Data.Maybe (fromMaybe)
 import Data.Swagger (Swagger)
 import Data.Text (Text, pack, unpack)
@@ -89,14 +88,30 @@ sensei output = do
     serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
     rootUser <- fmap pack <$> lookupEnv "SENSEI_SERVER_ROOT_USER"
     env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-    withAppServer serverName NoCORS serverPort (senseiApp env rootUser signal key output configDir) $ \server ->
-        waitServer server `race_` (takeMVar signal >> stopServer server)
+    withAppServer
+        serverName
+        NoCORS
+        serverPort
+        ( \logger -> do
+            void $ initDB rootUser output configDir logger
+            senseiApp env signal key output configDir logger
+        )
+        $ \server ->
+            waitServer server `race_` (takeMVar signal >> stopServer server)
 
-senseiApp :: Maybe Env -> Maybe Text -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
-senseiApp env rootUser signal publicAuthKey output configDir logger = do
+-- | Initialises the DB and returns the root user's id.
+initDB :: Maybe Text -> FilePath -> FilePath -> LoggerEnv -> IO (Encoded Hex)
+initDB rootUser output configDir logger =
     runDB output configDir logger $ do
         initLogStorage
-        maybe (pure ()) ensureUserExists rootUser
+        maybe (pure "") ensureUserExists rootUser
+  where
+    ensureUserExists userName = do
+        prof <- try @_ @SQLiteDBError $ readProfile userName
+        either (const $ insertProfile (defaultProfile{userName})) (pure . userId) prof
+
+senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
+senseiApp env signal publicAuthKey output configDir logger = do
     let jwtConfig = defaultJWTSettings publicAuthKey
         cookieConfig = defaultCookieSettings{cookieXsrfSetting = Nothing}
         contextConfig = jwtConfig :. cookieConfig :. EmptyContext
@@ -107,13 +122,9 @@ senseiApp env rootUser signal publicAuthKey output configDir logger = do
             hoistServerWithContext fullAPI contextProxy runApp $
                 pure senseiSwagger
                     :<|> loginS jwtConfig cookieConfig
-                    :<|> validateAuth jwtConfig cookieConfig
+                    :<|> validateAuth jwtConfig
                     :<|> Tagged (userInterface env)
   where
-    ensureUserExists userName = do
-        prof <- try @_ @SQLiteDBError $ readProfile userName
-        when (isLeft prof) $ void $ insertProfile (defaultProfile{userName})
-
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
     runApp = Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger
 

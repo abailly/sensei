@@ -20,7 +20,7 @@ import Test.Hspec
 import Test.QuickCheck.Classes
 
 spec :: Spec
-spec = describe "Users Management" $ do
+spec = do
     describe "User Profile" $ do
         it "can serialise/deserialise to/from JSON" $
             lawsCheck (jsonLaws (Proxy @UserProfile))
@@ -67,7 +67,10 @@ spec = describe "Users Management" $ do
         it "can deserialize version 7 JSON" $
             do
                 let uid = toHex "foo"
-                    jsonProfile = "{\"userStartOfDay\":\"08:00:00\",\"userCommands\":null,\"userProfileVersion\":7,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null,\"userPassword\":[\"\",\"\"],\"userId\":\"" <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid)) <> "\"}"
+                    jsonProfile =
+                        "{\"userStartOfDay\":\"08:00:00\",\"userCommands\":null,\"userProfileVersion\":7,\"userEndOfDay\":\"18:30:00\",\"userName\":\"arnaud\",\"userTimezone\":\"+01:00\",\"userFlowTypes\":null,\"userPassword\":[\"\",\"\"],\"userId\":\""
+                            <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid))
+                            <> "\"}"
                 eitherDecode jsonProfile
                     `shouldBe` Right defaultProfile{userId = uid}
         it "can deserialize version 9 JSON" $
@@ -88,10 +91,13 @@ spec = describe "Users Management" $ do
                             <> "\",\"userTimezone\":\"Europe/Paris\",\"userFlowTypes\":null}"
                 eitherDecode jsonProfile
                     `shouldBe` Right defaultProfile{userId = uid}
-
     withApp app $
         describe "Users API" $ do
-            it "GET /api/users/<user> returns default profile with user id" $ do
+            it "GET /api/users returns default profile" $ do
+                getJSON "/api/users"
+                    `shouldMatchJSONBody` \p -> p{userId = ""} == defaultProfile
+
+            it "GET /api/users returns default profile with user id" $ do
                 uid <- userId <$> runRequest getUserProfileC
                 uid `matches` \(Encoded e) -> BS.length e == 16
 
