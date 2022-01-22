@@ -49,7 +49,7 @@ where
 
 import Control.Concurrent.MVar
 import Control.Exception.Safe (throwM, try)
-import Control.Monad (join)
+import Control.Monad (join, void)
 import Control.Monad.Trans
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
@@ -210,7 +210,7 @@ getFreshTokenS ::
   Text ->
   m SerializedToken
 getFreshTokenS js userName = do
-  UserProfile{userId} <- getUserProfileS userName
+  UserProfile {userId} <- getUserProfileS userName
   liftIO $ makeToken js (AuthToken userId 1)
 
 getVersionsS ::
@@ -219,9 +219,8 @@ getVersionsS = pure $ Versions senseiVersion senseiVersion currentVersion curren
 
 postGoalS :: DB m => Text -> GoalOp -> m CurrentGoals
 postGoalS userName op = do
-  writeEvent (EventGoal op)
-  CurrentGoals . current <$> getGoalsS userName 
-  
+  void $ writeEvent (EventGoal op)
+  CurrentGoals . current <$> getGoalsS userName
 
 getGoalsS :: DB m => Text -> m Goals
 getGoalsS userName = do

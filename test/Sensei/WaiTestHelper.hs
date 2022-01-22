@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -22,6 +23,7 @@ import qualified Network.HTTP.Types as H
 import Network.HTTP.Types.Version
 import qualified Network.Wai as Wai
 import Network.Wai.Test as Wai
+import Preface.Codec
 import Sensei.Client (ClientConfig (..), ClientMonad (..))
 import Sensei.TestHelper (validAuthToken, validSerializedToken)
 import Servant.Client.Core
@@ -54,7 +56,7 @@ fromClientRequest inReq =
             Wai.requestMethod = requestMethod inReq,
             Wai.requestHeaders =
               ("Content-type", "application/json") :
-              ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken) :
+              ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken "") :
               headers,
             Wai.requestBody = b,
             Wai.httpVersion = requestHttpVersion inReq,
@@ -75,7 +77,7 @@ toClientResponse ::
 toClientResponse SResponse {..} =
   pure $ Response simpleStatus (fromList simpleHeaders) http11 simpleBody
 
-instance RunClient (WaiSession st) where
+instance RunClient (WaiSession (Encoded Hex)) where
   runRequestAcceptStatus _ req = do
     WaiSession $ ReaderT $ \_ -> fromClientRequest req >>= request >>= toClientResponse
 
@@ -83,7 +85,7 @@ instance RunClient (WaiSession st) where
 
 runRequest :: RunClient m => ClientMonad a -> m a
 runRequest (ClientMonad a) =
-  runReaderT a (ClientConfig "http://localhost:23456" (Just validSerializedToken) False Nothing)
+  runReaderT a (ClientConfig "http://localhost:23456" (Just $ validSerializedToken "") False Nothing)
 
 isExpectedToBe ::
   (Eq a, Show a, HasCallStack) => a -> a -> WaiSession st ()

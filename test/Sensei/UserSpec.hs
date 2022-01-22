@@ -72,11 +72,11 @@ spec = describe "Users Management" $ do
 
   withApp app $
     describe "Users API" $ do
-      it "GET /api/users/<user> returns default profile" $ do
-        getJSON "/api/users/arnaud"
+      it "GET /api/users returns default profile" $ do
+        getJSON "/api/users"
           `shouldMatchJSONBody` \p -> p {userId = ""} == defaultProfile
 
-      it "GET /api/users/<user> returns default profile with user id" $ do
+      it "GET /api/users returns default profile with user id" $ do
         uid <- userId <$> runRequest getUserProfileC
         uid `matches` \(Encoded e) -> BS.length e == 16
 

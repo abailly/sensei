@@ -42,10 +42,10 @@ spec = describe "ClientMonad" $ do
                       ]
 
   it "sets Authorization header from ClientConfig info given token is set" $ do
-    let configWithAuth = aConfig {authToken = Just validSerializedToken}
+    let configWithAuth = aConfig {authToken = Just $ validSerializedToken ""}
         [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) configWithAuth)
 
-    toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict validAuthToken)]
+    toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict (validAuthToken ""))]
 
   describe "Client Config" $ do
     -- it "can serialise/deserialise to/from JSON" $
@@ -56,10 +56,10 @@ spec = describe "ClientMonad" $ do
             "{\"serverUri\":\"http://localhost:23456\",\
             \ \"startServerLocally\":true, \
             \ \"authToken\":"
-              <> encode validSerializedToken
+              <> encode (validSerializedToken "")
               <> "}"
       eitherDecode jsonProfile
-        `shouldBe` Right defaultConfig {authToken = Just validSerializedToken}
+        `shouldBe` Right defaultConfig {authToken = Just $ validSerializedToken ""}
 
     it "can deserialise JSON with userName but without authToken" $ do
       let jsonProfile =
