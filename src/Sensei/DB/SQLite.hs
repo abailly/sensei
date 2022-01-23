@@ -237,6 +237,15 @@ instance ToRow Event where
             typ = typeOf e
          in [ts, SQLInteger (fromIntegral currentVersion), toField u, toField (typ :: Text), payload]
 
+instance FromRow Event where
+  fromRow = do
+    --id, timestamp, version, flow_type, flow_data
+    _id :: Int <- field
+    _ts :: UTCTime <- field
+    _ver :: Integer <- field
+    _ty :: Text <- field
+    either error id . eitherDecode . encodeUtf8 <$> field
+
 typeOf :: Event -> Text
 typeOf EventTrace{} = "__TRACE__"
 typeOf (EventFlow Flow{_flowType}) = toText _flowType
