@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Sensei.DB.SQLiteSpec where
 
@@ -90,7 +90,7 @@ spec = describe "SQLite DB" $ do
 
   around withTempFile $
     describe "Basic Operations" $ do
-      xit "matches DB model" $ \tempdb ->
+      it "matches DB model" $ \tempdb ->
         property $ withMaxSuccess 400 $ canReadFlowsAndTracesWritten tempdb (runDB tempdb "." fakeLogger)
 
       it "gets IO-based current time when time is not set" $ \tempdb -> do
@@ -137,7 +137,6 @@ spec = describe "SQLite DB" $ do
         res `shouldBe` time2
 
       it "retrieves user by its ID" $ \tempdb -> do
-
         (uid, profile) <- runDB tempdb "." fakeLogger $ do
           initLogStorage
           uid <- insertProfile defaultProfile
