@@ -7,15 +7,16 @@ import Data.Aeson
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 import Data.Proxy
 import qualified Data.Text.Encoding as UTF8
-import Preface.Codec (Encoded (..), encodedHex, toHex)
+import Network.Wai.Test (simpleBody)
+import Preface.Codec (encodedHex, fromHex, toHex)
 import Sensei.API
-import Sensei.Client (getUserProfileC)
 import Sensei.ColorSpec ()
 import Sensei.Generators ()
 import Sensei.TestHelper
-import Sensei.WaiTestHelper (matches, runRequest)
+import Sensei.WaiTestHelper (asUser)
 import Test.Hspec
 import Test.QuickCheck.Classes
 
@@ -98,8 +99,8 @@ spec = do
                     `shouldMatchJSONBody` \p -> p{userId = ""} == defaultProfile
 
             it "GET /api/users returns default profile with user id" $ do
-                uid <- userId <$> runRequest getUserProfileC
-                uid `matches` \(Encoded e) -> BS.length e == 16
+                getJSON "/api/users"
+                    `shouldMatchJSONBody` \p -> BS.length (fromHex $ userId p) == 16
 
             it "POST /api/users with profile sets create user profile and returns user id" $ do
                 let profile = defaultProfile{userName = "robert"}
@@ -117,10 +118,11 @@ spec = do
 
             it "PUT /api/users/<user> sets user profile given user exists" $ do
                 let profile = defaultProfile{userName = "robert", userFlowTypes = Just $ Map.fromList [(Other, "#123456")]}
-                postJSON_ "/api/users" profile
+                newUid <- fromJust . decode . simpleBody <$> postJSON "/api/users" profile
 
-                putJSON "/api/users/robert" profile `shouldRespondWith` 200
-                getJSON "/api/users/robert" `shouldRespondJSONBody` profile
+                asUser newUid $ do
+                    putJSON "/api/users/robert" profile `shouldRespondWith` 200
+                    getJSON "/api/users" `shouldRespondJSONBody` profile
 
             it "PUT /api/users/<user> returns 400 given profile user name does not match path" $ do
                 let alice = defaultProfile{userName = "alice"}
@@ -137,4 +139,4 @@ spec = do
 
                 putJSON_ "/api/users/arnaud" profile
 
-                getJSON "/api/users/arnaud" `shouldRespondJSONBody` profile
+                getJSON "/api/users" `shouldRespondJSONBody` profile
