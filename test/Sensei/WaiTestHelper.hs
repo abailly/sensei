@@ -32,8 +32,8 @@ import Test.Hspec.Wai hiding (request)
 import Test.Hspec.Wai.Internal (WaiSession (..))
 
 fromClientRequest ::
-  (MonadIO m) => Request -> m Wai.Request
-fromClientRequest inReq =
+  (MonadIO m) => Encoded Hex -> Request -> m Wai.Request
+fromClientRequest uid inReq =
   let acceptHeaders = (\mt -> ("Accept", renderHeader mt)) <$> toList (requestAccept inReq)
       headers = toList (requestHeaders inReq) <> acceptHeaders
       rawPath = LBS.toStrict (toLazyByteString $ requestPath inReq)
@@ -56,7 +56,7 @@ fromClientRequest inReq =
             Wai.requestMethod = requestMethod inReq,
             Wai.requestHeaders =
               ("Content-type", "application/json") :
-              ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken "") :
+              ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken uid) :
               headers,
             Wai.requestBody = b,
             Wai.httpVersion = requestHttpVersion inReq,
@@ -79,13 +79,16 @@ toClientResponse SResponse {..} =
 
 instance RunClient (WaiSession (Encoded Hex)) where
   runRequestAcceptStatus _ req = do
-    WaiSession $ ReaderT $ \_ -> fromClientRequest req >>= request >>= toClientResponse
+    WaiSession $ ReaderT $ \uid -> fromClientRequest uid req >>= request >>= toClientResponse
 
   throwClientError err = error (show err)
 
-runRequest :: RunClient m => ClientMonad a -> m a
+asUser :: Encoded Hex -> WaiSession (Encoded Hex) a -> WaiSession (Encoded Hex) a
+asUser uid (WaiSession s) = WaiSession $ local (const uid) s
+
+runRequest :: ClientMonad a -> WaiSession (Encoded Hex) a
 runRequest (ClientMonad a) =
-  runReaderT a (ClientConfig "http://localhost:23456" (Just $ validSerializedToken "") False Nothing)
+  getState >>= \u -> runReaderT a (ClientConfig "http://localhost:23456" (Just $ validSerializedToken u) False Nothing)
 
 isExpectedToBe ::
   (Eq a, Show a, HasCallStack) => a -> a -> WaiSession st ()

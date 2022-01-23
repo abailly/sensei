@@ -23,7 +23,7 @@ module Sensei.Server
     getLogS,
     getUserProfileS,
     getUserProfileIdS,
-    putUserProfileS,
+    setUserProfileS,
     createUserProfileS,
     getFreshTokenS,
     getVersionsS,
@@ -56,6 +56,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text.Lazy (pack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
+import GHC.Stack (HasCallStack)
 import Network.HTTP.Link as Link
 import Network.URI.Extra ()
 import Preface.Codec (Encoded, Hex)
@@ -198,9 +199,9 @@ getUserProfileIdS userId = do
     Left e -> throwM $ err400 {errBody = encodeUtf8 $ pack $ show e}
     Right p -> pure p
 
-putUserProfileS ::
-  (DB m) => Text -> UserProfile -> m NoContent
-putUserProfileS user profile
+setUserProfileS ::
+  (DB m, HasCallStack) => Text -> UserProfile -> m NoContent
+setUserProfileS user profile
   | user /= userName profile = throwM err400
   | otherwise = NoContent <$ writeProfile profile
 

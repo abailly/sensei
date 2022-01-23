@@ -154,7 +154,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
              )
         :<|> searchNoteS
         :<|> (postEventS :<|> getLogS)
-        :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileIdS userId :<|> putUserProfileS)
+        :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileIdS userId :<|> setUserProfileS)
         :<|> getVersionsS
         :<|> (postGoalS :<|> getGoalsS)
 
