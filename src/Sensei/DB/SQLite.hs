@@ -48,6 +48,7 @@ module Sensei.DB.SQLite
     SQLiteDB,
     SQLiteDBError (..),
     withBackup,
+    splitDB,
   )
 where
 
@@ -88,6 +89,7 @@ import Sensei.API as API
 import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.SQLite.Migration
+import qualified Sensei.DB.SQLite.Users as Users
 import Sensei.IO
 import Sensei.Version (currentVersion)
 import System.Directory
@@ -160,6 +162,51 @@ migrateFileDB dbFile configDir = do
       initSQLiteDB
       writeAll (fmap API.event events)
       pure $ Right oldLog
+
+-- | Split a single multi-user DB into a number of separate
+--  single-user DBs plus a 'users.sqlite' DB.
+--  Returns a tuple with the users DB and the list of path to the created DBs.
+splitDB :: FilePath -> FilePath -> LoggerEnv -> IO (FilePath, [FilePath])
+splitDB sourceDB targetDir logger = do
+  users <- SQLite.withConnection sourceDB $ \cnx ->
+    SQLite.query_ cnx "select id,uid,user,profile from users;"
+  evs <- runDB sourceDB targetDir logger $ readAll
+
+  userDBs <- migrateUserEvents evs users
+  userDB <- migrateUserDB users
+
+  pure $ (userDB, userDBs)
+  where
+    migrateUserEvents evs users = do
+      forM users $ \(_ :: Int, uid :: String, user :: Text, _ :: Text) -> do
+        let targetDB = (targetDir </> "sensei" <.> uid <.> "sqlite")
+        logInfo logger (StoragePathCreated targetDB)
+        runDB (targetDir </> "sensei" <.> uid <.> "sqlite") targetDir logger $ do
+          initSQLiteDB
+          writeAll (filter ((== user) . eventUser) evs)
+        pure targetDB
+
+    migrateUserDB users = do
+      let dbPath = targetDir </> "users.sqlite"
+      openFile dbPath WriteMode >>= hClose
+      logInfo logger (StoragePathCreated dbPath)
+      SQLite.withConnection dbPath $ \cnx -> do
+        migResult <-
+          runMigrations
+            logger
+            cnx
+            [ InitialMigration,
+              Users.createUsers
+            ]
+        case migResult of
+          MigrationSuccessful -> pure ()
+          MigrationFailed err -> throwIO $ SQLiteDBError "" err
+
+        let q =
+              "insert into users (id, uid, user, profile) values (?,?,?,?);"
+        forM_ users $ \(nid :: Int, uid :: String, user :: Text, profile :: Text) ->
+          execute cnx logger q [toField nid, toField uid, toField user, toField profile]
+      pure dbPath
 
 -- * Instances
 

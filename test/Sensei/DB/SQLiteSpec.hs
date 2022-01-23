@@ -15,7 +15,7 @@ import Sensei.DB
 import qualified Sensei.DB.File as File
 import Sensei.DB.Log ()
 import Sensei.DB.Model (canReadFlowsAndTracesWritten)
-import Sensei.DB.SQLite (SQLiteDBError (..), runDB, withBackup)
+import Sensei.DB.SQLite (SQLiteDBError (..), runDB, splitDB, withBackup)
 import Sensei.TestHelper
 import Sensei.Time hiding (getCurrentTime)
 import System.Directory
@@ -199,3 +199,21 @@ spec = describe "SQLite DB" $ do
             SQLite.query_ cnx "select id,uid, user from users;"
 
           rows `shouldBe` [(1 :: Int, toText uid, "arnaud" :: String)]
+
+      it "creates one DB per user from legacy single DB" $ \tmp -> do
+        withTempDir $ \dir -> do
+          copyFile "test-split.sqlite" tmp
+
+          (userDB, dbs) <- splitDB tmp dir fakeLogger
+  
+          eventsCountPerUser <- forM dbs $ \ db -> do
+            SQLite.withConnection db $ \cnx ->
+              SQLite.query_ cnx "select count(*) from event_log;"
+
+          usersCount <- SQLite.withConnection userDB $ \cnx ->
+              SQLite.query_ cnx "select count(*) from users;"
+
+          eventsCountPerUser `shouldBe` [[[1 :: Int]],[[1]]]
+          usersCount `shouldBe` [[2 :: Int]]
+
+

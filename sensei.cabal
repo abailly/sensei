@@ -38,7 +38,7 @@ library
                      , Sensei.DB.SQLite
   other-modules: Sensei.Client.Monad, Sensei.Event, Sensei.Flow, Sensei.FlowType, Sensei.FlowView, Sensei.Server.OpenApi,
                  Sensei.Server.Auth, Sensei.Server.Options, Sensei.Server.Links, Sensei.Server.UI, Sensei.Server.Config,
-                 Sensei.DB.SQLite.Migration, Sensei.CLI.Terminal, Paths_sensei,
+                 Sensei.DB.SQLite.Migration, Sensei.DB.SQLite.Users, Sensei.CLI.Terminal, Paths_sensei,
                  Sensei.Summary, Sensei.User, Sensei.Color, Sensei.Duration, Sensei.Server.Tags, Sensei.CLI.Options,
                  Sensei.Project, Sensei.Goal
   ghc-options:         -Wall -Werror -fno-warn-orphans
