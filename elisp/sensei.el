@@ -41,21 +41,25 @@
 (use-package request
   :ensure t)
 
-(defun insert-timestamp-iso ()
+(defun sensei-insert-timestamp-iso ()
   "Insert the current timestamp (ISO 8601 format)."
   (format-time-string "%Y-%m-%dT%TZ"))
-
-(defun insert-current-dir ()
-  "Insert current directory which is the ... what?"
-  "sensei")
 
 (defun sensei-read-config ()
   "Read sensei 'client.json' file from default XDG location."
   (json-read-file "~/.config/sensei/client.json")
   )
 
-(defvar cur-directory
-  "Used to set current directory when recording notes.")
+(defvar sensei-cur-directory
+  "Used to set current directory when recording notes.
+
+This variable is updated every time one starts recording a note,
+according to what 'projectile-project-root' says for the current
+directory.
+
+TODO: Remove this global variable and find a way to pass the
+project directory when starting note edition.
+")
 
 (defun sensei-send-event-note (directory)
   "Record notes in sensei from the current context.
@@ -88,7 +92,7 @@ DIRECTORY is the directory to record the note for."
 
 DIRECTORY is the project to record note for."
   (interactive)
-  (sensei-send-event-note cur-directory)
+  (sensei-send-event-note sensei-cur-directory)
   (kill-buffer (current-buffer)))
 
 (defun sensei-record-note ()
@@ -98,7 +102,7 @@ DIRECTORY is the project to record note for."
         (directory (projectile-project-root)))
     (get-buffer-create buffer-name)
     (message "In dir %S" directory)
-    (setq cur-directory directory)
+    (setq sensei-cur-directory directory)
     (switch-to-buffer buffer-name)
     (use-local-map nil)
     (local-set-key
