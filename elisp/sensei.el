@@ -75,7 +75,7 @@ DIRECTORY is the directory to record the note for."
              `((("tag" . "Note")
                 ("_version" . 9)
                 ("noteUser" . ,username)
-                ("noteTimestamp" . ,(insert-timestamp-iso))
+                ("noteTimestamp" . ,(sensei-insert-timestamp-iso))
                 ("noteDir" . ,directory)
                 ("noteContent" . ,(buffer-substring-no-properties (point-min) (point-max))))))
       :headers `(("Content-Type" . "application/json")
@@ -86,6 +86,53 @@ DIRECTORY is the directory to record the note for."
                              (message "Got error: %S" error-thrown)))
       :success  (cl-function (lambda (&key data &allow-other-keys)
                                (message "Succesfully recorded note"))))))
+
+(defun sensei-send-event-flow (directory flow-type)
+  "Record a change in flow from the current context.
+
+* DIRECTORY is the directory to record the flow for.
+* FLOW-TYPE is the type of flow to record, which must be a type supported by the backend as listed by sensei-list-flows."
+  (let* ((config (sensei-read-config))
+         (auth-token (cdr (assoc 'authToken config)))
+         (username (cdr (assoc 'configUser config)))
+         (server-uri (cdr (assoc 'serverUri config))))
+    (request (concat server-uri "api/log/" username)
+      :method "POST"
+      :data (json-encode
+             `((("tag" . "Flow")
+                ("_version" . 9)
+                ("flowUser" . ,username)
+                ("flowTimestamp" . ,(sensei-insert-timestamp-iso))
+                ("flowDir" . ,directory)
+                ("flowType" . ,flow-type))))
+      :headers `(("Content-Type" . "application/json")
+                 ("X-API-Version" . "0.38.0")
+                 ("Authorization" . ,(concat "Bearer " auth-token)))
+      :parser 'json-read
+      :error  (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
+                             (message "Got error: %S" error-thrown)))
+      :success  (cl-function (lambda (&key data &allow-other-keys)
+                               (message "Switch to flow %s" flow-type))))))
+
+(defun sensei-list-flows (on-success)
+  "List available flow types for the current user.
+
+ON-SUCCESS is a function that's called upon successful completion of the call
+and is passed a list of symbols listing user-defined flow names."
+  (let* ((config (sensei-read-config))
+         (auth-token (cdr (assoc 'authToken config)))
+         (username (cdr (assoc 'configUser config)))
+         (server-uri (cdr (assoc 'serverUri config))))
+    (request (concat server-uri "api/users/" username)
+      :headers `(("Content-Type" . "application/json")
+                 ("X-API-Version" . "0.38.0")
+                 ("Authorization" . ,(concat "Bearer " auth-token)))
+      :parser 'json-read
+      :error  (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
+                             (message "Got error: %S" error-thrown)))
+      :success  (cl-function (lambda (&key data &allow-other-keys)
+                               (funcall on-success
+                                     (map 'list 'car (cdr (assoc 'userFlowTypes data)))))))))
 
 (defun sensei-send-note-and-close ()
   "Record current buffer as note and cloes it.
@@ -109,6 +156,20 @@ DIRECTORY is the project to record note for."
      (kbd "C-c C-c")
      'sensei-send-note-and-close)
   ))
+
+(defun sensei-record-flow (flow-type)
+  "Interactive function to record change in flow."
+  (interactive (list (completing-read
+                      "Flow: "
+                      ;; TODO need to get the completion from a variable filled with user's
+                      ;; flow types
+                      '(("Foo" Foo) ("Bar" Bar) ("Baz" Baz))
+                      nil t)))
+  (let ((directory (projectile-project-root)))
+    (setq sensei-cur-directory directory)
+    (sensei-send-event-flow directory flow-type))
+  )
+
 
 (provide 'sensei)
 ;;; sensei.el ends here
