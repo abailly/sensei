@@ -116,10 +116,7 @@ DIRECTORY is the directory to record the note for."
                                (message "Switch to flow %s" flow-type))))))
 
 (defun sensei-list-flows ()
-  "List available flow types for the current user.
-
-ON-SUCCESS is a function that's called upon successful completion of the call
-and is passed a list of symbols listing user-defined flow names."
+  "List available flow types for the current user."
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
          (username (cdr (assoc 'configUser config)))
@@ -158,11 +155,13 @@ DIRECTORY is the project to record note for."
   ))
 
 (defun sensei-record-flow (flow-type)
-  "Interactive function to record change in flow."
+  "Interactive function to record change in flow.
 
+FLOW-TYPE is a string representation of the flow type that will be
+recorded on the server."
   (interactive (list (completing-read
                       "Flow: "
-                      (sensei-list-flows)
+                      (cons 'End (sensei-list-flows))
                       nil t)))
   (let ((directory (projectile-project-root)))
     (setq sensei-cur-directory directory)
