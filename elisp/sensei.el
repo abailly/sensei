@@ -4,7 +4,7 @@
 ;; Author: Arnaud Bailly <arnaud@pankzsoft.com>
 ;; Package-Requires: (package request)
 ;; Keywords: web
-;; Version: 0.38.0
+;; Version: 0.40.0
 
 ;; Redistribution and use in source and binary forms, with or without
 ;; modification, are permitted provided that the following conditions are met:
