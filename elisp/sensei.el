@@ -43,7 +43,7 @@
 
 (defun sensei-insert-timestamp-iso ()
   "Insert the current timestamp (ISO 8601 format)."
-  (format-time-string "%Y-%m-%dT%TZ"))
+  (format-time-string "%Y-%m-%dT%TZ" nil t))
 
 (defun sensei-read-config ()
   "Read sensei 'client.json' file from default XDG location."
@@ -61,7 +61,7 @@ TODO: Remove this global variable and find a way to pass the
 project directory when starting note edition.
 ")
 
-(defun sensei-send-event-note (directory)
+(defun sensei-send-event-note (directory on-success)
   "Record notes in sensei from the current context.
 
 DIRECTORY is the directory to record the note for."
@@ -85,7 +85,8 @@ DIRECTORY is the directory to record the note for."
       :error  (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
                              (message "Got error: %S" error-thrown)))
       :success  (cl-function (lambda (&key data &allow-other-keys)
-                               (message "Succesfully recorded note"))))))
+                               (message "Succesfully recorded note")
+                               (eval on-success))))))
 
 (defun sensei-send-event-flow (directory flow-type)
   "Record a change in flow from the current context.
@@ -114,7 +115,7 @@ DIRECTORY is the directory to record the note for."
       :success  (cl-function (lambda (&key data &allow-other-keys)
                                (message "Switch to flow %s" flow-type))))))
 
-(defun sensei-list-flows (on-success)
+(defun sensei-list-flows ()
   "List available flow types for the current user.
 
 ON-SUCCESS is a function that's called upon successful completion of the call
@@ -122,25 +123,24 @@ and is passed a list of symbols listing user-defined flow names."
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
          (username (cdr (assoc 'configUser config)))
-         (server-uri (cdr (assoc 'serverUri config))))
-    (request (concat server-uri "api/users/" username)
-      :headers `(("Content-Type" . "application/json")
+         (server-uri (cdr (assoc 'serverUri config)))
+         (url-request-extra-headers `(("Content-Type" . "application/json")
                  ("X-API-Version" . "0.38.0")
-                 ("Authorization" . ,(concat "Bearer " auth-token)))
-      :parser 'json-read
-      :error  (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
-                             (message "Got error: %S" error-thrown)))
-      :success  (cl-function (lambda (&key data &allow-other-keys)
-                               (funcall on-success
-                                     (map 'list 'car (cdr (assoc 'userFlowTypes data)))))))))
+                 ("Authorization" . ,(concat "Bearer " auth-token)))))
+    (with-temp-buffer
+      (url-insert-file-contents (concat server-uri "api/users/" username))
+      (let ((flows (cdr (assoc 'userFlowTypes (json-parse-buffer :object-type 'alist)))))
+        (map 'list 'car flows)))))
 
 (defun sensei-send-note-and-close ()
   "Record current buffer as note and cloes it.
 
 DIRECTORY is the project to record note for."
   (interactive)
-  (sensei-send-event-note sensei-cur-directory)
-  (kill-buffer (current-buffer)))
+  (sensei-send-event-note sensei-cur-directory
+
+                            '(kill-buffer (current-buffer))
+  ))
 
 (defun sensei-record-note ()
   "Interactive function to record some note."
@@ -159,11 +159,10 @@ DIRECTORY is the project to record note for."
 
 (defun sensei-record-flow (flow-type)
   "Interactive function to record change in flow."
+
   (interactive (list (completing-read
                       "Flow: "
-                      ;; TODO need to get the completion from a variable filled with user's
-                      ;; flow types
-                      '(("Foo" Foo) ("Bar" Bar) ("Baz" Baz))
+                      (sensei-list-flows)
                       nil t)))
   (let ((directory (projectile-project-root)))
     (setq sensei-cur-directory directory)
