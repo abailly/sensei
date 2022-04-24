@@ -64,7 +64,8 @@ project directory when starting note edition.
 (defun sensei-send-event-note (directory on-success)
   "Record notes in sensei from the current context.
 
-DIRECTORY is the directory to record the note for."
+* DIRECTORY is the directory to record the note for.
+* ON-SUCCESS is a function called upon successful submission of note."
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
          (username (cdr (assoc 'configUser config)))
@@ -92,7 +93,7 @@ DIRECTORY is the directory to record the note for."
   "Record a change in flow from the current context.
 
 * DIRECTORY is the directory to record the flow for.
-* FLOW-TYPE is the type of flow to record, which must be a type supported by the backend as listed by sensei-list-flows."
+* FLOW-TYPE is the type of flow to record, which must be a type supported by the backend as listed by `sensei-list-flows'."
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
          (username (cdr (assoc 'configUser config)))
@@ -127,7 +128,7 @@ DIRECTORY is the directory to record the note for."
     (with-temp-buffer
       (url-insert-file-contents (concat server-uri "api/users/" username))
       (let ((flows (cdr (assoc 'userFlowTypes (json-parse-buffer :object-type 'alist)))))
-        (map 'list 'car flows)))))
+        (map 'list #'car flows)))))
 
 (defun sensei-send-note-and-close ()
   "Record current buffer as note and cloes it.
