@@ -1,10 +1,11 @@
-;;; sensei.el --- An emacs sensei client  -*- lexical-binding: t; -*-
+;;; sensei.el --- A client for sensei  -*- lexical-binding: t; -*-
 
 ;; Copyright (c) Arnaud Bailly - 2022
 ;; Author: Arnaud Bailly <arnaud@pankzsoft.com>
-;; Package-Requires: (package request)
-;; Keywords: web
+;; Package-Requires: ((emacs "27.1") (projectile "2.5.0") (request "0.3.2"))
+;; Keywords: hypermedia
 ;; Version: 0.40.0
+;; Homepage: https://abailly.github.io/sensei
 
 ;; Redistribution and use in source and binary forms, with or without
 ;; modification, are permitted provided that the following conditions are met:
@@ -35,20 +36,28 @@
 
 ;;; Commentary:
 
+;;; This package provides two basic tools to interact with a remote
+;;; instance of sensei, a tool for note taking and time management:
+;;;
+;;; * The ability to take notes on the fly within a given project's
+;;;   context.  This opens a temporary buffer whose content will be
+;;;   sent as-is to sensei with the project's directory and current
+;;;   timestamp,
+;;;
+;;; * Quick recording of current "Flow" according to what flows are
+;;;   recorded within the current user's profile.
+;;;
+;;; Proper operation depends on the existence of ~/.config/sensei/client.json
+;;; configuration file defining user name and authentication token.
+
 ;;; Code:
-(require 'package)
-
-(use-package request
-  :ensure t)
-
 (defun sensei-insert-timestamp-iso ()
   "Insert the current timestamp (ISO 8601 format)."
   (format-time-string "%Y-%m-%dT%TZ" nil t))
 
 (defun sensei-read-config ()
   "Read sensei 'client.json' file from default XDG location."
-  (json-read-file "~/.config/sensei/client.json")
-  )
+  (json-read-file "~/.config/sensei/client.json"))
 
 (defvar sensei-cur-directory
   "Used to set current directory when recording notes.
@@ -83,9 +92,9 @@ project directory when starting note edition.
                  ("X-API-Version" . "0.38.0")
                  ("Authorization" . ,(concat "Bearer " auth-token)))
       :parser 'json-read
-      :error  (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
+      :error  (cl-function (lambda (&key error-thrown &allow-other-keys)
                              (message "Got error: %S" error-thrown)))
-      :success  (cl-function (lambda (&key data &allow-other-keys)
+      :success  (cl-function (lambda (&rest)
                                (message "Succesfully recorded note")
                                (eval on-success))))))
 
@@ -111,9 +120,9 @@ project directory when starting note edition.
                  ("X-API-Version" . "0.38.0")
                  ("Authorization" . ,(concat "Bearer " auth-token)))
       :parser 'json-read
-      :error  (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
+      :error  (cl-function (lambda (&key error-thrown &allow-other-keys)
                              (message "Got error: %S" error-thrown)))
-      :success  (cl-function (lambda (&key data &allow-other-keys)
+      :success  (cl-function (lambda (&rest)
                                (message "Switch to flow %s" flow-type))))))
 
 (defun sensei-list-flows ()
@@ -137,8 +146,7 @@ DIRECTORY is the project to record note for."
   (interactive)
   (sensei-send-event-note sensei-cur-directory
 
-                            '(kill-buffer (current-buffer))
-  ))
+                            '(kill-buffer (current-buffer))))
 
 (defun sensei-record-note ()
   "Interactive function to record some note."
@@ -152,8 +160,7 @@ DIRECTORY is the project to record note for."
     (use-local-map nil)
     (local-set-key
      (kbd "C-c C-c")
-     'sensei-send-note-and-close)
-  ))
+     'sensei-send-note-and-close)))
 
 (defun sensei-record-flow (flow-type)
   "Interactive function to record change in flow.
@@ -166,8 +173,7 @@ recorded on the server."
                       nil t)))
   (let ((directory (projectile-project-root)))
     (setq sensei-cur-directory directory)
-    (sensei-send-event-flow directory flow-type))
-  )
+    (sensei-send-event-flow directory flow-type)))
 
 
 (provide 'sensei)
