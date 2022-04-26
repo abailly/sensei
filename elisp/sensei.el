@@ -51,6 +51,9 @@
 ;;; configuration file defining user name and authentication token.
 
 ;;; Code:
+(require 'url)
+(require 'projectile)
+
 (defun sensei-insert-timestamp-iso ()
   "Insert the current timestamp (ISO 8601 format)."
   (format-time-string "%Y-%m-%dT%TZ" nil t))
@@ -130,11 +133,12 @@ project directory when starting note edition.
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
          (username (cdr (assoc 'configUser config)))
-         (server-uri (cdr (assoc 'serverUri config)))
-         (url-request-extra-headers `(("Content-Type" . "application/json")
-                 ("X-API-Version" . "0.38.0")
-                 ("Authorization" . ,(concat "Bearer " auth-token)))))
+         (server-uri (cdr (assoc 'serverUri config))))
+
     (with-temp-buffer
+      (setq url-request-extra-headers `(("Content-Type" . "application/json")
+                                        ("X-API-Version" . "0.38.0")
+                                        ("Authorization" . ,(concat "Bearer " auth-token))))
       (url-insert-file-contents (concat server-uri "api/users/" username))
       (let ((flows (cdr (assoc 'userFlowTypes (json-parse-buffer :object-type 'alist)))))
         (map 'list #'car flows)))))
