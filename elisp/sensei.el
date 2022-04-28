@@ -53,6 +53,8 @@
 ;;; Code:
 (require 'url)
 (require 'projectile)
+(require 'request)
+(require 'cl-lib)
 
 (defun sensei-insert-timestamp-iso ()
   "Insert the current timestamp (ISO 8601 format)."
@@ -141,7 +143,7 @@ project directory when starting note edition.
                                         ("Authorization" . ,(concat "Bearer " auth-token))))
       (url-insert-file-contents (concat server-uri "api/users/" username))
       (let ((flows (cdr (assoc 'userFlowTypes (json-parse-buffer :object-type 'alist)))))
-        (map 'list #'car flows)))))
+        (cl-map 'list #'car flows)))))
 
 (defun sensei-send-note-and-close ()
   "Record current buffer as note and cloes it.
