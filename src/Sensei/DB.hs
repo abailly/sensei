@@ -2,11 +2,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Sensei.DB
   ( DB (..),
@@ -24,16 +23,41 @@ module Sensei.DB
   )
 where
 
-import Control.Exception.Safe
+import Control.Exception.Safe (Exception, MonadCatch)
 import Control.Lens ((^.))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
-import Data.Time
+import Data.Time (NominalDiffTime, TimeOfDay, UTCTime)
 import GHC.Generics (Generic)
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
+  ( CommandView,
+    Event (..),
+    EventView (EventView, event),
+    FlowView,
+    GoalOp,
+    Natural,
+    NoteFlow,
+    NoteView (..),
+    ProjectsMap,
+    Reference (..),
+    UserProfile,
+    appendFlow,
+    eventUser,
+    mkCommandView,
+    noteContent,
+    noteDir,
+    noteTimestamp,
+    selectProject,
+  )
 import Sensei.Time
+  ( TZLabel,
+    TimeRange (..),
+    inRange,
+    tzByLabel,
+    utcToLocalTimeTZ,
+  )
 
 data Pagination
   = Page {pageNumber :: Natural, pageSize :: Natural}
@@ -108,29 +132,30 @@ class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
   -- already exist.
   insertProfile :: UserProfile -> m (Encoded Hex)
 
-flowViewBuilder :: Text -> TimeZone -> TimeOfDay -> ProjectsMap -> EventView -> [FlowView] -> [FlowView]
-flowViewBuilder userName userTimezone userEndOfDay projectsMap flow =
-  flowView flow userName (appendFlow userTimezone userEndOfDay projectsMap)
+flowViewBuilder :: Text -> TZLabel -> TimeOfDay -> ProjectsMap -> EventView -> [FlowView] -> [FlowView]
+flowViewBuilder usrName usrTimezone usrEndOfDay projectsMap flow =
+  flowView flow usrName (appendFlow usrTimezone usrEndOfDay projectsMap)
 
-notesViewBuilder :: Text -> TimeZone -> ProjectsMap -> EventView -> [NoteView] -> [NoteView]
-notesViewBuilder userName userTimezone projectsMap flow = flowView flow userName f
+notesViewBuilder :: Text -> TZLabel -> ProjectsMap -> EventView -> [NoteView] -> [NoteView]
+notesViewBuilder usrName usrTimezone projectsMap flow = flowView flow usrName f
   where
     f :: EventView -> [NoteView] -> [NoteView]
     f EventView {event = (EventNote note)} fragments =
-      toNoteView userTimezone projectsMap note : fragments
+      toNoteView usrTimezone projectsMap note : fragments
     f _ fragments = fragments
 
-toNoteView :: TimeZone -> ProjectsMap -> NoteFlow -> NoteView
-toNoteView userTimezone projectsMap note =
+toNoteView :: TZLabel -> ProjectsMap -> NoteFlow -> NoteView
+toNoteView (tzByLabel -> tz) projectsMap note =
   NoteView
-    { noteStart = utcToLocalTime userTimezone (note ^. noteTimestamp),
+    { noteStart = utcToLocalTimeTZ tz (note ^. noteTimestamp),
       noteView = note ^. noteContent,
       noteProject = projectsMap `selectProject` (note ^. noteDir),
       noteTags = []
     }
 
-commandViewBuilder :: TimeZone -> ProjectsMap -> EventView -> [CommandView] -> [CommandView]
-commandViewBuilder userTimezone projectsMap EventView {event = t@(EventTrace _)} acc = fromJust (mkCommandView userTimezone projectsMap t) : acc
+commandViewBuilder :: TZLabel -> ProjectsMap -> EventView -> [CommandView] -> [CommandView]
+commandViewBuilder usrTimezone projectsMap EventView {event = t@(EventTrace _)} acc =
+  fromJust (mkCommandView usrTimezone projectsMap t) : acc
 commandViewBuilder _ _ _ acc = acc
 
 -- | Basically a combination of a `filter` and a single step of a fold

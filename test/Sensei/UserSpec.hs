@@ -79,6 +79,15 @@ spec = describe "Users Management" $ do
             eitherDecode jsonProfile
                 `shouldBe` Right defaultProfile{userId = uid}
 
+        it "can deserialize version 10 JSON" $ do
+            let uid = toHex "foo"
+                jsonProfile =
+                    "{\"userStartOfDay\":\"08:00:00\",\"userProjects\":{},\"userCommands\":null,\"userProfileVersion\":10,\"userEndOfDay\":\"18:30:00\",\"userPassword\":[\"\",\"\"],\"userName\":\"arnaud\",\"userId\":\""
+                        <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid))
+                        <> "\",\"userTimezone\":\"Europe/Paris\",\"userFlowTypes\":null}"
+            eitherDecode jsonProfile
+                `shouldBe` Right defaultProfile{userId = uid}
+
     withApp app $
         describe "Users API" $ do
             it "GET /api/users/<user> returns default profile" $ do
