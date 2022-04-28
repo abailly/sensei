@@ -87,6 +87,7 @@ library
                      , text
                      , time
                      , time-lens
+                     , tz
                      , unix
                      , unordered-containers
                      , wai

@@ -7,7 +7,6 @@ module Sensei.GoalAPISpec where
 import Sensei.API
 import Sensei.Builder (aDay)
 import Sensei.TestHelper
-import Sensei.Time (UTCTime (..))
 import Test.Hspec
 
 spec :: Spec
@@ -66,4 +65,3 @@ spec = withApp app $ do
             }
     postJSON "/api/goals/arnaud" op
       `shouldRespondJSONBody` CurrentGoals ["some goal"]
-

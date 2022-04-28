@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Sensei.Generators where
@@ -7,14 +8,13 @@ import Control.Lens ((.~))
 import qualified Data.ByteString as BS
 import Data.Function ((&))
 import Data.Text (Text, pack)
-import Data.Time (UTCTime (..), addUTCTime)
 import Data.Time.LocalTime
 import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
 import Sensei.ColorSpec ()
 import Sensei.DB
-import Test.QuickCheck
-  ( Arbitrary (..),
+import Test.QuickCheck (
+    Arbitrary (..),
     Gen,
     choose,
     elements,
@@ -26,7 +26,7 @@ import Test.QuickCheck
     oneof,
     resize,
     vectorOf,
-  )
+ )
 
 -- * Orphan Instances
 
@@ -36,8 +36,13 @@ generateUser = resize 20 (pack . getPrintableString <$> arbitrary)
 genTimeOfDay :: Gen TimeOfDay
 genTimeOfDay = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger <$> choose (0, 59))
 
-genTimeZone :: Gen TimeZone
-genTimeZone = hoursToTimeZone <$> choose (- 12, 12)
+genTimeZone :: Gen TZLabel
+genTimeZone =
+    toEnum
+        <$> choose
+            ( fromEnum (minBound @TZLabel)
+            , fromEnum (maxBound @TZLabel)
+            )
 
 genPassword :: Gen (Encoded Base64, Encoded Base64)
 genPassword = (,) <$> genBase64 <*> genBase64
@@ -50,47 +55,47 @@ genUserId = toHex . BS.pack <$> vectorOf 16 arbitrary
 
 generateUserProfile :: Gen UserProfile
 generateUserProfile =
-  UserProfile
-    <$> generateUser
-    <*> genTimeZone
-    <*> genTimeOfDay
-    <*> genTimeOfDay
-    <*> arbitrary
-    <*> arbitrary
-    <*> arbitrary
-    <*> genPassword
-    <*> genUserId
+    UserProfile
+        <$> generateUser
+        <*> genTimeZone
+        <*> genTimeOfDay
+        <*> genTimeOfDay
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> genPassword
+        <*> genUserId
 
 instance Arbitrary UserProfile where
-  arbitrary = generateUserProfile
+    arbitrary = generateUserProfile
 
-  shrink u@(UserProfile _ _ _ _ fs cs ps _ _) =
-    ((\f -> u {userFlowTypes = f}) <$> shrink fs)
-      <> ((\c -> u {userCommands = c}) <$> shrink cs)
-      <> ((\p -> u {userProjects = p}) <$> shrink ps)
+    shrink u@(UserProfile _ _ _ _ fs cs ps _ _) =
+        ((\f -> u{userFlowTypes = f}) <$> shrink fs)
+            <> ((\c -> u{userCommands = c}) <$> shrink cs)
+            <> ((\p -> u{userProjects = p}) <$> shrink ps)
 
 instance Arbitrary FlowType where
-  arbitrary =
-    frequency
-      [ (4, elements defaultFlowTypes),
-        (3, pure Note),
-        (1, pure End),
-        (2, pure Other)
-      ]
+    arbitrary =
+        frequency
+            [ (4, elements defaultFlowTypes)
+            , (3, pure Note)
+            , (1, pure End)
+            , (2, pure Other)
+            ]
 
 instance Arbitrary ProjectName where
-  arbitrary = ProjectName <$> resize 20 (pack . getPrintableString <$> arbitrary)
+    arbitrary = ProjectName <$> resize 20 (pack . getPrintableString <$> arbitrary)
 
 -- we don't really want to build arbitrary complex regexes so let's just
 -- do simple stuff, and keep the regex smalls otherwise we'll slow the tests
 -- as hell
 instance Arbitrary Regex where
-  arbitrary = Regex . pack . concat <$> reFragments
-    where
-      reFragments :: Gen [String]
-      reFragments = vectorOf 3 reFragment
+    arbitrary = Regex . pack . concat <$> reFragments
+      where
+        reFragments :: Gen [String]
+        reFragments = vectorOf 3 reFragment
 
-      reFragment = oneof [pure ".*", listOf (elements ['a' .. 'z'])]
+        reFragment = oneof [pure ".*", listOf (elements ['a' .. 'z'])]
 
 genNatural :: Gen Natural
 genNatural = fromInteger . getPositive <$> arbitrary
@@ -100,26 +105,26 @@ startTime = UTCTime (toEnum 50000) 10000
 
 generateFlow :: UTCTime -> Integer -> Gen Event
 generateFlow baseTime k = do
-  typ <- arbitrary
-  case typ of
-    Note -> EventNote <$> generateNote baseTime k
-    _ -> EventFlow <$> generateState typ baseTime k
+    typ <- arbitrary
+    case typ of
+        Note -> EventNote <$> generateNote baseTime k
+        _ -> EventFlow <$> generateState typ baseTime k
 
 shiftTime :: UTCTime -> Integer -> UTCTime
 shiftTime baseTime k = addUTCTime (fromInteger $ k * 1000) baseTime
 
 generateNote :: UTCTime -> Integer -> Gen NoteFlow
 generateNote baseTime k = do
-  let st = shiftTime baseTime k
-  dir <- generateDir
-  note <- generateNoteText
-  pure $ NoteFlow "arnaud" st dir note
+    let st = shiftTime baseTime k
+    dir <- generateDir
+    note <- generateNoteText
+    pure $ NoteFlow "arnaud" st dir note
 
 generateState :: FlowType -> UTCTime -> Integer -> Gen Flow
 generateState ftype baseTime k = do
-  let st = shiftTime baseTime k
-  dir <- generateDir
-  pure $ Flow ftype "arnaud" st dir -- TODO: remove user from Flow definition
+    let st = shiftTime baseTime k
+    dir <- generateDir
+    pure $ Flow ftype "arnaud" st dir -- TODO: remove user from Flow definition
 
 generateDir :: Gen Text
 generateDir = pack . getASCIIString <$> arbitrary
@@ -129,13 +134,13 @@ generateNoteText = pack . getASCIIString <$> arbitrary
 
 generateTrace :: UTCTime -> Integer -> Gen Event
 generateTrace baseTime k = do
-  let st = shiftTime baseTime k
-  dir <- generateDir
-  pr <- generateProcess
-  args <- generateArgs
-  ex <- arbitrary
-  el <- fromInteger <$> choose (0, 100)
-  pure $ EventTrace $ Trace "arnaud" st dir pr args ex el
+    let st = shiftTime baseTime k
+    dir <- generateDir
+    pr <- generateProcess
+    args <- generateArgs
+    ex <- arbitrary
+    el <- fromInteger <$> choose (0, 100)
+    pure $ EventTrace $ Trace "arnaud" st dir pr args ex el
 
 generateArgs :: Gen [Text]
 generateArgs = listOf $ pack . getASCIIString <$> arbitrary
@@ -144,30 +149,30 @@ generateProcess :: Gen Text
 generateProcess = pack . getASCIIString <$> arbitrary
 
 instance Arbitrary Pagination where
-  arbitrary =
-    frequency
-      [ (10, Page <$> genNatural <*> genNatural),
-        (1, pure NoPagination)
-      ]
+    arbitrary =
+        frequency
+            [ (10, Page <$> genNatural <*> genNatural)
+            , (1, pure NoPagination)
+            ]
 
-  shrink (Page n s) = Page <$> shrink n <*> shrink s
-  shrink NoPagination = []
+    shrink (Page n s) = Page <$> shrink n <*> shrink s
+    shrink NoPagination = []
 
 instance Arbitrary Reference where
-  arbitrary =
-    frequency
-      [ (3, pure Latest),
-        (1, Pos <$> genNatural)
-      ]
+    arbitrary =
+        frequency
+            [ (3, pure Latest)
+            , (1, Pos <$> genNatural)
+            ]
 
-  shrink Latest = []
-  shrink (Pos p) = Pos <$> shrink p
+    shrink Latest = []
+    shrink (Pos p) = Pos <$> shrink p
 
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =
-  oneof [generateTrace baseTime off, generateFlow baseTime off]
+    oneof [generateTrace baseTime off, generateFlow baseTime off]
 
 shrinkEvent :: Event -> [Event]
 shrinkEvent (EventTrace t@(Trace _ _ _ _ args _ _)) =
-  [EventTrace $ t & traceArgs .~ x | x <- shrink args]
+    [EventTrace $ t & traceArgs .~ x | x <- shrink args]
 shrinkEvent _ = []

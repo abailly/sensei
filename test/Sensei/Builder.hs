@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Specific help functions and types to help build and manipulate
---  Sensei's types and API
-module Sensei.Builder
-  ( postEvent,
+{- | Specific help functions and types to help build and manipulate
+  Sensei's types and API
+-}
+module Sensei.Builder (
+    postEvent,
     postEvent_,
     postFlow,
     postFlow_,
@@ -17,12 +18,10 @@ module Sensei.Builder
     -- reexported from time-lens
     seconds,
     month,
-  )
-where
+) where
 
 import Control.Lens ((%~))
 import Data.Functor (void)
-import Data.Time (Day, TimeOfDay (TimeOfDay), UTCTime (UTCTime))
 import Data.Time.Lens (Lens, modL, month, seconds)
 import Sensei.API
 import Sensei.TestHelper

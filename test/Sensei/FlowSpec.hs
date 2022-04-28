@@ -10,7 +10,6 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Proxy
 import Sensei.API
 import Sensei.Generators (generateEvent)
-import Sensei.Time
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Classes
