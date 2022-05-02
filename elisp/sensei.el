@@ -82,6 +82,7 @@ project directory when starting note edition.
 * ON-SUCCESS is a function called upon successful submission of note."
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
+         (api-version (cdr (assoc 'apiVersion config)))
          (username (cdr (assoc 'configUser config)))
          (server-uri (cdr (assoc 'serverUri config))))
     (request (concat server-uri "api/log/" username)
@@ -94,7 +95,7 @@ project directory when starting note edition.
                 ("noteDir" . ,directory)
                 ("noteContent" . ,(buffer-substring-no-properties (point-min) (point-max))))))
       :headers `(("Content-Type" . "application/json")
-                 ("X-API-Version" . "0.38.0")
+                 ("X-API-Version" . ,api-version)
                  ("Authorization" . ,(concat "Bearer " auth-token)))
       :parser 'json-read
       :error  (cl-function (lambda (&key error-thrown &allow-other-keys)
@@ -110,6 +111,7 @@ project directory when starting note edition.
 * FLOW-TYPE is the type of flow to record, which must be a type supported by the backend as listed by `sensei-list-flows'."
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
+         (api-version (cdr (assoc 'apiVersion config)))
          (username (cdr (assoc 'configUser config)))
          (server-uri (cdr (assoc 'serverUri config))))
     (request (concat server-uri "api/log/" username)
@@ -122,7 +124,7 @@ project directory when starting note edition.
                 ("flowDir" . ,directory)
                 ("flowType" . ,flow-type))))
       :headers `(("Content-Type" . "application/json")
-                 ("X-API-Version" . "0.38.0")
+                 ("X-API-Version" . ,api-version)
                  ("Authorization" . ,(concat "Bearer " auth-token)))
       :parser 'json-read
       :error  (cl-function (lambda (&key error-thrown &allow-other-keys)
@@ -134,12 +136,13 @@ project directory when starting note edition.
   "List available flow types for the current user."
   (let* ((config (sensei-read-config))
          (auth-token (cdr (assoc 'authToken config)))
+         (api-version (cdr (assoc 'apiVersion config)))
          (username (cdr (assoc 'configUser config)))
          (server-uri (cdr (assoc 'serverUri config))))
 
     (with-temp-buffer
       (setq url-request-extra-headers `(("Content-Type" . "application/json")
-                                        ("X-API-Version" . "0.38.0")
+                                        ("X-API-Version" . ,api-version)
                                         ("Authorization" . ,(concat "Bearer " auth-token))))
       (url-insert-file-contents (concat server-uri "api/users/" username))
       (let ((flows (cdr (assoc 'userFlowTypes (json-parse-buffer :object-type 'alist)))))
