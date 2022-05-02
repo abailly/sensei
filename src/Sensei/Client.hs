@@ -1,15 +1,13 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
-module Sensei.Client
-  ( ClientMonad (..),
+module Sensei.Client (
+    ClientMonad (..),
     ClientConfig (..),
     ClientError,
     defaultConfig,
@@ -33,8 +31,7 @@ module Sensei.Client
     postGoalC,
     getGoalsC,
     send,
-  )
-where
+) where
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM (newTVarIO)
@@ -81,49 +78,49 @@ getVersionsC :: ClientMonad Versions
 postGoalC :: Text -> GoalOp -> ClientMonad CurrentGoals
 getGoalsC :: Text -> ClientMonad Goals
 ( getFlowC :<|> updateFlowC
-    :<|> queryFlowPeriodSummaryC
-    :<|> notesDayC
-    :<|> commandsDayC
-    :<|> queryFlowDayC
-    :<|> queryFlowC
-  )
-  :<|> searchNotesC
-  :<|> (postEventC :<|> getLogC)
-  :<|> (getFreshTokenC :<|> createUserProfileC :<|> getUserProfileC :<|> setUserProfileC)
-  :<|> getVersionsC
-  :<|> (postGoalC :<|> getGoalsC) = clientIn (Proxy @SenseiAPI) Proxy
+        :<|> queryFlowPeriodSummaryC
+        :<|> notesDayC
+        :<|> commandsDayC
+        :<|> queryFlowDayC
+        :<|> queryFlowC
+    )
+    :<|> searchNotesC
+    :<|> (postEventC :<|> getLogC)
+    :<|> (getFreshTokenC :<|> createUserProfileC :<|> getUserProfileC :<|> setUserProfileC)
+    :<|> getVersionsC
+    :<|> (postGoalC :<|> getGoalsC) = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
-send config@ClientConfig {serverUri, startServerLocally} act = do
-  let base = fromMaybe (BaseUrl Http "localhost" 23456 "") $ parseBaseUrl $ uriToString' serverUri
-  mgr <- case baseUrlScheme base of
-    Http -> newManager defaultManagerSettings
-    Https -> newManager tlsManagerSettings
-  jar <- newTVarIO (createCookieJar [])
-  let env = (mkClientEnv mgr base) {cookieJar = Just jar}
-  res <- runClientM (runReaderT (unClient act) config) env
-  case res of
-    Left err ->
-      if startServerLocally
-        then handleError env err
-        else throwIO err
-    Right v -> pure v
+send config@ClientConfig{serverUri, startServerLocally} act = do
+    let base = fromMaybe (BaseUrl Http "localhost" 23456 "") $ parseBaseUrl $ uriToString' serverUri
+    mgr <- case baseUrlScheme base of
+        Http -> newManager defaultManagerSettings
+        Https -> newManager tlsManagerSettings
+    jar <- newTVarIO (createCookieJar [])
+    let env = (mkClientEnv mgr base){cookieJar = Just jar}
+    res <- runClientM (runReaderT (unClient act) config) env
+    case res of
+        Left err ->
+            if startServerLocally
+                then handleError env err
+                else throwIO err
+        Right v -> pure v
   where
     handleError env = \case
-      -- server is not running, fork it
-      -- TODO: probably not such a good idea?
-      ConnectionError _ -> daemonizeServer >> error "Should never happen" -- daemonizeserver exits the current process
+        -- server is not running, fork it
+        -- TODO: probably not such a good idea?
+        ConnectionError _ -> daemonizeServer >> error "Should never happen" -- daemonizeserver exits the current process
 
-      -- incorrect version, kill server and retry
-      -- TODO: user 'Accept: ' header with proper mime-type instead of custome
-      -- header hijacking 406 response code
-      FailureResponse _req resp
-        | responseStatusCode resp == notAcceptable406 -> do
-          -- we ignore the result of kill as it probaly will be an error: the server
-          -- might not stop gracefully, in time to return us a response so yolo and
-          -- simply give it some time to restart...
-          runClientM (runReaderT (unClient killC) config) env >> threadDelay 1000000
-          send config act
+        -- incorrect version, kill server and retry
+        -- TODO: user 'Accept: ' header with proper mime-type instead of custome
+        -- header hijacking 406 response code
+        FailureResponse _req resp
+            | responseStatusCode resp == notAcceptable406 -> do
+                -- we ignore the result of kill as it probaly will be an error: the server
+                -- might not stop gracefully, in time to return us a response so yolo and
+                -- simply give it some time to restart...
+                runClientM (runReaderT (unClient killC) config) env >> threadDelay 1000000
+                send config act
 
-      -- something is wrong, bail out
-      otherError -> throwIO otherError
+        -- something is wrong, bail out
+        otherError -> throwIO otherError
