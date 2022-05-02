@@ -36,19 +36,19 @@
 
 ;;; Commentary:
 
-;;; This package provides two basic tools to interact with a remote
-;;; instance of sensei, a tool for note taking and time management:
-;;;
-;;; * The ability to take notes on the fly within a given project's
-;;;   context.  This opens a temporary buffer whose content will be
-;;;   sent as-is to sensei with the project's directory and current
-;;;   timestamp,
-;;;
-;;; * Quick recording of current "Flow" according to what flows are
-;;;   recorded within the current user's profile.
-;;;
-;;; Proper operation depends on the existence of ~/.config/sensei/client.json
-;;; configuration file defining user name and authentication token.
+;; This package provides two basic tools to interact with a remote
+;; instance of sensei, a tool for note taking and time management:
+;;
+;; * The ability to take notes on the fly within a given project's
+;;   context.  This opens a temporary buffer whose content will be
+;;   sent as-is to sensei with the project's directory and current
+;;   timestamp,
+;;
+;; * Quick recording of current "Flow" according to what flows are
+;;   recorded within the current user's profile.
+;;
+;; Proper operation depends on the existence of ~/.config/sensei/client.json
+;; configuration file defining user name and authentication token.
 
 ;;; Code:
 (require 'url)
@@ -58,7 +58,7 @@
 
 (defun sensei-insert-timestamp-iso ()
   "Insert the current timestamp (ISO 8601 format)."
-  (format-time-string "%Y-%m-%dT%TZ" nil t))
+  (format-time-string "%FT%T%z" nil t))
 
 (defun sensei-read-config ()
   "Read sensei 'client.json' file from default XDG location."
@@ -100,7 +100,7 @@ project directory when starting note edition.
       :error  (cl-function (lambda (&key error-thrown &allow-other-keys)
                              (message "Got error: %S" error-thrown)))
       :success  (cl-function (lambda (&rest)
-                               (message "Succesfully recorded note")
+                               (message "Successfully recorded note")
                                (eval on-success))))))
 
 (defun sensei-send-event-flow (directory flow-type)
@@ -146,13 +146,14 @@ project directory when starting note edition.
         (cl-map 'list #'car flows)))))
 
 (defun sensei-send-note-and-close ()
-  "Record current buffer as note and cloes it.
+  "Record current buffer as note and close it.
+
+The content of the buffer can be formatted using markdown syntax.
 
 DIRECTORY is the project to record note for."
   (interactive)
   (sensei-send-event-note sensei-cur-directory
-
-                            '(kill-buffer (current-buffer))))
+                          '(kill-buffer (current-buffer))))
 
 (defun sensei-record-note ()
   "Interactive function to record some note."
@@ -166,7 +167,7 @@ DIRECTORY is the project to record note for."
     (use-local-map nil)
     (local-set-key
      (kbd "C-c C-c")
-     'sensei-send-note-and-close)))
+     #'sensei-send-note-and-close)))
 
 (defun sensei-record-flow (flow-type)
   "Interactive function to record change in flow.
