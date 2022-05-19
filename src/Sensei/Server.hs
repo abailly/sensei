@@ -43,6 +43,7 @@ module Sensei.Server (
 
     -- * Server-side HTML
     module Sensei.Server.UI,
+    logoutS,
 ) where
 
 import Control.Concurrent.MVar (MVar, putMVar)
@@ -277,3 +278,15 @@ loginS js cs Credentials{credLogin, credPassword} = do
                 Nothing -> throwM err401{errBody = "Failed to generate cookies for user login"}
                 Just applyCookies -> return $ applyCookies profile
         _ -> throwM err401{errBody = "Fail to authenticate user"}
+
+logoutS ::
+    (MonadIO m, DB m) =>
+    CookieSettings ->
+    m
+        ( Headers
+            '[ Header "Set-Cookie" SetCookie
+             , Header "Set-Cookie" SetCookie
+             ]
+            NoContent
+        )
+logoutS cs = pure $ clearSession cs NoContent

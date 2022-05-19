@@ -8,6 +8,7 @@ module Sensei.API (
     SenseiAPI,
     KillServer,
     LoginAPI,
+    LogoutAPI,
     SetCurrentTime,
     GetCurrentTime,
     Protected,
@@ -221,6 +222,20 @@ type LoginAPI =
                  , Header "Set-Cookie" SetCookie
                  ]
                 UserProfile
+            )
+
+type LogoutAPI =
+    Summary "Logged in users can logout."
+        :> Description
+            "This will clear cookies containing user's data."
+        :> "logout"
+        :> Get
+            '[JSON]
+            ( Headers
+                '[ Header "Set-Cookie" SetCookie
+                 , Header "Set-Cookie" SetCookie
+                 ]
+                NoContent
             )
 
 {- | Protected endpoints require a valid 'AuthenticationToken' which can be provided

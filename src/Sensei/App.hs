@@ -41,111 +41,114 @@ import System.FilePath ((</>))
 import System.Posix.Daemonize
 
 type FullAPI =
-  "swagger.json" :> Get '[JSON] Swagger
-    :<|> LoginAPI
-    :<|> Protected
-      :> ( KillServer
-             :<|> SetCurrentTime
-             :<|> GetCurrentTime
-             :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI)
-         )
-    :<|> Raw
+    "swagger.json" :> Get '[JSON] Swagger
+        :<|> LoginAPI
+        :<|> Protected
+            :> ( KillServer
+                    :<|> LogoutAPI
+                    :<|> SetCurrentTime
+                    :<|> GetCurrentTime
+                    :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI)
+               )
+        :<|> Raw
 
 fullAPI :: Proxy FullAPI
 fullAPI = Proxy
 
 daemonizeServer :: IO ()
 daemonizeServer = do
-  configDir <- getConfigDirectory
-  setEnv "ENVIRONMENT" "Prod"
-  setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
-  getKeyAsString configDir >>= setEnv "SENSEI_SERVER_KEY"
-  daemonize $ startServer configDir
+    configDir <- getConfigDirectory
+    setEnv "ENVIRONMENT" "Prod"
+    setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
+    getKeyAsString configDir >>= setEnv "SENSEI_SERVER_KEY"
+    daemonize $ startServer configDir
 
 getKeyAsString :: FilePath -> IO String
 getKeyAsString configDir = do
-  let keyFile = configDir </> "sensei.jwk"
-  key <-
-    getKey keyFile
-      `catch` ( \(_ :: IOError) -> do
-                  k <- makeNewKey
-                  LBS.writeFile keyFile $ encode k
-                  pure k
-              )
-  pure $ unpack . decodeUtf8 . toStrict . encode $ key
+    let keyFile = configDir </> "sensei.jwk"
+    key <-
+        getKey keyFile
+            `catch` ( \(_ :: IOError) -> do
+                        k <- makeNewKey
+                        LBS.writeFile keyFile $ encode k
+                        pure k
+                    )
+    pure $ unpack . decodeUtf8 . toStrict . encode $ key
 
 startServer :: FilePath -> IO ()
 startServer configDir =
-  getDataFile configDir >>= sensei
+    getDataFile configDir >>= sensei
 
 sensei :: FilePath -> IO ()
 sensei output = do
-  signal <- newEmptyMVar
-  configDir <- fromMaybe "." <$> lookupEnv "SENSEI_SERVER_CONFIG_DIR"
-  key <- readOrMakeKey =<< lookupEnv "SENSEI_SERVER_KEY"
-  serverName <- pack . fromMaybe "" <$> lookupEnv "SENSEI_SERVER_NAME"
-  serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
-  rootUser <- fmap pack <$> lookupEnv "SENSEI_SERVER_ROOT_USER"
-  env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-  withAppServer serverName NoCORS serverPort (senseiApp env rootUser signal key output configDir) $ \server ->
-    waitServer server `race_` (takeMVar signal >> stopServer server)
+    signal <- newEmptyMVar
+    configDir <- fromMaybe "." <$> lookupEnv "SENSEI_SERVER_CONFIG_DIR"
+    key <- readOrMakeKey =<< lookupEnv "SENSEI_SERVER_KEY"
+    serverName <- pack . fromMaybe "" <$> lookupEnv "SENSEI_SERVER_NAME"
+    serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
+    rootUser <- fmap pack <$> lookupEnv "SENSEI_SERVER_ROOT_USER"
+    env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
+    withAppServer serverName NoCORS serverPort (senseiApp env rootUser signal key output configDir) $ \server ->
+        waitServer server `race_` (takeMVar signal >> stopServer server)
 
 senseiApp :: Maybe Env -> Maybe Text -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
 senseiApp env rootUser signal publicAuthKey output configDir logger = do
-  runDB output configDir logger $ do
-    initLogStorage
-    maybe (pure ()) ensureUserExists rootUser
-  let jwtConfig = defaultJWTSettings publicAuthKey
-      cookieConfig = defaultCookieSettings {cookieXsrfSetting = Nothing}
-      contextConfig = jwtConfig :. cookieConfig :. EmptyContext
-      contextProxy :: Proxy [JWTSettings, CookieSettings]
-      contextProxy = Proxy
-  pure $
-    serveWithContext fullAPI contextConfig $
-      hoistServerWithContext fullAPI contextProxy runApp $
-        pure senseiSwagger
-          :<|> loginS jwtConfig cookieConfig
-          :<|> validateAuth jwtConfig
-          :<|> Tagged (userInterface env)
+    runDB output configDir logger $ do
+        initLogStorage
+        maybe (pure ()) ensureUserExists rootUser
+    let jwtConfig = defaultJWTSettings publicAuthKey
+        cookieConfig = defaultCookieSettings{cookieXsrfSetting = Nothing}
+        contextConfig = jwtConfig :. cookieConfig :. EmptyContext
+        contextProxy :: Proxy [JWTSettings, CookieSettings]
+        contextProxy = Proxy
+    pure $
+        serveWithContext fullAPI contextConfig $
+            hoistServerWithContext fullAPI contextProxy runApp $
+                pure senseiSwagger
+                    :<|> loginS jwtConfig cookieConfig
+                    :<|> validateAuth jwtConfig cookieConfig
+                    :<|> Tagged (userInterface env)
   where
     ensureUserExists userName = do
-      prof <- try @_ @SQLiteDBError $ readProfile userName
-      when (isLeft prof) $ void $ insertProfile (defaultProfile {userName})
+        prof <- try @_ @SQLiteDBError $ readProfile userName
+        when (isLeft prof) $ void $ insertProfile (defaultProfile{userName})
 
-    validateAuth jwtConfig (Authenticated _) = baseServer jwtConfig signal
-    validateAuth _ _ = throwAll err401 {errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
+    validateAuth jwtConfig cookieConfig (Authenticated _) = baseServer jwtConfig cookieConfig signal
+    validateAuth _ _ _ = throwAll err401{errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
 
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
     runApp = Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger
 
     handleDBError :: IO a -> IO a
     handleDBError io =
-      io `catch` \(SQLiteDBError _q txt) -> throwM $ err500 {errBody = fromStrict $ encodeUtf8 txt}
+        io `catch` \(SQLiteDBError _q txt) -> throwM $ err500{errBody = fromStrict $ encodeUtf8 txt}
 
 baseServer ::
-  (MonadIO m, DB m) =>
-  JWTSettings ->
-  MVar () ->
-  ServerT (KillServer :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
-baseServer jwtSettings signal =
-  killS signal
-    :<|> setCurrentTimeS
-    :<|> getCurrentTimeS
-    :<|> ( getFlowS
-             :<|> updateFlowStartTimeS
-             :<|> queryFlowPeriodSummaryS
-             :<|> notesDayS
-             :<|> commandsDayS
-             :<|> queryFlowDayS
-             :<|> queryFlowS
-         )
-    :<|> searchNoteS
-    :<|> (postEventS :<|> getLogS)
-    :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileS :<|> putUserProfileS)
-    :<|> getVersionsS
-    :<|> (postGoalS :<|> getGoalsS)
+    (MonadIO m, DB m) =>
+    JWTSettings ->
+    CookieSettings ->
+    MVar () ->
+    ServerT (KillServer :<|> LogoutAPI :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
+baseServer jwtSettings cookieSettings signal =
+    killS signal
+        :<|> logoutS cookieSettings
+        :<|> setCurrentTimeS
+        :<|> getCurrentTimeS
+        :<|> ( getFlowS
+                :<|> updateFlowStartTimeS
+                :<|> queryFlowPeriodSummaryS
+                :<|> notesDayS
+                :<|> commandsDayS
+                :<|> queryFlowDayS
+                :<|> queryFlowS
+             )
+        :<|> searchNoteS
+        :<|> (postEventS :<|> getLogS)
+        :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileS :<|> putUserProfileS)
+        :<|> getVersionsS
+        :<|> (postGoalS :<|> getGoalsS)
 
 -- | This orphan instance is needed because of the 'validateAuth' function above
 instance MonadError ServerError SQLiteDB where
-  throwError = throwM
-  catchError = catch
+    throwError = throwM
+    catchError = catch
