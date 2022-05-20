@@ -4,7 +4,7 @@
 ;; Author: Arnaud Bailly <arnaud@pankzsoft.com>
 ;; Package-Requires: ((emacs "27.1") (projectile "2.5.0") (request "0.3.2"))
 ;; Keywords: hypermedia
-;; Version: 0.41.1
+;; Version: 0.42.0
 ;; Homepage: https://abailly.github.io/sensei
 
 ;; Redistribution and use in source and binary forms, with or without
