@@ -18,7 +18,7 @@ function extractLinks(xhr) {
   }
 }
 
-
+/** Make a GET query on server expecting JSON content */
 export function get(router, url, callback) {
   const xhr = new XMLHttpRequest();
   xhr.open('GET', url);
@@ -26,8 +26,9 @@ export function get(router, url, callback) {
   xhr.onload = function() {
     if (xhr.status >= 200 && xhr.status < 300) {
       try {
-        const flowData = JSON.parse(xhr.responseText);
         const links = extractLinks(xhr);
+        // return an empty object when result is NoContent
+        const flowData = xhr.status == 204 ? {} : JSON.parse(xhr.responseText);
         if (links) {
           callback(flowData, links);
         } else {
