@@ -229,12 +229,14 @@ type LogoutAPI =
         :> Description
             "This will clear cookies containing user's data."
         :> "logout"
-        :> Get
+        :> Verb
+            'GET
+            204
             '[JSON]
             ( Headers
-                '[ Header "Set-Cookie" SetCookie
-                 , Header "Set-Cookie" SetCookie
-                 ]
+                [ Header "Set-Cookie" SetCookie
+                , Header "Set-Cookie" SetCookie
+                ]
                 NoContent
             )
 

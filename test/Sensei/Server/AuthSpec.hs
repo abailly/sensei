@@ -101,7 +101,7 @@ spec = describe "Authentication Operations" $ do
                 postJSON_ "/login" (Credentials (userName profile) "password")
 
                 getJSON "/logout"
-                    `shouldRespondWith` 200
+                    `shouldRespondWith` 204
                         { matchHeaders = [hasCookies 4]
                         }
 
