@@ -355,6 +355,7 @@ goalParser =
                 <|> setGoalParser
                 <|> addGoalParser
                 <|> linkGoalParser
+                <|> removeGoalParser
             )
     )
         <|> pure GetGraph
@@ -405,6 +406,14 @@ goalParser =
                 ( long "add-goal"
                     <> short 'a'
                     <> help "Mark current goal as done and set given goal as its parent"
+                )
+
+    removeGoalParser =
+        remove
+            <$> strOption
+                ( long "remove-goal"
+                    <> short 'r'
+                    <> help "Remove current goal and its children from the graph"
                 )
 
     linkGoalParser =
