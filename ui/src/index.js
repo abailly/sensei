@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
       charts(router, params.date);
     })
     .on('/login', function() {
-      login(router, document.getElementById('main'));
+      login(router, document.getElementById('main'), document.getElementById('navlist'));
     })
     .on('/notes', function() {
       notes.list(router, document.getElementById('main'), today);

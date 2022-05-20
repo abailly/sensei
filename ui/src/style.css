@@ -29,14 +29,17 @@ div#navbar ul {
 }
 
 div#navbar li {
-    display: inline-block;
+  display: inline-block;
+  padding: .5em;
+}
+
+div#navbar li#logout {
+  float: right;
 }
 
 div#navbar li a {
-    display: inline-block;
     color: white;
     text-align: center;
-    padding: .5em 1em;
     text-decoration: none;
 }
 
