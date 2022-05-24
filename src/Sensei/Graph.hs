@@ -38,6 +38,7 @@ import Algebra.Graph (
     vertices,
  )
 import Data.Aeson (FromJSON, ToJSON)
+import Data.List ((\\))
 import Data.Text (Text)
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
@@ -84,15 +85,17 @@ mkG = go (G empty empty empty)
             Remove v ->
                 go G{fullG = fullG', currentG = currentG', doneG = doneG'} ops
               where
+                transitiveInputs g acc w
+                    | w `elem` acc = acc
+                    | otherwise =
+                        case context (== w) g of
+                            Just Context{inputs} -> concatMap (transitiveInputs g (inputs <> acc)) inputs
+                            Nothing -> []
                 parents =
                     case context (== v) fullG of
-                        Just Context{outputs} -> outputs
+                        Just Context{outputs} -> outputs \\ removed
                         Nothing -> []
-                transitiveInputs g w =
-                    case context (== w) g of
-                        Just Context{inputs} -> inputs <> concatMap (transitiveInputs g) inputs
-                        Nothing -> []
-                removed = v : transitiveInputs fullG v
+                removed = v : transitiveInputs fullG [] v
                 fullG' = foldr removeVertex fullG removed
                 currentG' = foldr (overlay . vertex) (foldr removeVertex currentG removed) parents
                 doneG' = foldr removeVertex doneG removed

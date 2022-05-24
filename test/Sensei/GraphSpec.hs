@@ -164,3 +164,15 @@ spec = do
                     ]
 
         currentGoals ops `shouldBe` ["Foo"]
+
+    it "remove strongly connected component if removing a node part of a cycle" $ do
+        let ops =
+                mkG
+                    [ goal "Foo"
+                    , goal "Bar"
+                    , goal "Baz"
+                    , link "Bar" "Baz"
+                    , remove "Bar"
+                    ]
+
+        currentGoals ops `shouldBe` ["Foo"]
