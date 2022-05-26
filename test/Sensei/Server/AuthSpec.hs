@@ -33,7 +33,7 @@ import Sensei.TestHelper (
     clearCookies,
     defaultHeaders,
     getJSON,
-    jsonBodyEquals,
+    jsonBodyMatches,
     matchBody,
     matchHeaders,
     postJSON,
@@ -94,7 +94,7 @@ spec = describe "Authentication Operations" $ do
                 postJSON "/login" credentials
                     `shouldRespondWith` 200
                         { matchHeaders = [hasCookies 2]
-                        , matchBody = jsonBodyEquals profile
+                        , matchBody = jsonBodyMatches (\p -> p{userId = ""} == profile)
                         }
 
             it "GET /logout returns 200 and clears cookies" $ do
