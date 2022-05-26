@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -49,6 +50,7 @@ module Sensei.DB.SQLite (
     SQLiteDB,
     SQLiteDBError (..),
     withBackup,
+    readAll,
 ) where
 
 import Control.Exception (throwIO)
@@ -81,6 +83,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Functor ((<&>))
 import Data.Maybe (mapMaybe)
 import Data.Text (Text, pack, unpack)
+import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 import qualified Data.Time as Time
@@ -101,7 +104,12 @@ import qualified Database.SQLite.Simple as SQLite
 import Database.SQLite.Simple.ToField (ToField (..))
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
-import Preface.Codec (Encoded, Hex, toHex)
+import Preface.Codec (
+    Encoded,
+    Hex,
+    toHex,
+    pattern EncodedHex,
+ )
 import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API as API (
@@ -238,13 +246,13 @@ instance ToRow Event where
          in [ts, SQLInteger (fromIntegral currentVersion), toField u, toField (typ :: Text), payload]
 
 instance FromRow Event where
-  fromRow = do
-    --id, timestamp, version, flow_type, flow_data
-    _id :: Int <- field
-    _ts :: UTCTime <- field
-    _ver :: Integer <- field
-    _ty :: Text <- field
-    either error id . eitherDecode . encodeUtf8 <$> field
+    fromRow = do
+        --id, timestamp, version, flow_type, flow_data
+        _id :: Int <- field
+        _ts :: UTCTime <- field
+        _ver :: Integer <- field
+        _ty :: Text <- field
+        either error id . eitherDecode . encodeUtf8 <$> field
 
 typeOf :: Event -> Text
 typeOf EventTrace{} = "__TRACE__"
@@ -450,13 +458,13 @@ writeAll events = do
     withConnection $ \cnx -> forM_ events (insert cnx logger)
 
 readAll ::
-  HasCallStack =>
-  SQLiteDB [Event]
+    HasCallStack =>
+    SQLiteDB [Event]
 readAll = do
-  SQLiteConfig {logger} <- ask
-  withConnection $ \cnx -> do
-    let q = "select id, timestamp, version, flow_type, flow_data from event_log order by timestamp asc"
-    query_ cnx logger q
+    SQLiteConfig{logger} <- ask
+    withConnection $ \cnx -> do
+        let q = "select id, timestamp, version, flow_type, flow_data from event_log order by timestamp asc"
+        query_ cnx logger q
 
 updateNotesIndex ::
     HasCallStack =>
@@ -624,12 +632,12 @@ readProfileSQL ::
 readProfileSQL userName = do
     SQLiteConfig{logger} <- ask
     withConnection $ \cnx -> do
-        let q = "select profile from users where user = ?"
+        let q = "select profile, uid from users where user = ?"
         res <- query cnx logger q (Only userName)
         case res of
-            [[profile]] -> case eitherDecode . encodeUtf8 $ profile of
+            [[profile, uid]] -> case eitherDecode . encodeUtf8 $ profile of
                 Left e -> throwM $ SQLiteDBError q (pack $ "Fail to decode user profile: " <> e)
-                Right p -> pure p
+                Right p -> pure p{userId = EncodedHex (toStrict uid)}
             [] -> throwM $ SQLiteDBError q ("No user " <> userName)
             _ -> throwM $ SQLiteDBError q ("Several users with " <> userName <> ", this is a bug")
 
@@ -656,8 +664,7 @@ writeProfileSQL ::
 writeProfileSQL profile = do
     SQLiteConfig{logger} <- ask
     withConnection $ \cnx -> do
-        let q =
-                "update users set profile = ? where user = ?;"
+        let q = "update users set profile = ? where user = ?;"
         execute cnx logger q [toField $ decodeUtf8' $ LBS.toStrict $ encode profile, toField (userName profile)]
 
 insertProfileSQL ::
@@ -667,8 +674,7 @@ insertProfileSQL ::
 insertProfileSQL profile = do
     SQLiteConfig{logger} <- ask
     withConnection $ \cnx -> do
-        let q =
-                "insert into users (uid, user, profile) values (?,?,?);"
+        let q = "insert into users (uid, user, profile) values (?,?,?);"
         userId <- toHex . BS.pack . take 16 . randoms <$> newStdGen
         let profileWithId = profile{userId}
         execute cnx logger q [toField $ toText userId, toField (userName profile), toField $ decodeUtf8' $ LBS.toStrict $ encode profileWithId]

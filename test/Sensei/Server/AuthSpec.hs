@@ -124,7 +124,7 @@ spec = describe "Authentication Operations" $ do
                 let credentials = Credentials (userName profile) "password"
                 postJSON_ "/login" credentials
 
-                let headers = filter ((/= "Authorization") . fst) defaultHeaders
+                headers <- filter ((/= "Authorization") . fst) <$> defaultHeaders
 
                 request "GET" "/api/flows/arnaud" headers mempty `shouldRespondWith` 200
 
@@ -134,7 +134,7 @@ spec = describe "Authentication Operations" $ do
                 let credentials = Credentials (userName profile) "password"
                 postJSON_ "/login" credentials
 
-                let headers = filter ((/= "Authorization") . fst) defaultHeaders
+                headers <- filter ((/= "Authorization") . fst) <$> defaultHeaders
                 clearCookies
 
                 request "GET" "/api/flows/arnaud" headers mempty `shouldRespondWith` 401

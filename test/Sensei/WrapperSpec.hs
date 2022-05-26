@@ -6,7 +6,6 @@ module Sensei.WrapperSpec where
 
 import Data.Functor
 import qualified Data.Map as Map
-import Data.Time (UTCTime (..))
 import Preface.Codec
 import Sensei.API
 import Sensei.Client hiding (send)

@@ -88,7 +88,7 @@ asUser uid (WaiSession s) = WaiSession $ local (const uid) s
 
 runRequest :: ClientMonad a -> WaiSession (Encoded Hex) a
 runRequest (ClientMonad a) =
-    getState >>= \u -> runReaderT a (ClientConfig "http://localhost:23456" (Just $ validSerializedToken u) False Nothing)
+    getState >>= \u -> runReaderT a (ClientConfig "http://localhost:23456" (Just $ validSerializedToken u) False Nothing Nothing)
 
 isExpectedToBe ::
     (Eq a, Show a, HasCallStack) => a -> a -> WaiSession st ()

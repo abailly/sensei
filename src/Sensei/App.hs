@@ -122,7 +122,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
             hoistServerWithContext fullAPI contextProxy runApp $
                 pure senseiSwagger
                     :<|> loginS jwtConfig cookieConfig
-                    :<|> validateAuth jwtConfig
+                    :<|> validateAuth jwtConfig cookieConfig
                     :<|> Tagged (userInterface env)
   where
     runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x

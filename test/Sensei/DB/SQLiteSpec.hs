@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -143,6 +144,15 @@ spec = describe "SQLite DB" $ do
 
                 profile `shouldBe` defaultProfile{userId = uid}
 
+            it "always retrieve profile with UID set" $ \tempdb -> do
+                (uid, UserProfile{userId}) <- runDB tempdb "." fakeLogger $ do
+                    initLogStorage
+                    uid <- insertProfile defaultProfile
+                    writeProfile defaultProfile
+                    (uid,) <$> readProfile (userName defaultProfile)
+
+                userId `shouldBe` uid
+
             it "indexes newly inserted note on the fly" $ \tempdb -> do
                 let noteTime = UTCTime (toEnum 50000) 1000
                     content = "foo bar baz cat"
@@ -179,7 +189,7 @@ spec = describe "SQLite DB" $ do
                     runDB tmp dir fakeLogger initLogStorage
 
                     rows <- SQLite.withConnection tmp $ \cnx ->
-                        SQLite.query_ cnx "select id,user from users;"
+                        SQLite.query_ cnx "select id, user from users;"
 
                     rows `shouldBe` [(1 :: Int, "arnaud" :: String)]
 
@@ -194,6 +204,6 @@ spec = describe "SQLite DB" $ do
                     runDB tmp dir fakeLogger initLogStorage
 
                     rows <- SQLite.withConnection tmp $ \cnx ->
-                        SQLite.query_ cnx "select id,uid, user from users;"
+                        SQLite.query_ cnx "select id, uid, user from users;"
 
                     rows `shouldBe` [(1 :: Int, toText uid, "arnaud" :: String)]

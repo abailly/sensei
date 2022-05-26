@@ -75,10 +75,10 @@ spec = describe "ClientMonad" $ do
                     "{\"serverUri\":\"http://localhost:23456\",\
                     \ \"startServerLocally\":true, \
                     \ \"authToken\":"
-                        <> encode validSerializedToken
+                        <> encode (validSerializedToken "")
                         <> "}"
             eitherDecode jsonProfile
-                `shouldBe` Right defaultConfig{authToken = Just validSerializedToken}
+                `shouldBe` Right defaultConfig{authToken = Just (validSerializedToken "")}
 
         it "can deserialise JSON with userName but without authToken" $ do
             let jsonProfile =

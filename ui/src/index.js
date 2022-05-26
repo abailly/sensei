@@ -3,6 +3,7 @@ import charts from './charts';
 import logs from './logs';
 import notes from './notes';
 import { login } from './auth';
+import { config } from './config';
 import { summaries } from './summaries';
 import { goals } from './goals';
 import { setUserProfile } from './user.js';
@@ -20,8 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // default date used to display flows and notes
   const today = formatISODate(LocalDate.now());
 
-  setUserProfile(router);
-
+  // build router structure
   router
     .on('/flows', function() {
       router.navigate('/flows/' + today);
@@ -59,6 +59,16 @@ document.addEventListener('DOMContentLoaded', () => {
     .on(function() {
       // default to flows for today
       router.navigate('/flows/' + today);
-    }).resolve();
+    });
+
+  // retrieve user profile
+  setUserProfile(router)
+    .then((userProfile) => {
+      config.userProfile = userProfile;
+      router.resolve();
+    }, (_) => {
+      router.resolve();
+      router.navigate('/login');
+    });
 
 });

@@ -19,7 +19,7 @@ function extractLinks(xhr) {
 }
 
 /** Make a GET query on server expecting JSON content */
-export function get(router, url, callback) {
+export function get(router, url, callback, reject) {
   const xhr = new XMLHttpRequest();
   xhr.open('GET', url);
   xhr.setRequestHeader('X-API-Version', VERSION);
@@ -37,14 +37,15 @@ export function get(router, url, callback) {
       } catch (e) {
         // JSON.parse can throw a SyntaxError
         if (e instanceof SyntaxError) {
-          alert("invalid JSON payload" + xhr.responseText);
+          reject("invalid JSON payload" + xhr.responseText);
+        } else {
+          throw e;
         }
-        throw e;
       }
     } else if (xhr.status == 401) {
       router.navigate('/login');
     } else {
-      alert('Request failed.  Returned status of ' + xhr.status);
+      reject('Request failed.  Returned status of ' + xhr.status);
     }
   };
   xhr.send();
