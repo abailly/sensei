@@ -144,7 +144,7 @@ project directory when starting note edition.
       (setq url-request-extra-headers `(("Content-Type" . "application/json")
                                         ("X-API-Version" . ,api-version)
                                         ("Authorization" . ,(concat "Bearer " auth-token))))
-      (url-insert-file-contents (concat server-uri "api/users/" username))
+      (url-insert-file-contents (concat server-uri "api/users"))
       (let ((flows (cdr (assoc 'userFlowTypes (json-parse-buffer :object-type 'alist)))))
         (cl-map 'list #'car flows)))))
 
