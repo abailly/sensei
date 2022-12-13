@@ -65,9 +65,7 @@ fromClientRequest uid inReq =
                 , Wai.rawQueryString = H.renderQuery True query
                 , Wai.requestBodyLength = Wai.ChunkedBody
                 }
-     in do
-            chunks <- body <$> liftIO (newIORef [bdy])
-            pure $ req chunks
+     in req . body <$> liftIO (newIORef [bdy])
 
 toClientResponse ::
     HasCallStack =>
