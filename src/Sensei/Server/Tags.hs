@@ -41,7 +41,7 @@ instance (KnownSymbol doc, KnownSymbol sym, ToParamSchema a, HasSwagger sub) => 
     toSwagger (Proxy :: Proxy sub)
       & addParam param
       & prependPath capture
-      & addDefaultResponse404 tname
+      & addDefaultResponse400 tname
     where
       pname = symbolVal (Proxy :: Proxy sym)
       tname = pack pname

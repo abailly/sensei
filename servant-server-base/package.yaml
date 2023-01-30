@@ -1,0 +1,121 @@
+name:                servant-server-base
+version:             0.1.0.0
+github:              "githubuser/servant-server-base"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2020 Author name here"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/servant-server-base#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - aeson
+  - async
+  - base16-bytestring
+  - base64-bytestring
+  - bytestring
+  - case-insensitive
+  - cassava
+  - containers
+  - cryptonite
+  - data-default
+  - deepseq
+  - directory
+  - envy
+  - fast-logger
+  - filepath
+  - hashable
+  - http-client
+  - http-media
+  - http-types
+  - language-javascript
+  - lens
+  - lucid
+  - memory
+  - mtl
+  - network-uri
+  - profunctors
+  - safe-exceptions
+  - servant
+  - servant-server
+  - stm
+  - text
+  - time
+  - unordered-containers
+  - vector
+  - wai
+  - wai-cors
+  - wai-extra
+  - warp
+
+ghc-options:
+- -Wall
+- -Werror
+- -fno-warn-orphans
+- -Wno-unticked-promoted-constructors
+- -optP-Wno-nonportable-include-path
+
+default-extensions:
+- CPP
+- DataKinds
+- DeriveAnyClass
+- DeriveGeneric
+- DerivingStrategies
+- FlexibleContexts
+- FlexibleInstances
+- GeneralizedNewtypeDeriving
+- KindSignatures
+- LambdaCase
+- MultiParamTypeClasses
+- NamedFieldPuns
+- OverloadedStrings
+- RecordWildCards
+- TemplateHaskell
+- TypeApplications
+- TypeOperators
+- ScopedTypeVariables
+
+executables:
+  example-server:
+    source-dirs: app
+    main: example-server.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - servant-server-base
+    - wai-app-static
+
+tests:
+  servant-server-base-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - bytestring
+    - servant-server-base
+    - hspec
+    - hspec-discover
+    - QuickCheck
+    - quickcheck-classes

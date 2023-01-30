@@ -1,0 +1,5 @@
+packages:
+  .
+  servant-server-base
+
+tests: True
