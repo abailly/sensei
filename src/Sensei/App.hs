@@ -32,13 +32,11 @@ import Sensei.API
 import Sensei.DB
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite
-import Sensei.IO
 import Sensei.Server
 import Sensei.Version
 import Servant
-import System.Environment (lookupEnv, setEnv)
+import System.Environment (lookupEnv)
 import System.FilePath ((</>))
-import System.Posix.Daemonize
 
 type FullAPI =
     "swagger.json" :> Get '[JSON] Swagger
@@ -54,14 +52,6 @@ type FullAPI =
 
 fullAPI :: Proxy FullAPI
 fullAPI = Proxy
-
-daemonizeServer :: IO ()
-daemonizeServer = do
-    configDir <- getConfigDirectory
-    setEnv "ENVIRONMENT" "Prod"
-    setEnv "SENSEI_SERVER_CONFIG_DIR" configDir
-    getKeyAsString configDir >>= setEnv "SENSEI_SERVER_KEY"
-    daemonize $ startServer configDir
 
 getKeyAsString :: FilePath -> IO String
 getKeyAsString configDir = do

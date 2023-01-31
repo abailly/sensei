@@ -33,7 +33,6 @@ module Sensei.Client (
     send,
 ) where
 
-import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM (newTVarIO)
 import Control.Exception (throwIO)
 import Data.Functor (void)
@@ -42,11 +41,9 @@ import Data.Text (Text)
 import Data.Time
 import Network.HTTP.Client (createCookieJar, defaultManagerSettings, newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Network.HTTP.Types.Status
 import Network.URI.Extra (uriToString')
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
-import Sensei.App
 import Sensei.Client.Monad
 import Sensei.Server.Auth (Credentials, SerializedToken)
 import Sensei.Version
@@ -91,7 +88,7 @@ getGoalsC :: Text -> ClientMonad Goals
     :<|> (postGoalC :<|> getGoalsC) = clientIn (Proxy @SenseiAPI) Proxy
 
 send :: ClientConfig -> ClientMonad a -> IO a
-send config@ClientConfig{serverUri, startServerLocally} act = do
+send config@ClientConfig{serverUri} act = do
     let base = fromMaybe (BaseUrl Http "localhost" 23456 "") $ parseBaseUrl $ uriToString' serverUri
     mgr <- case baseUrlScheme base of
         Http -> newManager defaultManagerSettings
@@ -100,27 +97,5 @@ send config@ClientConfig{serverUri, startServerLocally} act = do
     let env = (mkClientEnv mgr base){cookieJar = Just jar}
     res <- runClientM (runReaderT (unClient act) config) env
     case res of
-        Left err ->
-            if startServerLocally
-                then handleError env err
-                else throwIO err
+        Left err -> throwIO err
         Right v -> pure v
-  where
-    handleError env = \case
-        -- server is not running, fork it
-        -- TODO: probably not such a good idea?
-        ConnectionError _ -> daemonizeServer >> error "Should never happen" -- daemonizeserver exits the current process
-
-        -- incorrect version, kill server and retry
-        -- TODO: user 'Accept: ' header with proper mime-type instead of custome
-        -- header hijacking 406 response code
-        FailureResponse _req resp
-            | responseStatusCode resp == notAcceptable406 -> do
-                -- we ignore the result of kill as it probaly will be an error: the server
-                -- might not stop gracefully, in time to return us a response so yolo and
-                -- simply give it some time to restart...
-                runClientM (runReaderT (unClient killC) config) env >> threadDelay 1000000
-                send config act
-
-        -- something is wrong, bail out
-        otherError -> throwIO otherError

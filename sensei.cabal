@@ -56,7 +56,6 @@ library
                      , directory
                      , file-embed
                      , filepath
-                     , hdaemonize
                      , http-client
                      , http-client-tls
                      , http-link-header
