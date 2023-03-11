@@ -1,0 +1,85 @@
+#!/bin/bash -vx
+
+usage() {
+	echo "$(basename "$0") [-h|--help] [-path osx-ca-certs] [\`which brew\`]"
+}
+
+osx_ca_certs=osx-ca-certs
+
+while [ ! $# -eq 0 ]; do
+	case "$1" in
+		-h|--help)
+			usage
+			exit 1
+			;;
+		-path)
+			shift
+			osx_ca_certs="$1"
+			;;
+		*brew)
+			brew="$1"
+			;;
+		*)
+			echo "Unknown argument: $1" >&2
+			exit 1
+			;;
+	esac
+	shift
+done
+
+if [[ "${brew}" = "" ]]; then
+	brew=$(which brew)
+fi
+
+if [[ ! -x "${brew}" ]]; then
+	echo "Homebrew not in PATH or given arguments, cannot continue"
+	usage
+	exit 1
+fi
+
+
+genbundle() {
+	local sslimpl="$1"
+	local certpem="$2"
+
+	local list=$("$brew" list --formula $sslimpl 2>/dev/null)
+	[[ -z $list ]] && continue
+
+	local openssl=$(echo "$list" | grep bin/openssl | head -n 1)
+
+	[[ "${openssl}" = "" ]] && echo "Homebrew $sslimpl not found" && return 1
+
+	local openssldir=$($openssl version -d | cut -d '"' -f 2)
+
+	[[ "${openssldir}" = "" ]] && echo "$sslimpl directory not found" && return 1
+
+	d1=$($openssl md5 "${openssldir}/cert.pem" | awk '{print $2}')
+	d2=$($openssl md5 "${certpem}" | awk '{print $2}')
+
+	if [[ "${d1}" = "${d2}" ]]; then
+		logger -t "$(basename $0)" "${openssldir}/cert.pem up to date"
+	else
+		cp "${certpem}" "${openssldir}/cert.pem.new"
+		mv -f "${openssldir}/cert.pem"{.new,}
+
+		logger -t "$(basename $0)" "${openssldir}/cert.pem updated"
+	fi
+
+	return 0
+}
+
+
+tmpdir=$(/usr/bin/mktemp -d -t openssl_osx_ca)
+[[ "${tmpdir}" = "" ]] && echo "mktemp failed" && exit 1
+trap 'rm -r "${tmpdir}"' EXIT
+certs="${tmpdir}/cert.pem"
+"${osx_ca_certs}" > "${certs}"
+
+exitcode=0
+impls=($("$brew" list --formula | grep -E '^((libre|open)ssl(@[0-9\.]+)?)$'))
+for sslimpl in "${impls[@]}"; do
+	genbundle "${sslimpl}" "${certs}"
+	exitcode=$(( $exitcode + $? ))
+done
+
+exit $exitcode
