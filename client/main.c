@@ -58,6 +58,26 @@ void configure_client_context(SSL_CTX *ctx)
 
 }
 
+size_t complete_with_crlf(char **buf, size_t *capacity, size_t len) {
+  char *new_buffer = NULL;
+
+  /* resize buffer if we need to */
+  if(len == *capacity) {
+    new_buffer = realloc(buf, *capacity + 1);
+    if (!new_buffer) {
+      fprintf(stderr, "failed to allocate buffer for sending %s\n", strerror(errno));
+      exit(EXIT_FAILURE);
+    }
+    *buf = new_buffer;
+  }
+
+  /* assumes Unix EOL */
+  (*buf)[len-1] = '\r';
+  (*buf)[len] = '\n';
+
+  return len + 1;
+}
+
 void usage()
 {
     printf("Usage: sslecho s\n");
@@ -92,6 +112,7 @@ int main(int argc, char **argv)
     int rxlen;
 
     char *server_name = NULL;
+    bool end_of_input = false;
 
     /* Splash */
     printf("\nsslecho : Simple TLS Client (OpenSSL 3.0.1-dev) : %s : %s\n\n", __DATE__,
@@ -164,36 +185,39 @@ int main(int argc, char **argv)
             printf("SSL connection to server successful\n\n");
 
             /* Loop to send input from keyboard */
-            while (true) {
+            while (!end_of_input) {
                 /* Get a line of input */
                 txlen = getline(&txbuf, &txcap, stdin);
                 /* Exit loop on error */
                 if (txlen < 0 || txbuf == NULL) {
                     break;
                 }
-                /* Exit loop if just a carriage return */
-                if (txbuf[0] == '\n') {
-                    break;
-                }
-                /* Send it to the server */
+                /* complete line with CRLF */
+                txlen = complete_with_crlf(&txbuf, &txcap, txlen);
+
+                /* Send it to the server after checking proper CRLF termination */
                 if ((result = SSL_write(ssl, txbuf, txlen)) <= 0) {
                     printf("Server closed connection\n");
                     ERR_print_errors_fp(stderr);
                     break;
                 }
 
-                /* Wait for the echo */
-                rxlen = SSL_read(ssl, rxbuf, rxcap);
-                if (rxlen <= 0) {
-                    printf("Server closed connection\n");
-                    ERR_print_errors_fp(stderr);
-                    break;
-                } else {
-                    /* Show it */
-                    rxbuf[rxlen] = 0;
-                    printf("Received: %s", rxbuf);
+                if(txlen == 2 && txbuf[0] == '\r' && txbuf[1] == '\n') {
+                  end_of_input = true;
                 }
             }
+
+            /* Wait for the echo */
+            rxlen = SSL_read(ssl, rxbuf, rxcap);
+            if (rxlen <= 0) {
+              printf("Server closed connection\n");
+              ERR_print_errors_fp(stderr);
+            } else {
+              /* Show it */
+              rxbuf[rxlen] = 0;
+              printf("Received: %s", rxbuf);
+            }
+
             printf("Client exiting...\n");
         } else {
 
