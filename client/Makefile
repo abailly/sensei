@@ -14,8 +14,8 @@ all: $(PROG)
 $(PROG): main.o sensei.o
 	$(CC) -O0 -g3 -W -Wall -Werror $(CPP_FLAGS) $(LD_FLAGS) -o $(PROG) $(SENSEI_OBJS) -lssl -lcrypto
 
-test-runner: test-runner.o main.o
-	${CC} -o $@ $< ${LDFLAGS}
+test-runner: test-runner.o sensei.o
+	${CC} -o $@ $^ ${LDFLAGS}
 
 test: test-runner
 	./test-runner
