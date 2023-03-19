@@ -17,6 +17,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#include "sensei.h"
+
 typedef unsigned char   bool;
 #define true            1
 #define false           0
@@ -58,26 +60,6 @@ void configure_client_context(SSL_CTX *ctx)
 
 }
 
-size_t complete_with_crlf(char **buf, size_t *capacity, size_t len) {
-  char *new_buffer = NULL;
-
-  /* resize buffer if we need to */
-  if(len == *capacity) {
-    new_buffer = realloc(buf, *capacity + 1);
-    if (!new_buffer) {
-      fprintf(stderr, "failed to allocate buffer for sending %s\n", strerror(errno));
-      exit(EXIT_FAILURE);
-    }
-    *buf = new_buffer;
-  }
-
-  /* assumes Unix EOL */
-  (*buf)[len-1] = '\r';
-  (*buf)[len] = '\n';
-
-  return len + 1;
-}
-
 void usage()
 {
     printf("Usage: sslecho s\n");
@@ -86,6 +68,10 @@ void usage()
     printf("       c=client, s=server, ip=dotted ip of server\n");
     exit(1);
 }
+
+// Single JSON POST query
+/* static const char* POST_QUERY = */
+/*   "POST %s HTTP/1.1\r\nHost: %s\r\nContent-Length: %d\r\nContent-type: application/json\r\n\r\n%s"; */
 
 int main(int argc, char **argv)
 {
@@ -139,7 +125,7 @@ int main(int argc, char **argv)
 
         memset(&hints, 0, sizeof(hints));
         hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
-        hints.ai_socktype = SOCK_STREAM; /* Datagram socket */
+        hints.ai_socktype = SOCK_STREAM; /* Stream socket */
         hints.ai_flags = 0;
         hints.ai_protocol = 0;          /* Any protocol */
 
@@ -192,6 +178,7 @@ int main(int argc, char **argv)
                 if (txlen < 0 || txbuf == NULL) {
                     break;
                 }
+
                 /* complete line with CRLF */
                 txlen = complete_with_crlf(&txbuf, &txcap, txlen);
 
