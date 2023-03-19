@@ -8,7 +8,7 @@ int tests_run = 0;
 #define FAIL(msg) printf("\nfailure in %s() line %d: %s\n", __func__, __LINE__, msg)
 #define _assert(test) do { if (!(test)) { FAIL(); return 1; } } while(0)
 #define _assert_eq(a,b) do { if ((a) != (b)) { FAIL("expected " #a " but found " #b); return 1; } } while(0)
-#define _assert_neq(a,b) do { if ((a) == (b)) { FAIL("expected " #a " and " #b " to be different"); return 1; } } while(0)
+#define _assert_neq(a,b) do { if ((a) == (b)) { FAIL("expected " #b " to be different from " #a); return 1; } } while(0)
 #define _verify(test) do { int r=test(); tests_run++; if(r) return r; } while(0)
 
 
