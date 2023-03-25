@@ -12,7 +12,8 @@ typedef struct client_options {
 
 size_t complete_with_crlf(char **buf, size_t *capacity, size_t len);
 
-/* Parse command-line `client_options` and fill corresponding structure
+/* Parse command-line `client_options` and fill corresponding structure.
+   Assumes argc == len(argv)
  */
 int parse_options(client_options *opts, int argc, char **argv);
 

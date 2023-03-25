@@ -29,5 +29,11 @@ size_t complete_with_crlf(char **buf, size_t *capacity, size_t len) {
 }
 
 int parse_options (client_options *opts, int argc, char **argv) {
-  return -1;
+  if(argc <= 0) {
+    return -1;
+  }
+
+  opts->server_name = argv[0];
+
+  return 0;
 }
