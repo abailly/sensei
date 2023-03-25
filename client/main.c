@@ -107,12 +107,9 @@ int main(int argc, char **argv)
     printf("\nsslecho : Simple TLS Client (OpenSSL 3.0.1-dev) : %s : %s\n\n", __DATE__,
     __TIME__);
 
-    if (argc != 2) {
+    if (parse_options(&opts, argc, argv) < 0) {
       usage();
-      /* NOTREACHED */
     }
-
-    parse_options(&opts, argc, argv);
 
     /* Create context used by both client and server */
     ssl_ctx = create_context();
