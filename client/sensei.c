@@ -4,6 +4,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include "sensei.h"
+
 size_t complete_with_crlf(char **buf, size_t *capacity, size_t len) {
   char *new_buffer = NULL;
 
@@ -24,4 +26,8 @@ size_t complete_with_crlf(char **buf, size_t *capacity, size_t len) {
   (*buf)[len] = '\n';
 
   return len + 1;
+}
+
+int parse_options (client_options *opts, int argc, char **argv) {
+  return -1;
 }

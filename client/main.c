@@ -100,6 +100,9 @@ int main(int argc, char **argv)
     char *server_name = NULL;
     bool end_of_input = false;
 
+    /* options parsing */
+    struct client_options opts;
+
     /* Splash */
     printf("\nsslecho : Simple TLS Client (OpenSSL 3.0.1-dev) : %s : %s\n\n", __DATE__,
     __TIME__);
@@ -109,7 +112,7 @@ int main(int argc, char **argv)
       /* NOTREACHED */
     }
 
-    server_name = argv[1];
+    parse_options(&opts, argc, argv);
 
     /* Create context used by both client and server */
     ssl_ctx = create_context();
@@ -129,7 +132,7 @@ int main(int argc, char **argv)
         hints.ai_flags = 0;
         hints.ai_protocol = 0;          /* Any protocol */
 
-        resolv_err = getaddrinfo(server_name, "443", &hints, &addr_info);
+        resolv_err = getaddrinfo(opts.server_name, "443", &hints, &addr_info);
 
         if (resolv_err != 0) {
           fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(resolv_err));
@@ -161,9 +164,9 @@ int main(int argc, char **argv)
         ssl = SSL_new(ssl_ctx);
         SSL_set_fd(ssl, client_skt);
         /* Set hostname for SNI */
-        SSL_set_tlsext_host_name(ssl, server_name);
+        SSL_set_tlsext_host_name(ssl, opts.server_name);
         /* Configure server hostname check */
-        SSL_set1_host(ssl, server_name);
+        SSL_set1_host(ssl, opts.server_name);
 
         /* Now do SSL connect with server */
         if (SSL_connect(ssl) == 1) {
