@@ -8,6 +8,7 @@ typedef struct client_options {
   char* server_name;
   // (optional) path to server's certificate or certificate authority
   // used mostly for testing with self-signed certificates
+  char* certificate_path;
 } client_options;
 
 size_t complete_with_crlf(char **buf, size_t *capacity, size_t len);

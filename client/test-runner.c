@@ -73,6 +73,8 @@ int parse_options_returns_error_if_no_option_given () {
 }
 
 static char* sname = "foo.bar.dev";
+static char* cpath = "--certificate-path";
+static char* cpatharg = "server.cert";
 
 int parse_options_returns_ok_and_fill_server_name_given_one_argument () {
   char *argv[] = {sname};
@@ -88,12 +90,44 @@ int parse_options_returns_ok_and_fill_server_name_given_one_argument () {
   return 0;
 }
 
+int parse_options_returns_ok_and_fill_certificate_path_with_2_args () {
+  char *argv[] = {cpath, cpatharg, sname };
+  int argc = 3;
+  client_options opts;
+  int ret = 0;
+
+  ret = parse_options(&opts, argc, argv);
+
+  _assert_eq(0, ret);
+  _assert_eq(sname, opts.server_name);
+  _assert_eq(cpatharg, opts.certificate_path);
+
+  return 0;
+}
+
+int parse_options_returns_ok_and_fill_certificate_path_with_2_short_args () {
+  char *argv[] = {"-c", cpatharg, sname };
+  int argc = 3;
+  client_options opts;
+  int ret = 0;
+
+  ret = parse_options(&opts, argc, argv);
+
+  _assert_eq(0, ret);
+  _assert_eq(sname, opts.server_name);
+  _assert_eq(cpatharg, opts.certificate_path);
+
+  return 0;
+}
+
 int all_tests() {
     _verify(append_crlf_to_string_without_realloc_given_it_has_enough_capacity);
     _verify(append_crlf_to_string_with_realloc_given_it_has_not_capacity);
     _verify(returns_error_given_len_is_greater_than_capacity);
     _verify(parse_options_returns_error_if_no_option_given);
     _verify(parse_options_returns_ok_and_fill_server_name_given_one_argument);
+    _verify(parse_options_returns_ok_and_fill_certificate_path_with_2_args);
+    _verify(parse_options_returns_ok_and_fill_certificate_path_with_2_short_args);
     return 0;
 }
 
