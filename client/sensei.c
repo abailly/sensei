@@ -29,11 +29,19 @@ size_t complete_with_crlf(char **buf, size_t *capacity, size_t len) {
 }
 
 int parse_options (client_options *opts, int argc, char **argv) {
+  int i = 0;
+
   if(argc <= 0) {
     return -1;
   }
 
-  opts->server_name = argv[0];
+  while(i < argc) {
+    if (!strcmp(argv[i], "--certificate-path") || !strcmp(argv[i], "-c")) {
+      opts->certificate_path = argv[++i];
+    } else {
+      opts->server_name = argv[i++];
+    }
+  }
 
   return 0;
 }
