@@ -105,6 +105,21 @@ int parse_options_returns_ok_and_fill_certificate_path_with_2_args () {
   return 0;
 }
 
+int parse_options_returns_ok_and_fill_certificate_path_with_2_args_reversed () {
+  char *argv[] = {sname, cpath, cpatharg};
+  int argc = 3;
+  client_options opts;
+  int ret = 0;
+
+  ret = parse_options(&opts, argc, argv);
+
+  _assert_eq(0, ret);
+  _assert_eq(sname, opts.server_name);
+  _assert_eq(cpatharg, opts.certificate_path);
+
+  return 0;
+}
+
 int parse_options_returns_ok_and_fill_certificate_path_with_2_short_args () {
   char *argv[] = {"-c", cpatharg, sname };
   int argc = 3;
@@ -127,6 +142,7 @@ int all_tests() {
     _verify(parse_options_returns_error_if_no_option_given);
     _verify(parse_options_returns_ok_and_fill_server_name_given_one_argument);
     _verify(parse_options_returns_ok_and_fill_certificate_path_with_2_args);
+    _verify(parse_options_returns_ok_and_fill_certificate_path_with_2_args_reversed);
     _verify(parse_options_returns_ok_and_fill_certificate_path_with_2_short_args);
     return 0;
 }

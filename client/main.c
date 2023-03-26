@@ -41,7 +41,11 @@ SSL_CTX* create_context()
 }
 
 
-void configure_client_context(SSL_CTX *ctx)
+/* Configure the client context with an optional server certificate.
+   `certificate_path` can be `NULL` in which case the client will use the systems'
+   default certificate paths.
+ */
+void configure_client_context(SSL_CTX *ctx, char* certificate_path)
 {
     /*
      * Configure the client to abort the handshake if certificate verification
@@ -49,23 +53,34 @@ void configure_client_context(SSL_CTX *ctx)
      */
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
 
-    /*
-     * use the default system certificate trust store
-     * Can be overriden by env variables CA_PATH?
-     */
-    if (!SSL_CTX_set_default_verify_paths(ctx)) {
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
+    if (!certificate_path) {
+      /*
+       * use the default system certificate trust store
+       * Can be overriden by env variables CA_PATH?
+       */
+      if (!SSL_CTX_set_default_verify_paths(ctx)) {
+        goto err;
+      }
+    } else {
+      if (!SSL_CTX_load_verify_locations(ctx, certificate_path, NULL)) {
+        goto err;
+      }
     }
 
+    return;
+
+ err:
+    ERR_print_errors_fp(stderr);
+    exit(EXIT_FAILURE);
 }
 
 void usage()
 {
-    printf("Usage: sslecho s\n");
-    printf("       --or--\n");
-    printf("       sslecho c ip\n");
-    printf("       c=client, s=server, ip=dotted ip of server\n");
+    printf("Usage: senseic <server_name> [options]\n");
+    printf("A simple client for sensei\n");
+    printf("Options:\n");
+    printf("  (-c|--certificate-path) <certificate file>: Use a custom certificate file\n");
+    printf("    to authenticate server.\n");
     exit(1);
 }
 
@@ -104,11 +119,12 @@ int main(int argc, char **argv)
     struct client_options opts;
 
     /* Splash */
-    printf("\nsslecho : Simple TLS Client (OpenSSL 3.0.1-dev) : %s : %s\n\n", __DATE__,
-    __TIME__);
+    printf("senseic (%s): %s : %s\n\n", SENSEI_VERSION, __DATE__, __TIME__);
 
     if (parse_options(&opts, argc, argv) < 0) {
       usage();
+    } else {
+      print_options(&opts);
     }
 
     /* Create context used by both client and server */
@@ -116,10 +132,8 @@ int main(int argc, char **argv)
 
     {
 
-        printf("We are the client\n\n");
-
         /* Configure client context so we verify the server correctly */
-        configure_client_context(ssl_ctx);
+        configure_client_context(ssl_ctx, opts.certificate_path);
 
         /* Obtain address for host */
 
