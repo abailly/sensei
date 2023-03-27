@@ -79,8 +79,7 @@ void usage()
     printf("Usage: senseic <server_name> [options]\n");
     printf("A simple client for sensei\n");
     printf("Options:\n");
-    printf("  (-c|--certificate-path) <certificate file>: Use a custom certificate file\n");
-    printf("    to authenticate server.\n");
+    printf("  (-c|--certificate-path) <certificate file>: Use a custom certificate file to authenticate server.\n");
     exit(1);
 }
 
@@ -182,7 +181,7 @@ int main(int argc, char **argv)
         /* Now do SSL connect with server */
         if (SSL_connect(ssl) == 1) {
 
-            printf("SSL connection to server successful\n\n");
+            printf("SSL connection to server successful\n");
 
             /* Loop to send input from keyboard */
             while (!end_of_input) {
