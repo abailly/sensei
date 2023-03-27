@@ -32,9 +32,9 @@ size_t complete_with_crlf(char **buf, size_t *capacity, size_t len) {
 }
 
 int parse_options (client_options *opts, int argc, char **argv) {
-  int i = 0;
+  int i = 1;
 
-  if(argc <= 0) {
+  if(argc <= 1) {
     return -1;
   }
 

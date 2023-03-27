@@ -61,8 +61,8 @@ int returns_error_given_len_is_greater_than_capacity() {
 }
 
 int parse_options_returns_error_if_no_option_given () {
-  char *argv[] = {};
-  int argc = 0;
+  char *argv[] = {"senseic"};
+  int argc = 1;
   client_options opts;
   int ret = 0;
 
@@ -77,8 +77,8 @@ static char* cpath = "--certificate-path";
 static char* cpatharg = "server.cert";
 
 int parse_options_returns_ok_and_fill_server_name_given_one_argument () {
-  char *argv[] = {sname};
-  int argc = 1;
+  char *argv[] = {"senseic", sname};
+  int argc = 2;
   client_options opts;
   int ret = 0;
 
@@ -91,8 +91,8 @@ int parse_options_returns_ok_and_fill_server_name_given_one_argument () {
 }
 
 int parse_options_returns_ok_and_fill_certificate_path_with_2_args () {
-  char *argv[] = {cpath, cpatharg, sname };
-  int argc = 3;
+  char *argv[] = {"senseic", cpath, cpatharg, sname };
+  int argc = 4;
   client_options opts;
   int ret = 0;
 
@@ -106,8 +106,8 @@ int parse_options_returns_ok_and_fill_certificate_path_with_2_args () {
 }
 
 int parse_options_returns_ok_and_fill_certificate_path_with_2_args_reversed () {
-  char *argv[] = {sname, cpath, cpatharg};
-  int argc = 3;
+  char *argv[] = {"senseic", sname, cpath, cpatharg};
+  int argc = 4;
   client_options opts;
   int ret = 0;
 
@@ -121,8 +121,8 @@ int parse_options_returns_ok_and_fill_certificate_path_with_2_args_reversed () {
 }
 
 int parse_options_returns_ok_and_fill_certificate_path_with_2_short_args () {
-  char *argv[] = {"-c", cpatharg, sname };
-  int argc = 3;
+  char *argv[] = {"senseic", "-c", cpatharg, sname };
+  int argc = 4;
   client_options opts;
   int ret = 0;
 
