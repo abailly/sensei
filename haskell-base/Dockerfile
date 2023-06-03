@@ -1,6 +1,6 @@
 ## Dockerfile for a haskell environment
 ## Adapted from https://raw.githubusercontent.com/freebroccolo/docker-haskell/master/8.2/Dockerfile
-FROM       debian:buster
+FROM debian:buster
 
 ## ensure locale is set during build
 ENV LANG            C.UTF-8

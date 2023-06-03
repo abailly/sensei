@@ -100,25 +100,29 @@ parseFlowFromv4 =
 
 instance ToJSON Event where
     toJSON (EventFlow f) =
-        let Object obj = toJSON f
-         in Object $
+        case toJSON f of
+          Object obj ->  Object $
                 K.insert (fromText "tag") "Flow" $
                     K.insert (fromText "version") (toJSON currentVersion) obj
+          other -> error $ "EventFlow serialised to something that's not an object: " <> show other
     toJSON (EventTrace t) =
-        let Object obj = toJSON t
-         in Object $
+        case toJSON t of
+          Object obj -> Object $
                 K.insert (fromText "tag") "Trace" $
                     K.insert (fromText "version") (toJSON currentVersion) obj
+          other -> error $ "EventTrace serialised to something that's not an object: " <> show other
     toJSON (EventNote n) =
-        let Object obj = toJSON n
-         in Object $
+        case toJSON n of
+          Object obj ->  Object $
                 K.insert (fromText "tag") "Note" $
                     K.insert (fromText "version") (toJSON currentVersion) obj
+          other -> error $ "EventNote serialised to something that's not an object: " <> show other
     toJSON (EventGoal g) =
-        let Object obj = toJSON g
-         in Object $
+        case toJSON g of
+          Object obj ->  Object $
                 K.insert (fromText "tag") "Goal" $
                     K.insert (fromText "version") (toJSON currentVersion) obj
+          other -> error $ "EventGoal serialised to something that's not an object: " <> show other
 
 eventTimestamp ::
     Event -> UTCTime
