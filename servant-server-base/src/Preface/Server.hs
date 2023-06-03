@@ -25,9 +25,16 @@ data AppServer
         serverLogger :: LoggerEnv
       }
 
+data AppServerConfig = AppServerConfig {
+  serverAssignedName :: Text,
+  cors :: WithCORS,
+  listenPort :: Port
+  }
+  deriving (Eq, Show)
+
 -- |Starts a new application server and returns its configuration as an `AppServer` structure.
-withAppServer :: Text -> WithCORS -> Port -> (LoggerEnv -> IO Application) -> (AppServer -> IO a) -> IO a
-withAppServer serverAssignedName cors listenPort makeApp action =
+withAppServer :: AppServerConfig -> (LoggerEnv -> IO Application) -> (AppServer -> IO a) -> IO a
+withAppServer AppServerConfig{serverAssignedName, cors, listenPort} makeApp action =
   withLogger serverAssignedName $ \ logger -> do
     loggerMiddleware <- runHTTPLog logger
     (realPort, thread) <- server logger loggerMiddleware

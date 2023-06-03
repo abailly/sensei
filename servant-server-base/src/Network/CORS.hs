@@ -19,6 +19,7 @@ import Network.Wai.Middleware.Cors
 data WithCORS
   = NoCORS
   | WithCORS [Origin]
+  deriving (Eq, Show)
 
 -- | Reject request if `Host` header is not equal to given `serverName`
 rejectInvalidHost :: Origin -> Middleware

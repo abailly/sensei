@@ -5,6 +5,7 @@ import Preface.Server
 
 main :: IO ()
 main = do
-  withAppServer "localhost:8000" NoCORS 8000 app waitServer
+  withAppServer config app waitServer
   where
+    config = AppServerConfig { serverAssignedName = "localhost:8000", cors =  NoCORS, listenPort = 8000 }
     app = \logger -> logInfo logger ("Starting server" :: String) >> pure (staticApp $ defaultFileServerSettings ".")

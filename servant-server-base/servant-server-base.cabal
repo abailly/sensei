@@ -1,10 +1,8 @@
-cabal-version: 2.0
+cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 1a40553f3886af8406f62bd5fd64b0358d19d1ad6eb94d0699406ecd20abaa13
 
 name:           servant-server-base
 version:        0.1.0.0
@@ -118,7 +116,25 @@ executable example-server
       Paths_servant_server_base
   hs-source-dirs:
       app
-  default-extensions: CPP DataKinds DeriveAnyClass DeriveGeneric DerivingStrategies FlexibleContexts FlexibleInstances GeneralizedNewtypeDeriving KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings RecordWildCards TemplateHaskell TypeApplications TypeOperators ScopedTypeVariables
+  default-extensions:
+      CPP
+      DataKinds
+      DeriveAnyClass
+      DeriveGeneric
+      DerivingStrategies
+      FlexibleContexts
+      FlexibleInstances
+      GeneralizedNewtypeDeriving
+      KindSignatures
+      LambdaCase
+      MultiParamTypeClasses
+      NamedFieldPuns
+      OverloadedStrings
+      RecordWildCards
+      TemplateHaskell
+      TypeApplications
+      TypeOperators
+      ScopedTypeVariables
   ghc-options: -Wall -Werror -fno-warn-orphans -Wno-unticked-promoted-constructors -optP-Wno-nonportable-include-path -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base
@@ -159,7 +175,7 @@ test-suite servant-server-base-test
     , base >=4.7 && <5
     , bytestring
     , hspec
+    , hspec-discover
     , quickcheck-classes
     , servant-server-base
   default-language: Haskell2010
-  build-tool-depends: hspec-discover:hspec-discover
