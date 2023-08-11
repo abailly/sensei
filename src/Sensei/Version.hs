@@ -26,6 +26,7 @@ module Sensei.Version (
 ) where
 
 import Data.Aeson
+import Data.Kind(Type)
 import qualified Data.ByteString as BS
 import qualified Data.List as List
 import qualified Data.Text as T
@@ -37,7 +38,8 @@ import GHC.Base (Symbol)
 import GHC.Generics
 import GHC.Natural
 import GHC.TypeLits (KnownSymbol, symbolVal)
-import Language.Haskell.TH
+import Language.Haskell.TH hiding (Type)
+import qualified Language.Haskell.TH as TH
 import Network.Wai
 import Paths_sensei (version)
 import Servant
@@ -78,7 +80,7 @@ senseiVersion = version
 senseiVersionLBS :: BS.ByteString
 senseiVersionLBS = LTE.encodeUtf8 $ T.pack $ showVersion version
 
-senseiVersionTH :: Q Type
+senseiVersionTH :: Q TH.Type
 senseiVersionTH = pure (LitT (StrTyLit $ showVersion senseiVersion))
 
 checkVersion :: Version -> Version -> Either T.Text ()
@@ -97,7 +99,7 @@ haveSameMajorMinor expected actual = take 2 (versionBranch expected) == take 2 (
      :<|> CheckVersion "1.2.3" :> "baz" :> ReqBody [JSON] Baz :> Post [JSON] NoContent
  @@
 -}
-data CheckVersion :: (Symbol -> *)
+data CheckVersion :: (Symbol -> Type)
 
 instance
     forall api context version.

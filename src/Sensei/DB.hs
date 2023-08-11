@@ -23,6 +23,7 @@ module Sensei.DB
   )
 where
 
+import Data.Kind(Type)
 import Control.Exception.Safe (Exception, MonadCatch)
 import Control.Lens ((^.))
 import Data.Aeson (FromJSON, ToJSON)
@@ -79,7 +80,7 @@ data EventsQueryResult = EventsQueryResult
 -- and store various pieces of data for the `Server`-side operations. It is expected
 -- to throw exceptions of type `DBError m`.
 class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
-  type DBError m :: *
+  type DBError m :: Type
 
   -- | Stores the current timestamp
   -- This is only used for development or testing purpose

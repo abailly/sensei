@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Sensei.CLI.Terminal where
@@ -28,10 +29,9 @@ captureNote =
   lookupEnv "EDITOR" >>= maybe captureInTerminal captureInEditor
 
 captureInEditor :: String -> IO Text.Text
-captureInEditor editor = do
+captureInEditor (words -> (exe : args)) = do
   (fp, hdl) <- mkstemp "capture-"
   let editFile = fp <.> "md" -- let editor try to be smart
-      (exe : args) = words editor
   hClose hdl
   (_, _, _, h) <-
     createProcess
@@ -42,6 +42,8 @@ captureInEditor editor = do
         }
   void $ waitForProcess h
   decodeUtf8 <$> BS.readFile editFile <* removeFile editFile
+captureInEditor editor =
+  error $ "Expected an executable and some arguments, got :'" <> editor <> "'"
 
 captureInTerminal :: IO Text.Text
 captureInTerminal = do

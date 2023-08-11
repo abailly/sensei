@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -5,10 +6,10 @@ module Sensei.Server.AuthSpec where
 
 import Control.Exception (ErrorCall)
 import Control.Monad.Trans (liftIO)
-import Data.Aeson (decode, eitherDecode)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Base64 as B64
-import qualified Data.ByteString.Lazy as LBS
+import Data.Aeson (decode, eitherDecode, encode, object, (.=))
+import Data.ByteString qualified as BS
+import Data.ByteString.Base64 qualified as B64
+import Data.ByteString.Lazy qualified as LBS
 import Data.Char (ord)
 import Data.Functor (void)
 import Data.Proxy (Proxy (..))
@@ -74,7 +75,17 @@ spec = describe "Authentication Operations" $ do
             -- NOTE: seems like JWT's base64 components are not properly padded which breaks
             -- strict Base64.decode function
             take 2 (B64.decodeLenient <$> BS.split (fromIntegral $ ord '.') bsToken)
-                `shouldBe` ["{\"alg\":\"PS512\"}", "{\"dat\":{\"auOrgID\":1,\"auID\":\"\"}}"]
+                `shouldBe` [ "{\"alg\":\"PS512\"}"
+                           , LBS.toStrict $
+                                encode $
+                                    object
+                                        [ "dat"
+                                            .= object
+                                                [ "auOrgID" .= (1 :: Int)
+                                                , "auID" .= ("" :: String)
+                                                ]
+                                        ]
+                           ]
 
     it "can update profile with hashed password given cleartext password" $ do
         let profile = defaultProfile

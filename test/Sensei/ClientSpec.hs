@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-
+{-# OPTIONS_GHC -Wwarn #-}
 module Sensei.ClientSpec where
 
 import Control.Monad.Reader (runReaderT)
