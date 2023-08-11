@@ -31,6 +31,13 @@ options =
           -- Rebuild only if content changes, not if date/time changes
         }
 
+checkEnvironment :: Action ()
+checkEnvironment = do
+    creds <- getEnv "GOOGLE_APPLICATION_CREDENTIALS"
+    case creds of
+        Nothing -> throw (userError $ "GOOGLE_APPLICATION_CREDENTIALS environment variable is not set")
+        Just _ -> pure ()
+
 install :: IO ()
 install = do
     pwd <- getCurrentDirectory
@@ -101,6 +108,7 @@ runShake pwd uid = shakeArgs options $ do
             , "webpack.config.js"
             , ".babelrc"
             ]
+
         cmd_ (Cwd "ui") "npm" ["i"]
         cmd (Cwd "ui") "npm" ["run", "all"]
 
