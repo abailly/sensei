@@ -78,10 +78,11 @@ sensei output = do
     serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
     rootUser <- fmap pack <$> lookupEnv "SENSEI_SERVER_ROOT_USER"
     env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-    withAppServer
-        serverName
-        NoCORS
-        serverPort
+    let serverConfig = AppServerConfig { serverAssignedName = serverName
+                                       , cors = NoCORS
+                                       , listenPort = serverPort
+                                       }
+    withAppServer serverConfig
         ( \logger -> do
             void $ initDB rootUser output configDir logger
             senseiApp env signal key output configDir logger
