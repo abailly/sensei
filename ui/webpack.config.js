@@ -61,5 +61,11 @@ module.exports = {
     contentBase: path.join(__dirname, 'dist'),
     compress: true,
     port: 5000
+  },
+  resolve: {
+    fallback: {
+      "querystring": require.resolve("querystring-es3"),
+      "url": require.resolve("url")
+    }
   }
 };
