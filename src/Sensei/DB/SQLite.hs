@@ -71,9 +71,6 @@ import Control.Monad.Reader (
     MonadReader (ask),
     ReaderT (..),
     asks,
-    forM_,
-    unless,
-    void,
  )
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
@@ -167,6 +164,8 @@ import System.Directory (
 import System.FilePath ((<.>), (</>))
 import System.IO (IOMode (WriteMode), hClose, openFile)
 import System.Random (newStdGen, randoms)
+import Control.Monad (forM_, unless)
+import Data.Functor (void)
 
 -- | The configuration for DB engine.
 data SQLiteConfig = SQLiteConfig

@@ -19,10 +19,8 @@ module Network.URI.Extra
   )
 where
 
-import Data.Aeson
 import Data.Maybe
 import Data.String
-import qualified Data.Text as T
 import Network.HostName
 import Network.URI
 
@@ -37,13 +35,6 @@ uriToString' uri = uriToString id uri ""
 
 instance IsString URI where
   fromString = fromMaybe (error "invalid URI") . uriFromString
-
-instance ToJSON URI where
-  toJSON uri = String $ T.pack $ uriToString id uri ""
-
-instance FromJSON URI where
-  parseJSON (String v) = uriFromString (T.unpack v)
-  parseJSON v = fail $ show v <> " is not a valid URI"
 
 -- | Returns the host part of given @URI@ or an empty string if no authority is defined
 serverHost :: URI -> HostName

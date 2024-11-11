@@ -1,6 +1,0 @@
-packages:
-- '.'
-resolver: lts-18.13
-extra-deps:
-- git: https://github.com/Pankzsoft/shaker.git
-  commit: 87f380aa233279a4f21a9c1514c58ba0dabded2a

@@ -14,7 +14,6 @@
 module Sensei.DB.SQLite.Migration where
 
 import Control.Exception.Safe
-import Control.Monad.Reader
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text, pack)
 import qualified Data.Text as Text
@@ -22,6 +21,7 @@ import Database.SQLite.Simple
 import GHC.Generics (Generic)
 import Preface.Log (LoggerEnv, logInfo)
 import Preface.Utils
+import Control.Monad (unless, foldM)
 
 -- Orphans
 deriving newtype instance ToJSON Query
