@@ -49,7 +49,6 @@ runShake pwd uid = shakeArgs options $ do
                 , "test//*.hs"
                 , "data//*.*"
                 , "app//*.hs"
-                , "package.yaml"
                 ]
             need ["sensei.cabal", "cabal.project"]
             need ["ui/dist/index.html"]
@@ -69,8 +68,7 @@ runShake pwd uid = shakeArgs options $ do
 
     "bin/sensei-exe" %> \bin -> do
         needHaskellSources
-        need ["ui/dist/index.html"]
-        cmd_ "cabal" ["build", "exe:sensei-exe"]
+        cmd_ "cabal" ["build", "all"]
         Stdout exePath <- cmd "cabal" ["list-bin", "sensei-exe"]
         dirExists <- doesDirectoryExist "bin"
         unless dirExists $ cmd_ "mkdir" ["bin"]
