@@ -37,6 +37,8 @@ import Sensei.Version
 import Servant
 import System.Environment (lookupEnv)
 import System.FilePath ((</>))
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad (void)
 
 type FullAPI =
     "swagger.json" :> Get '[JSON] Swagger

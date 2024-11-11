@@ -29,6 +29,7 @@ import Sensei.IO
 import System.Directory
 import System.FilePath ((</>))
 import System.IO
+import Control.Monad (unless, when)
 
 data FileDBPaths = FileDBPaths
     { storageFile :: FilePath
