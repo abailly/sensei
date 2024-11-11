@@ -11,6 +11,7 @@ and an object returned, otherwise it returns `null`.
 */
 function extractLinks(xhr) {
   const linkHdr = xhr.getResponseHeader('Link');
+
   if (linkHdr) {
     return parse(linkHdr);
   } else {
