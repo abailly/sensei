@@ -15,7 +15,9 @@ module Sensei.App where
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
 import Control.Exception.Safe (catch, throwM, try)
+import Control.Monad (void)
 import Control.Monad.Except
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Data.Aeson (encode)
 import Data.ByteString.Lazy (fromStrict, toStrict)
@@ -37,8 +39,6 @@ import Sensei.Version
 import Servant
 import System.Environment (lookupEnv)
 import System.FilePath ((</>))
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad (void)
 
 type FullAPI =
     "swagger.json" :> Get '[JSON] Swagger
@@ -80,11 +80,14 @@ sensei output = do
     serverPort <- readPort <$> lookupEnv "SENSEI_SERVER_PORT"
     rootUser <- fmap pack <$> lookupEnv "SENSEI_SERVER_ROOT_USER"
     env <- (>>= readEnv) <$> lookupEnv "ENVIRONMENT"
-    let serverConfig = AppServerConfig { serverAssignedName = serverName
-                                       , cors = NoCORS
-                                       , listenPort = serverPort
-                                       }
-    withAppServer serverConfig
+    let serverConfig =
+            AppServerConfig
+                { serverAssignedName = serverName
+                , cors = NoCORS
+                , listenPort = serverPort
+                }
+    withAppServer
+        serverConfig
         ( \logger -> do
             void $ initDB rootUser output configDir logger
             senseiApp env signal key output configDir logger
