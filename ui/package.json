@@ -47,6 +47,7 @@
     "@js-joda/timezone": "^2.5.0",
     "navigo": "^7.1.2",
     "parse-link-header": "^2.0.0",
+    "process": "^0.11.10",
     "querystring-es3": "^0.2.1",
     "showdown": "^1.9.1",
     "url": "^0.11.4",
