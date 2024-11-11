@@ -69,6 +69,7 @@ runShake pwd uid = shakeArgs options $ do
 
     "bin/sensei-exe" %> \bin -> do
         needHaskellSources
+        need ["ui/dist/index.html"]
         cmd_ "cabal" ["build", "exe:sensei-exe"]
         Stdout exePath <- cmd "cabal" ["list-bin", "sensei-exe"]
         dirExists <- doesDirectoryExist "bin"
