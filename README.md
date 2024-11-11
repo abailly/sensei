@@ -1,5 +1,6 @@
 # sensei
 
+A personal information management tool for developers
 
 # User Profile
 
