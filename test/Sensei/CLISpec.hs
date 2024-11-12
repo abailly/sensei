@@ -5,9 +5,47 @@ module Sensei.CLISpec where
 
 import Data.Either (isLeft)
 
-import Sensei.API
-import Sensei.CLI
-import Test.Hspec
+import Sensei.API (
+  FlowType (FlowType, Note),
+  NoteFormat (Section),
+  Reference (Latest),
+  TimeDifference (Minutes),
+  add,
+  done,
+  goal,
+  link,
+  pop,
+  push,
+  remove,
+  shift,
+ )
+import Sensei.CLI (
+  AuthOptions (
+    CreateKeys,
+    EncryptPassword,
+    GetToken,
+    PublicKey,
+    SetPassword
+  ),
+  CommandOptions (Command),
+  GoalOptions (GetGraph, UpdateGraph),
+  NotesOptions (NotesQuery),
+  NotesQuery (QuerySearch),
+  Options (
+    AuthOptions,
+    CommandOptions,
+    GoalOptions,
+    NotesOptions,
+    QueryOptions,
+    RecordOptions,
+    UserOptions
+  ),
+  QueryOptions (FlowQuery, GetAllLogs, GetFlow, ShiftTimestamp),
+  RecordOptions (FromFile, SingleFlow),
+  UserOptions (GetProfile, GetVersions, SetProfile),
+  runOptionsParser,
+ )
+import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
 
 spec :: Spec
 spec = describe "Command-Line Interface" $ do

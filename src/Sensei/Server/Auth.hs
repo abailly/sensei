@@ -11,29 +11,30 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Sensei.Server.Auth (
-    AuthenticationToken (..),
-    RegistrationToken (..),
-    Credentials (..),
-    UserRegistration (..),
-    SerializedToken (..),
-    Login,
-    TokenID (..),
-    Bytes (..),
-    makeNewKey,
-    readOrMakeKey,
-    createKeys,
-    createToken,
-    makeToken,
-    getKey,
-    getPublicKey,
-    setPassword,
-    encrypt,
-    authenticateUser,
-    module Crypto.JOSE.JWK,
-    decodeCompact,
-    Error (..),
-    SignedJWT,
-    module SAS,
+  AuthenticationToken (..),
+  RegistrationToken (..),
+  Credentials (..),
+  UserRegistration (..),
+  SerializedToken (..),
+  Login,
+  TokenID (..),
+  Bytes (..),
+  makeNewKey,
+  readOrMakeKey,
+  createKeys,
+  createToken,
+  makeToken,
+  getKey,
+  getPublicKey,
+  setPassword,
+  encrypt,
+  authenticateUser,
+  module Crypto.JOSE.JWK,
+  decodeCompact,
+  Error (..),
+  SignedJWT,
+  module SAS,
+  encryptPassword,
 ) where
 
 import Control.Lens ((^.))
@@ -101,26 +102,26 @@ import System.Random (newStdGen, randoms)
 -- jti JWT ID
 
 newtype Bytes (size :: Nat) = Bytes {unBytes :: Encoded Hex}
-    deriving (Eq, Show, ToJSON, FromJSON)
+  deriving (Eq, Show, ToJSON, FromJSON)
 
 instance KnownNat size => IsString (Bytes size) where
-    fromString s =
-        let e@(Encoded bs) = fromString s
-            len = natVal (Proxy @size)
-         in if BS.length bs == fromInteger len
-                then Bytes e
-                else error $ "bytestring should be of length " <> show len <> " but it was " <> show (BS.length bs)
+  fromString s =
+    let e@(Encoded bs) = fromString s
+        len = natVal (Proxy @size)
+     in if BS.length bs == fromInteger len
+          then Bytes e
+          else error $ "bytestring should be of length " <> show len <> " but it was " <> show (BS.length bs)
 
 -- | A token ID
 newtype TokenID = TokenID {unTokenID :: Bytes 16}
-    deriving (Eq, Show, ToJSON, FromJSON, IsString)
+  deriving (Eq, Show, ToJSON, FromJSON, IsString)
 
 -- | A token issued for authenticated users
 data AuthenticationToken = AuthToken
-    { auID :: Encoded Hex
-    , auOrgID :: Int
-    }
-    deriving (Eq, Show, Generic)
+  { auID :: Encoded Hex
+  , auOrgID :: Int
+  }
+  deriving (Eq, Show, Generic)
 
 instance ToJSON AuthenticationToken
 
@@ -132,11 +133,11 @@ instance FromJWT AuthenticationToken
 
 -- | A token issued to allow users to register
 data RegistrationToken = RegToken
-    { -- | The ID of the user who generated this token
-      regID :: Int
-    , tokID :: TokenID
-    }
-    deriving (Eq, Show, Generic)
+  { regID :: Int
+  -- ^ The ID of the user who generated this token
+  , tokID :: TokenID
+  }
+  deriving (Eq, Show, Generic)
 
 instance ToJSON RegistrationToken
 
@@ -149,74 +150,73 @@ instance FromJWT RegistrationToken
 type Login = ByteString
 
 data Credentials = Credentials
-    { credLogin :: Text
-    , credPassword :: Text
-    }
-    deriving (Eq, Show, Generic)
+  { credLogin :: Text
+  , credPassword :: Text
+  }
+  deriving (Eq, Show, Generic)
 
 instance ToJSON Credentials
 
 instance FromJSON Credentials
 
 data UserRegistration = UserRegistration
-    { regLogin :: Text
-    , regPassword :: Text
-    , regToken :: SerializedToken
-    }
-    deriving (Eq, Show, Generic)
+  { regLogin :: Text
+  , regPassword :: Text
+  , regToken :: SerializedToken
+  }
+  deriving (Eq, Show, Generic)
 
 instance ToJSON UserRegistration where
-    toJSON UserRegistration{..} =
-        object
-            [ "login" .= regLogin
-            , "password" .= regPassword
-            , "token" .= regToken
-            ]
+  toJSON UserRegistration{..} =
+    object
+      [ "login" .= regLogin
+      , "password" .= regPassword
+      , "token" .= regToken
+      ]
 
 instance FromJSON UserRegistration where
-    parseJSON = withObject "UserRegistration" $ \obj ->
-        UserRegistration <$> obj .: "login" <*> obj .: "password" <*> obj .: "token"
+  parseJSON = withObject "UserRegistration" $ \obj ->
+    UserRegistration <$> obj .: "login" <*> obj .: "password" <*> obj .: "token"
 
 -- | Generate a new random 4096-bits long RSA key pair.
 makeNewKey :: IO JWK
 makeNewKey = genJWK (RSAGenParam (4096 `div` 8))
 
-{- | Read a key or create a new one.
- May throw an 'error' if the input contains a string that's not a valid 'JWK'
--}
+-- | Read a key or create a new one.
+--  May throw an 'error' if the input contains a string that's not a valid 'JWK'
 readOrMakeKey :: Maybe String -> IO JWK
 readOrMakeKey Nothing = makeNewKey
 readOrMakeKey (Just keyString) =
-    case eitherDecode (LBS.fromStrict $ encodeUtf8 $ pack keyString) of
-        Left err -> error err
-        Right k -> pure k
+  case eitherDecode (LBS.fromStrict $ encodeUtf8 $ pack keyString) of
+    Left err -> error err
+    Right k -> pure k
 
 getKey :: FilePath -> IO JWK
 getKey jwkFile = do
-    exists <- doesFileExist jwkFile
-    unless exists $ ioError $ userError $ "JWK file " <> jwkFile <> " does not exist"
+  exists <- doesFileExist jwkFile
+  unless exists $ ioError $ userError $ "JWK file " <> jwkFile <> " does not exist"
 
-    bytes <- BS.readFile jwkFile
-    either (\err -> ioError $ userError ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
+  bytes <- BS.readFile jwkFile
+  either (\err -> ioError $ userError ("Invalid JWK in file '" <> jwkFile <> "': " <> show err)) pure (eitherDecode $ LBS.fromStrict bytes)
 
 createKeys :: FilePath -> IO ()
 createKeys directory = makeNewKey >>= \jwk -> BS.writeFile (directory </> "sensei.jwk") (LBS.toStrict $ encode jwk)
 
 createToken :: FilePath -> IO SerializedToken
 createToken directory = do
-    key <- getKey (directory </> "sensei.jwk")
-    makeToken (defaultJWTSettings key) (AuthToken "" 1)
+  key <- getKey (directory </> "sensei.jwk")
+  makeToken (defaultJWTSettings key) (AuthToken "" 1)
 
 makeToken :: JWTSettings -> AuthenticationToken -> IO SerializedToken
 makeToken settings authId =
-    makeJWT authId settings Nothing >>= \case
-        Left err -> error $ "Failed to create token :" <> show err
-        Right jwt -> pure $ SerializedToken $ LBS.toStrict jwt
+  makeJWT authId settings Nothing >>= \case
+    Left err -> error $ "Failed to create token :" <> show err
+    Right jwt -> pure $ SerializedToken $ LBS.toStrict jwt
 
 getPublicKey :: FilePath -> IO JWK
 getPublicKey directory = do
-    key <- getKey (directory </> "sensei.jwk")
-    maybe (error $ "Fail to get public key from private key in " <> directory) pure $ key ^. asPublicKey
+  key <- getKey (directory </> "sensei.jwk")
+  maybe (error $ "Fail to get public key from private key in " <> directory) pure $ key ^. asPublicKey
 
 encrypt :: ByteString -> ByteString -> ByteString
 encrypt = bcrypt cost
@@ -226,24 +226,33 @@ cost = 10
 
 setPassword :: UserProfile -> Text -> IO UserProfile
 setPassword oldProfile newPassword = do
-    g <- newStdGen
-    let s = BS.pack $ take 16 $ randoms g
-    pure $ oldProfile{userPassword = (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword)}
+  userPassword <- encryptPassword newPassword
+  pure $ oldProfile{userPassword}
+
+-- | Encrypt a password with a randomly generated 16-bytes salt.
+--
+-- Uses `bcrypt` hashing algorithm, returns salt and encrypted result as base64 encoded
+-- bytestring.
+encryptPassword :: Text -> IO (Encoded Base64, Encoded Base64)
+encryptPassword newPassword = do
+  g <- newStdGen
+  let s = BS.pack $ take 16 $ randoms g
+  pure $ (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword)
 
 authenticateUser :: Text -> UserProfile -> AuthResult AuthenticationToken
 authenticateUser password UserProfile{userId, userPassword = (userSalt, hashedPassword)}
-    | encrypt (fromBase64 userSalt) (encodeUtf8 password) == fromBase64 hashedPassword =
-        SAS.Authenticated $ AuthToken userId 1
-    | otherwise = SAS.BadPassword
+  | encrypt (fromBase64 userSalt) (encodeUtf8 password) == fromBase64 hashedPassword =
+      SAS.Authenticated $ AuthToken userId 1
+  | otherwise = SAS.BadPassword
 
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
-    deriving (Eq, Show)
+  deriving (Eq, Show)
 
 instance ToJSON SerializedToken where
-    toJSON (SerializedToken bs) = String $ decodeUtf8 bs
+  toJSON (SerializedToken bs) = String $ decodeUtf8 bs
 
 instance FromJSON SerializedToken where
-    parseJSON = withText "SerializedToken" $ \txt -> pure $ SerializedToken $ encodeUtf8 txt
+  parseJSON = withText "SerializedToken" $ \txt -> pure $ SerializedToken $ encodeUtf8 txt
 
 instance MimeRender OctetStream SerializedToken where
-    mimeRender _ (SerializedToken bs) = LBS.fromStrict bs
+  mimeRender _ (SerializedToken bs) = LBS.fromStrict bs

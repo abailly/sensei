@@ -85,6 +85,7 @@ import Sensei.Server.Auth (
   Credentials (..),
   createKeys,
   createToken,
+  encryptPassword,
   getPublicKey,
   setPassword,
  )
@@ -166,7 +167,8 @@ ep config (AuthOptions SetPassword) userName _ _ = do
   pwd <- readPassword
   newProfile <- setPassword oldProfile pwd
   void $ send config (setUserProfileC userName newProfile)
-ep _config (AuthOptions EncryptPassword) _userName _ _ = undefined
+ep _config (AuthOptions EncryptPassword) _ _ _ =
+  readPassword >>= encryptPassword >>= display
 ep config (AuthOptions GetToken) userName _ _ = do
   pwd <- readPassword
   token <- send config $ do
