@@ -1,28 +1,27 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns #-}
 
-module Sensei.CLI
-  ( -- * Options
-    Options (..),
-    RecordOptions (..),
-    QueryOptions (..),
-    UserOptions (..),
-    NotesOptions (..),
-    NotesQuery (..),
-    AuthOptions (..),
-    CommandOptions (..),
-    GoalOptions (..),
-    runOptionsParser,
-    parseSenseiOptions,
+module Sensei.CLI (
+  -- * Options
+  Options (..),
+  RecordOptions (..),
+  QueryOptions (..),
+  UserOptions (..),
+  NotesOptions (..),
+  NotesQuery (..),
+  AuthOptions (..),
+  CommandOptions (..),
+  GoalOptions (..),
+  runOptionsParser,
+  parseSenseiOptions,
 
-    -- * Main entrypoint
-    ep,
-  )
+  -- * Main entrypoint
+  ep,
+)
 where
 
-import Data.Aeson hiding (Options, Success)
+import Data.Aeson (ToJSON, eitherDecode)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -31,19 +30,79 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ToText (toText)
-import Data.Time
-import Sensei.API
-import Sensei.CLI.Options
-import Sensei.CLI.Terminal
-import Sensei.Client
+import Data.Time (
+  LocalTime,
+  UTCTime,
+  defaultTimeLocale,
+  formatTime,
+ )
+import Sensei.API (
+  Event (EventFlow, EventNote),
+  Flow (Flow),
+  FlowType (Note),
+  GoalOp (GoalOp, _goalDir, _goalOp, _goalTimestamp, _goalUser),
+  NoteFlow (NoteFlow),
+  NoteFormat (..),
+  NoteView (NoteView),
+  UserName (UserName),
+ )
+import Sensei.CLI.Options (
+  AuthOptions (..),
+  CommandOptions (..),
+  GoalOptions (..),
+  NotesOptions (..),
+  NotesQuery (..),
+  Options (..),
+  QueryOptions (..),
+  RecordOptions (..),
+  UserOptions (..),
+  parseSenseiOptions,
+  runOptionsParser,
+ )
+import Sensei.CLI.Terminal (captureNote, readPassword)
+import Sensei.Client (
+  ClientConfig (authToken),
+  getFlowC,
+  getFreshTokenC,
+  getGoalsC,
+  getLogC,
+  getUserProfileC,
+  getVersionsC,
+  loginC,
+  notesDayC,
+  postEventC,
+  postGoalC,
+  queryFlowC,
+  queryFlowDayC,
+  queryFlowPeriodSummaryC,
+  searchNotesC,
+  send,
+  setUserProfileC,
+  updateFlowC,
+ )
 import Sensei.IO (getConfigDirectory, writeConfig)
-import Sensei.Server.Auth (Credentials (..), createKeys, createToken, getPublicKey, setPassword)
-import Sensei.Version
-import Sensei.Wrapper (handleWrapperResult, tryWrapProg, wrapProg, wrapperIO)
+import Sensei.Server.Auth (
+  Credentials (..),
+  createKeys,
+  createToken,
+  getPublicKey,
+  setPassword,
+ )
+import Sensei.Version (
+  Versions (clientStorageVersion, clientVersion),
+  currentVersion,
+  senseiVersion,
+ )
+import Sensei.Wrapper (
+  handleWrapperResult,
+  tryWrapProg,
+  wrapProg,
+  wrapperIO,
+ )
 import Servant (Headers (getResponse))
 import System.Directory (findExecutable)
-import System.Exit
-import System.IO
+import System.Exit (ExitCode (ExitFailure), exitWith)
+import System.IO (hPutStrLn, stderr)
 
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
@@ -92,7 +151,7 @@ ep config (UserOptions (SetProfile file)) usrName _ _ = do
     Right prof -> void $ send config (setUserProfileC usrName prof)
 ep config (UserOptions GetVersions) _ _ _ = do
   vs <- send config getVersionsC
-  display vs {clientVersion = senseiVersion, clientStorageVersion = currentVersion}
+  display vs{clientVersion = senseiVersion, clientStorageVersion = currentVersion}
 ep config (QueryOptions (ShiftTimestamp diff)) curUser _ _ =
   send config (updateFlowC curUser diff) >>= display
 ep config (QueryOptions (GetFlow q)) curUser _ _ =
@@ -101,19 +160,20 @@ ep _config (AuthOptions CreateKeys) _ _ _ = getConfigDirectory >>= createKeys
 ep _config (AuthOptions PublicKey) _ _ _ = getConfigDirectory >>= getPublicKey >>= display
 ep config (AuthOptions CreateToken) _ _ _ = do
   token <- getConfigDirectory >>= createToken
-  writeConfig config {authToken = Just token}
+  writeConfig config{authToken = Just token}
 ep config (AuthOptions SetPassword) userName _ _ = do
   oldProfile <- send config getUserProfileC
   pwd <- readPassword
   newProfile <- setPassword oldProfile pwd
   void $ send config (setUserProfileC userName newProfile)
+ep _config (AuthOptions EncryptPassword) _userName _ _ = undefined
 ep config (AuthOptions GetToken) userName _ _ = do
   pwd <- readPassword
   token <- send config $ do
     -- authenticate with password
     void $ loginC $ Credentials userName pwd
     getFreshTokenC userName
-  writeConfig config {authToken = Just token}
+  writeConfig config{authToken = Just token}
 ep _config (AuthOptions NoOp) _ _ _ = pure ()
 ep config (CommandOptions (Command exe args)) userName _ currentDir = do
   let io = wrapperIO config
@@ -122,16 +182,17 @@ ep config (CommandOptions (Command exe args)) userName _ currentDir = do
     Just exePath -> Right <$> wrapProg io userName exePath args currentDir
     Nothing -> tryWrapProg io userName exe args currentDir
 ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
-    send
-      config
-      ( postGoalC userName $
-          GoalOp
-            { _goalOp = op,
-              _goalUser = userName,
-              _goalTimestamp = timestamp,
-              _goalDir = currentDir
-            }
-      ) >>= display
+  send
+    config
+    ( postGoalC userName $
+        GoalOp
+          { _goalOp = op
+          , _goalUser = userName
+          , _goalTimestamp = timestamp
+          , _goalDir = currentDir
+          }
+    )
+    >>= display
 ep config (GoalOptions GetGraph) userName _ _ =
   send config (getGoalsC userName) >>= display
 
@@ -147,12 +208,12 @@ formatNotes Section = concatMap sectionized
 sectionized :: NoteView -> [Text]
 sectionized (NoteView ts note project tags) =
   [header, "", note]
-  where
-    header = "#### " <> formatTimestamp ts <> " (" <> toText project <> ")" <> tagsHeader
-    tagsHeader =
-      case tags of
-        [] -> ""
-        t -> " [" <> (Text.intercalate ", " $ map toText t) <> "]"
+ where
+  header = "#### " <> formatTimestamp ts <> " (" <> toText project <> ")" <> tagsHeader
+  tagsHeader =
+    case tags of
+      [] -> ""
+      t -> " [" <> (Text.intercalate ", " $ map toText t) <> "]"
 
 tblHeaders :: [Text]
 tblHeaders = ["Time | Note", "--- | ---"]
