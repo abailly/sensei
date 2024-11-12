@@ -5,7 +5,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Sensei.DB.Model where
@@ -13,7 +12,6 @@ module Sensei.DB.Model where
 import Control.Exception.Safe (try)
 import Control.Lens (set, (^.))
 import Control.Monad.State
-import Control.Applicative(liftA2)
 import Data.Foldable (toList)
 import Data.Function (on)
 import qualified Data.Map as Map
@@ -39,6 +37,8 @@ import Test.QuickCheck
     shrink,
   )
 import Test.QuickCheck.Monadic
+import Data.Functor (void)
+import Control.Monad (when, forM_)
 
 -- | Relevant commands issued to the underlying DB
 data Action a where

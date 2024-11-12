@@ -22,6 +22,7 @@ import System.Directory
 import System.FilePath (takeDirectory, takeFileName)
 import Test.Hspec
 import Test.QuickCheck
+import Data.Functor (void)
 
 spec :: Spec
 spec = describe "SQLite DB" $ do

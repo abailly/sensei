@@ -22,14 +22,13 @@ type UID = String
 
 options =
     shakeOptions
-        { shakeReport = ["report.html"]
-        , -- Generate a report that can be opened in a browser to analyze build
-          shakeThreads = 0
+        { -- Generate a report that can be opened in a browser to analyze build
+          shakeReport = ["report.html"]
         , -- Use all CPUs provided by the platform
-          shakeFiles = "_build"
+          shakeThreads = 0
         , -- Put Shake's database in directory '_build'
-          shakeChange = ChangeDigest
-          -- Rebuild only if content changes, not if date/time changes
+          shakeFiles = "_build"
+        , shakeVerbosity = Diagnostic
         }
 
 install :: IO ()
@@ -60,7 +59,7 @@ runShake pwd uid = shakeArgs options $ do
                 , "Makefile"
                 ]
 
-    "build" ~> void (need ["bin/sensei-exe"])
+    want ["bin/sensei-exe"]
 
     "client/senseic" %> \clientbin -> do
         needClientSources
@@ -69,10 +68,11 @@ runShake pwd uid = shakeArgs options $ do
     "bin/sensei-exe" %> \bin -> do
         needHaskellSources
         cmd_ "cabal" ["build", "all"]
+        cmd_ "cabal" ["test", "all"]
         Stdout exePath <- cmd "cabal" ["list-bin", "sensei-exe"]
         dirExists <- doesDirectoryExist "bin"
         unless dirExists $ cmd_ "mkdir" ["bin"]
-        cmd_ "cp" [head (lines exePath), "bin"]
+        cmd_ "cp" [head (lines exePath), bin]
 
     "ui/dist/index.html" %> \_ -> do
         needDirectoryFiles

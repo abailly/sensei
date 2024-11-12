@@ -30,6 +30,7 @@ import Servant.Client.Core
 import Test.Hspec
 import Test.Hspec.Wai hiding (request)
 import Test.Hspec.Wai.Internal (WaiSession (..))
+import Control.Monad (unless)
 
 fromClientRequest ::
     (MonadIO m) => Encoded Hex -> Request -> m Wai.Request

@@ -178,4 +178,6 @@ test-suite servant-server-base-test
     , hspec-discover
     , quickcheck-classes
     , servant-server-base
+  build-tool-depends:
+      hspec-discover:hspec-discover
   default-language: Haskell2010

@@ -14,11 +14,12 @@ import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import Network.HTTP.Types (http11, status200)
 import Sensei.Client (ClientConfig (..), defaultConfig, getVersionsC, unClient)
-import Sensei.TestHelper (validAuthToken, validSerializedToken)
+import Sensei.TestHelper (validAuthToken, validSerializedToken, authTokenFor, sampleKey)
 import Sensei.Version (Version (..), Versions (..), currentVersion, senseiVersion, senseiVersionLBS, showVersion)
 import Servant.Client.Core (Request, Response, ResponseF (Response), requestHeaders)
 import Servant.Client.Core.RunClient (RunClient (..))
 import Test.Hspec
+import Sensei.Server (SerializedToken(..), AuthenticationToken (..))
 
 newtype TestClient a = TestClient {testClient :: Writer [Request] a}
     deriving (Functor, Applicative, Monad, MonadWriter [Request])
@@ -44,10 +45,11 @@ spec = describe "ClientMonad" $ do
                             ]
 
     it "sets Authorization header from ClientConfig info given token is set" $ do
-        let configWithAuth = aConfig{authToken = Just $ validSerializedToken ""}
+        authToken <- authTokenFor (AuthToken "" 1) sampleKey
+        let configWithAuth = aConfig{authToken = Just . SerializedToken . LBS.toStrict $ authToken}
             [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) configWithAuth)
 
-        toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict (validAuthToken ""))]
+        toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict authToken)]
 
     it "sets X-API-Version header from ClientConfig info given it is set" $ do
         let someVersion = Version [3, 4] ["foo"]
@@ -56,29 +58,20 @@ spec = describe "ClientMonad" $ do
 
         toList (requestHeaders request) `shouldContain` [(mk "X-API-Version", encodeUtf8 $ Text.pack $ showVersion someVersion)]
 
-    it "can deserialise version-less JSON" $ do
-        let jsonProfile =
-                "{\"serverUri\":\"http://localhost:23456\",\
-                \ \"startServerLocally\":true, \
-                \ \"authToken\":"
-                    <> encode (validSerializedToken "")
-                    <> "}"
-        eitherDecode jsonProfile
-            `shouldBe` Right defaultConfig{authToken = Just $ validSerializedToken ""}
-
     describe "Client Config" $ do
         -- it "can serialise/deserialise to/from JSON" $
         --   lawsCheck (jsonLaws (Proxy @ClientConfig))
 
         it "can deserialise version-less JSON" $ do
+            serializedToken <- SerializedToken . LBS.toStrict <$> authTokenFor (AuthToken "" 1) sampleKey
             let jsonProfile =
                     "{\"serverUri\":\"http://localhost:23456\",\
                     \ \"startServerLocally\":true, \
                     \ \"authToken\":"
-                        <> encode (validSerializedToken "")
+                        <> encode serializedToken
                         <> "}"
             eitherDecode jsonProfile
-                `shouldBe` Right defaultConfig{authToken = Just (validSerializedToken "")}
+                `shouldBe` Right defaultConfig{authToken = Just serializedToken}
 
         it "can deserialise JSON with userName but without authToken" $ do
             let jsonProfile =

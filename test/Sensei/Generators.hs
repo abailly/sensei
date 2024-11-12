@@ -27,6 +27,7 @@ import Test.QuickCheck (
     resize,
     vectorOf,
  )
+import qualified Data.Text as Text
 
 -- * Orphan Instances
 
@@ -48,7 +49,7 @@ genPassword :: Gen (Encoded Base64, Encoded Base64)
 genPassword = (,) <$> genBase64 <*> genBase64
 
 genBase64 :: Gen (Encoded Base64)
-genBase64 = toBase64 <$> arbitrary
+genBase64 = toBase64 . BS.pack <$> arbitrary
 
 genUserId :: Gen (Encoded Hex)
 genUserId = toHex . BS.pack <$> vectorOf 16 arbitrary
@@ -148,6 +149,10 @@ generateArgs = listOf $ pack . getASCIIString <$> arbitrary
 generateProcess :: Gen Text
 generateProcess = pack . getASCIIString <$> arbitrary
 
+instance Arbitrary Natural where
+  arbitrary = fromInteger . getPositive <$> arbitrary
+  shrink nat  = fromInteger <$> shrink (fromIntegral nat)
+
 instance Arbitrary Pagination where
     arbitrary =
         frequency
@@ -174,5 +179,5 @@ generateEvent baseTime off =
 
 shrinkEvent :: Event -> [Event]
 shrinkEvent (EventTrace t@(Trace _ _ _ _ args _ _)) =
-    [EventTrace $ t & traceArgs .~ x | x <- shrink args]
+    [EventTrace $ t & traceArgs .~ (Text.pack <$> x) | x <- shrink (Text.unpack <$> args)]
 shrinkEvent _ = []
