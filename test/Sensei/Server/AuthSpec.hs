@@ -46,8 +46,10 @@ import Sensei.TestHelper (
   shouldNotThrow,
   shouldRespondWith,
   withApp,
+  withRootPassword,
+  withRootUser,
   withTempDir,
-  withoutRootBuilder,
+  withoutRootUser,
  )
 import System.FilePath ((</>))
 import Test.Hspec
@@ -102,9 +104,15 @@ spec = describe "Authentication Operations" $ do
 
     BS.length salt `shouldBe` 16
 
-  withApp (withoutRootBuilder app) $
+  withApp (withoutRootUser app) $
     it "does not initialise root user given it's not provided" $ do
       getJSON "/api/users/arnaud" `shouldRespondWith` 404
+
+  withApp (withRootPassword "duck" $ withRootUser "arnaud" app) $
+    it "initialises root user with a password" $ do
+      let credentials = Credentials "arnaud" "password"
+      postJSON "/login" credentials
+        `shouldRespondWith` 401
 
   withApp app $
     describe "Authentication API" $ do

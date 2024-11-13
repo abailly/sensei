@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Sensei.TestHelper (
@@ -41,7 +42,9 @@ module Sensei.TestHelper (
   sampleKey,
   wrongKey,
   defaultHeaders,
-  withoutRootBuilder,
+  withoutRootUser,
+  withRootUser,
+  withRootPassword,
 ) where
 
 import Control.Concurrent.MVar
@@ -50,6 +53,7 @@ import Control.Monad (unless, when)
 import Control.Monad.Reader (ReaderT (..))
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
+import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (toStrict)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
@@ -70,6 +74,7 @@ import System.FilePath ((<.>))
 import System.IO (hClose)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Temp (mkstemp)
+import System.Random (mkStdGen, randoms)
 import Test.Hspec (ActionWith, Expectation, Spec, SpecWith, around, expectationFailure)
 import Test.Hspec.Wai as W (WaiExpectation, WaiSession, getState, request, shouldRespondWith)
 import Test.Hspec.Wai.Internal (WaiSession (..))
@@ -78,19 +83,37 @@ import Web.Cookie (parseCookies)
 
 data AppBuilder = AppBuilder
   { rootUser :: Maybe Text
+  , rootPassword :: Maybe (Encoded Base64, Encoded Base64)
   , withStorage :: Bool
   , withFailingStorage :: Bool
   , withEnv :: Env
   }
+  deriving (Show)
 
 app :: AppBuilder
-app = AppBuilder (Just "arnaud") True False Dev
+app =
+  AppBuilder
+    { rootUser = Just "arnaud"
+    , rootPassword = Nothing
+    , withStorage = True
+    , withFailingStorage = False
+    , withEnv = Dev
+    }
 
 withoutStorage :: AppBuilder -> AppBuilder
 withoutStorage builder = builder{withStorage = False}
 
-withoutRootBuilder :: AppBuilder -> AppBuilder
-withoutRootBuilder builder = builder{rootUser = Nothing}
+withoutRootUser :: AppBuilder -> AppBuilder
+withoutRootUser builder = builder{rootUser = Nothing}
+
+withRootUser :: Text -> AppBuilder -> AppBuilder
+withRootUser user builder = builder{rootUser = Just user}
+
+withRootPassword :: HasCallStack => Text -> AppBuilder -> AppBuilder
+withRootPassword password builder =
+  let salt = BS.pack $ take 16 $ randoms (mkStdGen 12)
+      encrypted = encryptWithSalt salt password
+   in builder{rootPassword = Just encrypted}
 
 withApp :: AppBuilder -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
@@ -109,7 +132,7 @@ buildApp AppBuilder{..} act =
     unless withStorage $ removePathForcibly file
     withTempDir $ \config -> do
       signal <- newEmptyMVar
-      userId <- initDB rootUser file config fakeLogger
+      userId <- initDB rootUser rootPassword file config fakeLogger
       application <- senseiApp Nothing signal sampleKey file config fakeLogger
       when withFailingStorage $ removePathForcibly file
       act (userId, application)

@@ -192,6 +192,7 @@ test-suite sensei-test
     , prettyprinter
     , QuickCheck
     , quickcheck-classes
+    , random
     , safe-exceptions
     , sensei
     , servant-client-core

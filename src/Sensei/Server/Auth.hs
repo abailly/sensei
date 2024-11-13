@@ -35,6 +35,7 @@ module Sensei.Server.Auth (
   SignedJWT,
   module SAS,
   encryptPassword,
+  encryptWithSalt,
 ) where
 
 import Control.Lens ((^.))
@@ -53,6 +54,7 @@ import Data.String (IsString (..))
 import Data.Text (Text, pack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import GHC.Generics
+import GHC.Stack (HasCallStack)
 import GHC.TypeLits (KnownNat, Nat, natVal)
 import Preface.Codec
 import Sensei.User (UserProfile (..))
@@ -218,8 +220,12 @@ getPublicKey directory = do
   key <- getKey (directory </> "sensei.jwk")
   maybe (error $ "Fail to get public key from private key in " <> directory) pure $ key ^. asPublicKey
 
-encrypt :: ByteString -> ByteString -> ByteString
+encrypt :: HasCallStack => ByteString -> ByteString -> ByteString
 encrypt = bcrypt cost
+
+encryptWithSalt :: HasCallStack => ByteString -> Text -> (Encoded Base64, Encoded Base64)
+encryptWithSalt salt clearText =
+  (toBase64 salt, toBase64 $ encrypt salt $ encodeUtf8 clearText)
 
 cost :: Int
 cost = 10
@@ -237,7 +243,8 @@ encryptPassword :: Text -> IO (Encoded Base64, Encoded Base64)
 encryptPassword newPassword = do
   g <- newStdGen
   let s = BS.pack $ take 16 $ randoms g
-  pure $ (toBase64 s, toBase64 $ encrypt s $ encodeUtf8 newPassword)
+      encrypted = encryptWithSalt s newPassword
+  pure encrypted
 
 authenticateUser :: Text -> UserProfile -> AuthResult AuthenticationToken
 authenticateUser password UserProfile{userId, userPassword = (userSalt, hashedPassword)}
