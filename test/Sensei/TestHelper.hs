@@ -4,43 +4,44 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Sensei.TestHelper (
-    app,
-    withoutStorage,
-    withFailingStorage,
-    withEnv,
-    withTempFile,
-    withTempDir,
-    withApp,
-    buildApp,
+  app,
+  withoutStorage,
+  withFailingStorage,
+  withEnv,
+  withTempFile,
+  withTempDir,
+  withApp,
+  buildApp,
 
-    -- * REST Helpers
-    getJSON,
-    postJSON,
-    postJSON_,
-    putJSON,
-    putJSON_,
-    patchJSON,
-    getSessionCookie,
+  -- * REST Helpers
+  getJSON,
+  postJSON,
+  postJSON_,
+  putJSON,
+  putJSON_,
+  patchJSON,
+  getSessionCookie,
 
-    -- * Assertion helpers
-    bodyContains,
-    bodySatisfies,
-    jsonBodyEquals,
-    jsonBodyMatches,
-    module W,
-    SResponse,
-    shouldRespondJSONBody,
-    shouldMatchJSONBody,
-    shouldNotThrow,
-    clearCookies,
+  -- * Assertion helpers
+  bodyContains,
+  bodySatisfies,
+  jsonBodyEquals,
+  jsonBodyMatches,
+  module W,
+  SResponse,
+  shouldRespondJSONBody,
+  shouldMatchJSONBody,
+  shouldNotThrow,
+  clearCookies,
 
-    -- * Useful data
-    validAuthToken,
-    validSerializedToken,
-    authTokenFor,
-    sampleKey,
-    wrongKey,
-    defaultHeaders,
+  -- * Useful data
+  validAuthToken,
+  validSerializedToken,
+  authTokenFor,
+  sampleKey,
+  wrongKey,
+  defaultHeaders,
+  withoutRootBuilder,
 ) where
 
 import Control.Concurrent.MVar
@@ -53,7 +54,7 @@ import Data.ByteString.Lazy (toStrict)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
 import Data.List (find)
-import Data.Text (unpack)
+import Data.Text (Text, unpack)
 import Data.Text.Encoding (decodeUtf8)
 import GHC.Stack (HasCallStack)
 import qualified Network.HTTP.Types.Header as HTTP
@@ -75,123 +76,131 @@ import Test.Hspec.Wai.Internal (WaiSession (..))
 import Test.Hspec.Wai.Matcher as W
 import Web.Cookie (parseCookies)
 
-data AppBuilder = AppBuilder {withStorage :: Bool, withFailingStorage :: Bool, withEnv :: Env}
+data AppBuilder = AppBuilder
+  { rootUser :: Maybe Text
+  , withStorage :: Bool
+  , withFailingStorage :: Bool
+  , withEnv :: Env
+  }
 
 app :: AppBuilder
-app = AppBuilder True False Dev
+app = AppBuilder (Just "arnaud") True False Dev
 
 withoutStorage :: AppBuilder -> AppBuilder
 withoutStorage builder = builder{withStorage = False}
+
+withoutRootBuilder :: AppBuilder -> AppBuilder
+withoutRootBuilder builder = builder{rootUser = Nothing}
 
 withApp :: AppBuilder -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
 
 withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempFile =
-    bracket mkTempFile (\fp -> removePathForcibly fp >> removePathForcibly (fp <.> "old"))
+  bracket mkTempFile (\fp -> removePathForcibly fp >> removePathForcibly (fp <.> "old"))
 
 withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempDir =
-    bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
+  bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
 buildApp :: AppBuilder -> ActionWith (Encoded Hex, Application) -> IO ()
 buildApp AppBuilder{..} act =
-    withTempFile $ \file -> do
-        unless withStorage $ removePathForcibly file
-        withTempDir $ \config -> do
-            signal <- newEmptyMVar
-            userId <- initDB (Just "arnaud") file config fakeLogger
-            application <- senseiApp Nothing signal sampleKey file config fakeLogger
-            when withFailingStorage $ removePathForcibly file
-            act (userId, application)
+  withTempFile $ \file -> do
+    unless withStorage $ removePathForcibly file
+    withTempDir $ \config -> do
+      signal <- newEmptyMVar
+      userId <- initDB rootUser file config fakeLogger
+      application <- senseiApp Nothing signal sampleKey file config fakeLogger
+      when withFailingStorage $ removePathForcibly file
+      act (userId, application)
 
 mkTempFile :: HasCallStack => IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
-postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+postJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) SResponse
 postJSON path payload =
-    defaultHeaders >>= \h -> request "POST" path h (A.encode payload)
+  defaultHeaders >>= \h -> request "POST" path h (A.encode payload)
 
-putJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+putJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) SResponse
 putJSON path payload =
-    defaultHeaders >>= \h -> request "PUT" path h (A.encode payload)
+  defaultHeaders >>= \h -> request "PUT" path h (A.encode payload)
 
-patchJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+patchJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) SResponse
 patchJSON path payload =
-    defaultHeaders >>= \h -> request "PATCH" path h (A.encode payload)
+  defaultHeaders >>= \h -> request "PATCH" path h (A.encode payload)
 
-postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) ()
+postJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) ()
 postJSON_ path payload =
-    postJSON path payload `shouldRespondWith` 200
+  postJSON path payload `shouldRespondWith` 200
 
-putJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession (Encoded Hex) ()
+putJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) ()
 putJSON_ path payload = void $ putJSON path payload
 
 getJSON :: ByteString -> WaiSession (Encoded Hex) SResponse
 getJSON path =
-    defaultHeaders >>= \h -> request "GET" path h mempty
+  defaultHeaders >>= \h -> request "GET" path h mempty
 
 defaultHeaders :: WaiSession (Encoded Hex) [HTTP.Header]
 defaultHeaders = do
-    userId <- getState
-    pure $
-        [ ("Accept", "application/json")
-        , ("Content-Type", "application/json")
-        , ("X-API-Version", toHeader senseiVersion)
-        , ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken userId)
-        ]
+  userId <- getState
+  pure $
+    [ ("Accept", "application/json")
+    , ("Content-Type", "application/json")
+    , ("X-API-Version", toHeader senseiVersion)
+    , ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken userId)
+    ]
 
 shouldMatchJSONBody ::
-    (HasCallStack, Eq a, Show a, A.FromJSON a) =>
-    WaiSession st SResponse ->
-    (a -> Bool) ->
-    WaiExpectation st
+  (HasCallStack, Eq a, Show a, A.FromJSON a) =>
+  WaiSession st SResponse ->
+  (a -> Bool) ->
+  WaiExpectation st
 shouldMatchJSONBody action p =
-    action `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyMatches p)
+  action `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyMatches p)
 
 shouldRespondJSONBody ::
-    (HasCallStack, Eq a, Show a, A.FromJSON a) =>
-    WaiSession st SResponse ->
-    a ->
-    WaiExpectation st
+  (HasCallStack, Eq a, Show a, A.FromJSON a) =>
+  WaiSession st SResponse ->
+  a ->
+  WaiExpectation st
 shouldRespondJSONBody action expected =
-    action `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
+  action `shouldRespondWith` ResponseMatcher 200 [] (jsonBodyEquals expected)
 
 jsonBodyEquals ::
-    (HasCallStack, Eq a, Show a, A.FromJSON a) => a -> MatchBody
+  (HasCallStack, Eq a, Show a, A.FromJSON a) => a -> MatchBody
 jsonBodyEquals expected = MatchBody $ \_ body ->
-    case A.eitherDecode body of
-        Right actual ->
-            if actual /= expected
-                then Just ("expected " <> show expected <> ", got " <> show actual)
-                else Nothing
-        Left err -> Just ("expected " <> show expected <> ", got " <> show body <> " with error " <> err)
+  case A.eitherDecode body of
+    Right actual ->
+      if actual /= expected
+        then Just ("expected " <> show expected <> ", got " <> show actual)
+        else Nothing
+    Left err -> Just ("expected " <> show expected <> ", got " <> show body <> " with error " <> err)
 
 jsonBodyMatches ::
-    (HasCallStack, Eq a, Show a, A.FromJSON a) => (a -> Bool) -> MatchBody
+  (HasCallStack, Eq a, Show a, A.FromJSON a) => (a -> Bool) -> MatchBody
 jsonBodyMatches predicate = MatchBody $ \_ body ->
-    case A.eitherDecode body of
-        Right actual ->
-            if not (predicate actual)
-                then Just ("body  " <> show actual <> ", does not match predicate")
-                else Nothing
-        Left err -> Just ("body cannot be properly decoded: got " <> show body <> " with error " <> err)
+  case A.eitherDecode body of
+    Right actual ->
+      if not (predicate actual)
+        then Just ("body  " <> show actual <> ", does not match predicate")
+        else Nothing
+    Left err -> Just ("body cannot be properly decoded: got " <> show body <> " with error " <> err)
 
 bodyContains :: HasCallStack => ByteString -> MatchBody
 bodyContains fragment =
-    MatchBody $
-        \_ body ->
-            if fragment `isInfixOf` toStrict body
-                then Nothing
-                else Just ("String " <> unpack (decodeUtf8 fragment) <> " not found in " <> unpack (decodeUtf8 $ toStrict body))
+  MatchBody $
+    \_ body ->
+      if fragment `isInfixOf` toStrict body
+        then Nothing
+        else Just ("String " <> unpack (decodeUtf8 fragment) <> " not found in " <> unpack (decodeUtf8 $ toStrict body))
 
 bodySatisfies :: HasCallStack => (ByteString -> Bool) -> MatchBody
 bodySatisfies p =
-    MatchBody $
-        \_ body ->
-            if p (toStrict body)
-                then Nothing
-                else Just ("String '" <> unpack (decodeUtf8 $ toStrict body) <> "' does not satisfy predicate")
+  MatchBody $
+    \_ body ->
+      if p (toStrict body)
+        then Nothing
+        else Just ("String '" <> unpack (decodeUtf8 $ toStrict body) <> "' does not satisfy predicate")
 
 shouldNotThrow :: forall e a. (Exception e, HasCallStack) => IO a -> Proxy e -> Expectation
 shouldNotThrow action _ = void action `catch` \(err :: e) -> expectationFailure ("Expected action to not throw " <> show err)
@@ -212,10 +221,10 @@ Just wrongKey = A.decode "{\"qi\":\"XRuW-7mjE3A6EI_ZdnWQBFvrI02Xlesj7R1xwFDMk9GB
 
 getSessionCookie :: SResponse -> Maybe ByteString
 getSessionCookie resp =
-    let headers = simpleHeaders resp
-     in lookup "JWT-Cookie" $
-            maybe [] (parseCookies . snd) $
-                find (\h -> fst h == "Set-Cookie") headers
+  let headers = simpleHeaders resp
+   in lookup "JWT-Cookie" $
+        maybe [] (parseCookies . snd) $
+          find (\h -> fst h == "Set-Cookie") headers
 
 clearCookies :: WaiSession st ()
 clearCookies = WaiSession $ ReaderT $ \_ -> modifyClientCookies (const mempty)

@@ -47,6 +47,7 @@ import Sensei.TestHelper (
   shouldRespondWith,
   withApp,
   withTempDir,
+  withoutRootBuilder,
  )
 import System.FilePath ((</>))
 import Test.Hspec
@@ -100,6 +101,10 @@ spec = describe "Authentication Operations" $ do
     (Encoded salt, _) <- encryptPassword "password"
 
     BS.length salt `shouldBe` 16
+
+  withApp (withoutRootBuilder app) $
+    it "does not initialise root user given it's not provided" $ do
+      getJSON "/api/users/arnaud" `shouldRespondWith` 404
 
   withApp app $
     describe "Authentication API" $ do
