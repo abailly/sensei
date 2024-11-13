@@ -90,7 +90,7 @@ type FullAPI =
             :<|> LogoutAPI
             :<|> SetCurrentTime
             :<|> GetCurrentTime
-            :<|> (CheckVersion $(senseiVersionTH) :> SenseiAPI)
+            :<|> (CheckVersion $senseiVersionTH :> SenseiAPI)
          )
     :<|> Raw
 
