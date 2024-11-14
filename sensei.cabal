@@ -43,6 +43,7 @@ library
 
   other-modules:
     Paths_sensei
+    Sensei.Bsky
     Sensei.CLI.Options
     Sensei.CLI.Terminal
     Sensei.Client.Monad
