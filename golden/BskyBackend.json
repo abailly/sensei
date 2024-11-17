@@ -1,0 +1,40 @@
+{
+    "samples": [
+        {
+            "login": {
+                "identifier": "",
+                "password": "h9Q5x"
+            },
+            "pdsUrl": "http://0zmACUSJF4bFf1Z39eUphbDSN0m8.qZS2OfBqkz35.AxU73T4cO1i3seiA5.B509/dErn2226go/lXf8PX3z87v3pRM/O0apJt62v8t5KVf83bO/02qH26VVA/45/vW89uoOa9Ma/9GM9YHlUX001Q1P4XfwaufwgSzSw5S/28GNW50XgcaR6JObNf5PYueNd/7Egrs9Pb31N6TqaxTp912Q9u/y4JWU889o1ICxnoSlR"
+        },
+        {
+            "login": {
+                "identifier": "Ec7dEyLnWDw44RCf5e266lvbzu",
+                "password": "v3wA98U27jUgaXyD319pk"
+            },
+            "pdsUrl": "https://teDDTNmY8zIn2Vf3owgH0L3y233HB.bFhDyel8e8gbk18F0JaoZBMpuH4Va.T5A1hDmA2Iqrl6O.5Dzi/84f0Sdv/N7WZsi2e9znS4K48nm/Q4q455M54aQsD0USYz1Q70egzv"
+        },
+        {
+            "login": {
+                "identifier": "Uep1nh3y18Tia",
+                "password": "o321UZCxV863W95837pilTm8G"
+            },
+            "pdsUrl": "https://qfNf5J1x7qjV86874V6L0ur6S1C0/UUFp39I7cTRYKbUlUr2oQ3H5p/k8fh1/hKiU8/LQe2qUYp0AUDzPh/1Lzg2d4nAi1gxL0ej95Mk1v990/B7tavaUX8703F0k4q/0Jtl698/ILk9dbx02QP3I/OKmf74ghNDw1CqVpCpDx7"
+        },
+        {
+            "login": {
+                "identifier": "82u59VYpmV78M19K77lF1jsGA34s",
+                "password": "1Bkh479y"
+            },
+            "pdsUrl": "https://Q99fJcOK1zStzKicqv/IuOM/0Ty7L75LGywuKv0gkU/m/mcOBE18x1zN5MSA7/60c850O24LV7wTPs/r65UT26LVSyl307Q02ClCVK490/5c8g/2R75hN5785a5494Fb3c57g19/"
+        },
+        {
+            "login": {
+                "identifier": "o5qHO897REE",
+                "password": "83Ctiujq9OQH0b"
+            },
+            "pdsUrl": "http://Ejv18i4e.MEYGTU9dCdDfkvUb39594/WL/7L194p3sg6W/BDFgG3/56uuv6/pma9ookOTH7n6O/IfjRsLBK7JMdEsW9ms9Fo0/9nyxK80q/Y90"
+        }
+    ],
+    "seed": -1137800890
+}

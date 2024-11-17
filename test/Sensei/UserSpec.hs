@@ -13,6 +13,7 @@ import qualified Data.Text.Encoding as UTF8
 import Network.Wai.Test (simpleBody)
 import Preface.Codec (encodedHex, fromHex, toHex)
 import Sensei.API
+import Sensei.Builder (aBskyBackend)
 import Sensei.ColorSpec ()
 import Sensei.Generators ()
 import Sensei.TestHelper
@@ -94,6 +95,17 @@ spec = do
                 <> "\",\"userTimezone\":\"Europe/Paris\",\"userFlowTypes\":null}"
         eitherDecode jsonProfile
           `shouldBe` Right defaultProfile{userId = uid}
+
+    it "can deserialize version 11 JSON" $
+      do
+        let uid = toHex "foo"
+            jsonProfile =
+              "{\"backends\":[{\"login\":{\"identifier\":\"bob.bsky.social\",\"password\":\"password\"},\"pdsUrl\":\"https://some.social\"}],\"userCommands\":null,\"userEndOfDay\":\"18:30:00\",\"userFlowTypes\":null,\"userId\":\""
+                <> LBS.fromStrict (UTF8.encodeUtf8 (encodedHex uid))
+                <> "\",\"userName\":\"arnaud\",\"userPassword\":[\"\",\"\"],\"userProfileVersion\":11,\"userProjects\":{},\"userStartOfDay\":\"08:00:00\",\"userTimezone\":\"Europe/Paris\"}"
+        eitherDecode jsonProfile
+          `shouldBe` Right
+            defaultProfile{userId = uid, backends = [aBskyBackend]}
 
   withApp app $
     describe "Users API" $ do

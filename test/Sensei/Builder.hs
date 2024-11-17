@@ -1,30 +1,34 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-{- | Specific help functions and types to help build and manipulate
-  Sensei's types and API
--}
+-- | Specific help functions and types to help build and manipulate
+--   Sensei's types and API
 module Sensei.Builder (
-    postEvent,
-    postEvent_,
-    postFlow,
-    postFlow_,
-    postNote_,
-    postTrace_,
-    anOtherFlow,
-    aDay,
-    oneAM,
-    sixThirtyPM,
-    later,
-    -- reexported from time-lens
-    seconds,
-    month,
+  postEvent,
+  postEvent_,
+  postFlow,
+  postFlow_,
+  postNote_,
+  postTrace_,
+  anOtherFlow,
+  aDay,
+  oneAM,
+  sixThirtyPM,
+  later,
+  -- reexported from time-lens
+  seconds,
+  month,
+  aBskyBackend,
 ) where
 
 import Control.Lens ((%~))
 import Data.Functor (void)
+import Data.Maybe (fromJust)
 import Data.Time.Lens (Lens, modL, month, seconds)
+import Network.URI.Extra (uriFromString)
 import Preface.Codec
 import Sensei.API
+import Sensei.Backend (Backend (..))
+import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.TestHelper
 
 postEvent :: [Event] -> WaiSession (Encoded Hex) SResponse
@@ -59,3 +63,15 @@ sixThirtyPM = TimeOfDay 18 30 0
 
 later :: Num b => b -> Lens UTCTime b -> Flow -> Flow
 later dur unit = flowTimestamp %~ modL unit (+ dur)
+
+aBskyBackend :: Backend
+aBskyBackend =
+  Backend $
+    BskyBackend
+      { login =
+          BskyLogin
+            { identifier = "bob.bsky.social"
+            , password = "password"
+            }
+      , pdsUrl = fromJust $ uriFromString "https://some.social"
+      }

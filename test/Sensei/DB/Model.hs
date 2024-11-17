@@ -13,6 +13,7 @@ import Control.Exception.Safe (try)
 import Control.Lens (set, (^.))
 import Control.Monad (forM_, when)
 import Control.Monad.State
+import Data.Either (fromRight)
 import Data.Foldable (toList)
 import Data.Function (on)
 import Data.Functor (void)
@@ -233,7 +234,7 @@ runDB _ (NewUser u) = void $ insertProfile u
 runDB _ (SwitchUser _) = pure ()
 
 readProfileOrDefault :: forall db. DB db => Text -> db UserProfile
-readProfileOrDefault user = fmap (either (const defaultProfile) id) (try @_ @(DBError db) $ readProfile user)
+readProfileOrDefault user = fmap (fromRight defaultProfile) (try @_ @(DBError db) $ readProfile user)
 
 runActions :: DB db => Text -> Actions -> db (Seq String)
 runActions user (Actions actions) =

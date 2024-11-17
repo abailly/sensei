@@ -31,6 +31,7 @@ import Test.QuickCheck (
   listOf,
   oneof,
   resize,
+  suchThat,
   vectorOf,
  )
 
@@ -190,11 +191,11 @@ shrinkEvent (EventTrace t@(Trace _ _ _ _ args _ _)) =
 shrinkEvent _ = []
 
 instance Arbitrary Backend where
-  arbitrary = Backend <$> oneof [genBskyBackend]
+  arbitrary = Backend <$> oneof [arbitrary @BskyBackend]
 
-genBskyBackend :: Gen BskyBackend
-genBskyBackend =
-  BskyBackend <$> genLogin <*> genURI
+instance Arbitrary BskyBackend where
+  arbitrary =
+    BskyBackend <$> genLogin <*> genURI
 
 newtype SimpleString = SimpleString {getSimpleString :: String}
   deriving (Eq, Show)
@@ -228,11 +229,11 @@ genURI = do
 
   genURIPath = do
     numSegments <- choose (1, 10)
-    List.intercalate "." <$> vectorOf numSegments (getSimpleString <$> arbitrary)
+    ("/" <>) . List.intercalate "/" <$> vectorOf numSegments (getSimpleString <$> arbitrary)
 
   genURIRegName = do
     numSegments <- choose (1, 5)
-    List.intercalate "." <$> vectorOf numSegments (getSimpleString <$> arbitrary)
+    List.intercalate "." <$> vectorOf numSegments ((getSimpleString <$> arbitrary) `suchThat` \s -> length s < 30)
 
   genURIPort =
     maybe "" show <$> frequency [(9, pure Nothing), (1, Just <$> choose (1 :: Int, 65535))]
