@@ -26,6 +26,9 @@ library
   exposed-modules:
     Sensei.API
     Sensei.App
+    Sensei.Backend
+    Sensei.Bsky
+    Sensei.Bsky.Core
     Sensei.CLI
     Sensei.Client
     Sensei.DB
@@ -43,7 +46,7 @@ library
 
   other-modules:
     Paths_sensei
-    Sensei.Bsky
+    Sensei.Backend.Class
     Sensei.CLI.Options
     Sensei.CLI.Terminal
     Sensei.Client.Monad
@@ -144,6 +147,7 @@ test-suite sensei-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   other-modules:
+    Sensei.BskySpec
     Sensei.Builder
     Sensei.ClientSpec
     Sensei.CLISpec

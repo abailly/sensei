@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -7,27 +8,31 @@ module Sensei.Generators where
 import Control.Lens ((.~))
 import qualified Data.ByteString as BS
 import Data.Function ((&))
+import qualified Data.List as List
 import Data.Text (Text, pack)
+import qualified Data.Text as Text
 import Data.Time.LocalTime
+import Network.URI.Extra (URI (..), URIAuth (..))
 import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
+import Sensei.Backend (Backend (..))
+import Sensei.Bsky.Core (BskyBackend (BskyBackend), BskyLogin (..))
 import Sensei.ColorSpec ()
 import Sensei.DB
 import Test.QuickCheck (
-    Arbitrary (..),
-    Gen,
-    choose,
-    elements,
-    frequency,
-    getASCIIString,
-    getPositive,
-    getPrintableString,
-    listOf,
-    oneof,
-    resize,
-    vectorOf,
+  Arbitrary (..),
+  Gen,
+  choose,
+  elements,
+  frequency,
+  getASCIIString,
+  getPositive,
+  getPrintableString,
+  listOf,
+  oneof,
+  resize,
+  vectorOf,
  )
-import qualified Data.Text as Text
 
 -- * Orphan Instances
 
@@ -39,11 +44,11 @@ genTimeOfDay = TimeOfDay <$> choose (0, 11) <*> choose (0, 59) <*> (fromInteger 
 
 genTimeZone :: Gen TZLabel
 genTimeZone =
-    toEnum
-        <$> choose
-            ( fromEnum (minBound @TZLabel)
-            , fromEnum (maxBound @TZLabel)
-            )
+  toEnum
+    <$> choose
+      ( fromEnum (minBound @TZLabel)
+      , fromEnum (maxBound @TZLabel)
+      )
 
 genPassword :: Gen (Encoded Base64, Encoded Base64)
 genPassword = (,) <$> genBase64 <*> genBase64
@@ -56,47 +61,49 @@ genUserId = toHex . BS.pack <$> vectorOf 16 arbitrary
 
 generateUserProfile :: Gen UserProfile
 generateUserProfile =
-    UserProfile
-        <$> generateUser
-        <*> genTimeZone
-        <*> genTimeOfDay
-        <*> genTimeOfDay
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> genPassword
-        <*> genUserId
+  UserProfile
+    <$> generateUser
+    <*> genTimeZone
+    <*> genTimeOfDay
+    <*> genTimeOfDay
+    <*> arbitrary
+    <*> arbitrary
+    <*> arbitrary
+    <*> genPassword
+    <*> genUserId
+    <*> arbitrary
 
 instance Arbitrary UserProfile where
-    arbitrary = generateUserProfile
+  arbitrary = generateUserProfile
 
-    shrink u@(UserProfile _ _ _ _ fs cs ps _ _) =
-        ((\f -> u{userFlowTypes = f}) <$> shrink fs)
-            <> ((\c -> u{userCommands = c}) <$> shrink cs)
-            <> ((\p -> u{userProjects = p}) <$> shrink ps)
+  shrink u@(UserProfile _ _ _ _ fs cs ps _ _ bks) =
+    ((\f -> u{userFlowTypes = f}) <$> shrink fs)
+      <> ((\c -> u{userCommands = c}) <$> shrink cs)
+      <> ((\p -> u{userProjects = p}) <$> shrink ps)
+      <> ((\b -> u{backends = b}) <$> shrink bks)
 
 instance Arbitrary FlowType where
-    arbitrary =
-        frequency
-            [ (4, elements defaultFlowTypes)
-            , (3, pure Note)
-            , (1, pure End)
-            , (2, pure Other)
-            ]
+  arbitrary =
+    frequency
+      [ (4, elements defaultFlowTypes)
+      , (3, pure Note)
+      , (1, pure End)
+      , (2, pure Other)
+      ]
 
 instance Arbitrary ProjectName where
-    arbitrary = ProjectName <$> resize 20 (pack . getPrintableString <$> arbitrary)
+  arbitrary = ProjectName <$> resize 20 (pack . getPrintableString <$> arbitrary)
 
 -- we don't really want to build arbitrary complex regexes so let's just
 -- do simple stuff, and keep the regex smalls otherwise we'll slow the tests
 -- as hell
 instance Arbitrary Regex where
-    arbitrary = Regex . pack . concat <$> reFragments
-      where
-        reFragments :: Gen [String]
-        reFragments = vectorOf 3 reFragment
+  arbitrary = Regex . pack . concat <$> reFragments
+   where
+    reFragments :: Gen [String]
+    reFragments = vectorOf 3 reFragment
 
-        reFragment = oneof [pure ".*", listOf (elements ['a' .. 'z'])]
+    reFragment = oneof [pure ".*", listOf (elements ['a' .. 'z'])]
 
 genNatural :: Gen Natural
 genNatural = fromInteger . getPositive <$> arbitrary
@@ -106,26 +113,26 @@ startTime = UTCTime (toEnum 50000) 10000
 
 generateFlow :: UTCTime -> Integer -> Gen Event
 generateFlow baseTime k = do
-    typ <- arbitrary
-    case typ of
-        Note -> EventNote <$> generateNote baseTime k
-        _ -> EventFlow <$> generateState typ baseTime k
+  typ <- arbitrary
+  case typ of
+    Note -> EventNote <$> generateNote baseTime k
+    _ -> EventFlow <$> generateState typ baseTime k
 
 shiftTime :: UTCTime -> Integer -> UTCTime
 shiftTime baseTime k = addUTCTime (fromInteger $ k * 1000) baseTime
 
 generateNote :: UTCTime -> Integer -> Gen NoteFlow
 generateNote baseTime k = do
-    let st = shiftTime baseTime k
-    dir <- generateDir
-    note <- generateNoteText
-    pure $ NoteFlow "arnaud" st dir note
+  let st = shiftTime baseTime k
+  dir <- generateDir
+  note <- generateNoteText
+  pure $ NoteFlow "arnaud" st dir note
 
 generateState :: FlowType -> UTCTime -> Integer -> Gen Flow
 generateState ftype baseTime k = do
-    let st = shiftTime baseTime k
-    dir <- generateDir
-    pure $ Flow ftype "arnaud" st dir -- TODO: remove user from Flow definition
+  let st = shiftTime baseTime k
+  dir <- generateDir
+  pure $ Flow ftype "arnaud" st dir -- TODO: remove user from Flow definition
 
 generateDir :: Gen Text
 generateDir = pack . getASCIIString <$> arbitrary
@@ -135,13 +142,13 @@ generateNoteText = pack . getASCIIString <$> arbitrary
 
 generateTrace :: UTCTime -> Integer -> Gen Event
 generateTrace baseTime k = do
-    let st = shiftTime baseTime k
-    dir <- generateDir
-    pr <- generateProcess
-    args <- generateArgs
-    ex <- arbitrary
-    el <- fromInteger <$> choose (0, 100)
-    pure $ EventTrace $ Trace "arnaud" st dir pr args ex el
+  let st = shiftTime baseTime k
+  dir <- generateDir
+  pr <- generateProcess
+  args <- generateArgs
+  ex <- arbitrary
+  el <- fromInteger <$> choose (0, 100)
+  pure $ EventTrace $ Trace "arnaud" st dir pr args ex el
 
 generateArgs :: Gen [Text]
 generateArgs = listOf $ pack . getASCIIString <$> arbitrary
@@ -151,33 +158,81 @@ generateProcess = pack . getASCIIString <$> arbitrary
 
 instance Arbitrary Natural where
   arbitrary = fromInteger . getPositive <$> arbitrary
-  shrink nat  = fromInteger <$> shrink (fromIntegral nat)
+  shrink nat = fromInteger <$> shrink (fromIntegral nat)
 
 instance Arbitrary Pagination where
-    arbitrary =
-        frequency
-            [ (10, Page <$> genNatural <*> genNatural)
-            , (1, pure NoPagination)
-            ]
+  arbitrary =
+    frequency
+      [ (10, Page <$> genNatural <*> genNatural)
+      , (1, pure NoPagination)
+      ]
 
-    shrink (Page n s) = Page <$> shrink n <*> shrink s
-    shrink NoPagination = []
+  shrink (Page n s) = Page <$> shrink n <*> shrink s
+  shrink NoPagination = []
 
 instance Arbitrary Reference where
-    arbitrary =
-        frequency
-            [ (3, pure Latest)
-            , (1, Pos <$> genNatural)
-            ]
+  arbitrary =
+    frequency
+      [ (3, pure Latest)
+      , (1, Pos <$> genNatural)
+      ]
 
-    shrink Latest = []
-    shrink (Pos p) = Pos <$> shrink p
+  shrink Latest = []
+  shrink (Pos p) = Pos <$> shrink p
 
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =
-    oneof [generateTrace baseTime off, generateFlow baseTime off]
+  oneof [generateTrace baseTime off, generateFlow baseTime off]
 
 shrinkEvent :: Event -> [Event]
 shrinkEvent (EventTrace t@(Trace _ _ _ _ args _ _)) =
-    [EventTrace $ t & traceArgs .~ (Text.pack <$> x) | x <- shrink (Text.unpack <$> args)]
+  [EventTrace $ t & traceArgs .~ (Text.pack <$> x) | x <- shrink (Text.unpack <$> args)]
 shrinkEvent _ = []
+
+instance Arbitrary Backend where
+  arbitrary = Backend <$> oneof [genBskyBackend]
+
+genBskyBackend :: Gen BskyBackend
+genBskyBackend =
+  BskyBackend <$> genLogin <*> genURI
+
+newtype SimpleString = SimpleString {getSimpleString :: String}
+  deriving (Eq, Show)
+
+instance Arbitrary SimpleString where
+  arbitrary =
+    SimpleString
+      <$> listOf
+        ( oneof [choose ('a', 'z'), choose ('A', 'Z'), choose ('0', '9')]
+        )
+
+genLogin :: Gen BskyLogin
+genLogin = BskyLogin <$> genIdentifier <*> genPwd
+ where
+  genIdentifier = pack . getSimpleString <$> arbitrary
+  genPwd = pack . getSimpleString <$> arbitrary
+
+genURI :: Gen URI
+genURI = do
+  uriScheme <- genURIScheme
+  uriAuthority <- genURIAuthority
+  uriPath <- genURIPath
+  pure URI{uriQuery = "", uriFragment = "", ..}
+ where
+  genURIScheme = elements ["http:", "https:"]
+
+  genURIAuthority = do
+    uriRegName <- genURIRegName
+    uriPort <- genURIPort
+    pure $ Just URIAuth{uriUserInfo = "", ..}
+
+  genURIPath = do
+    numSegments <- choose (1, 10)
+    List.intercalate "." <$> vectorOf numSegments (getSimpleString <$> arbitrary)
+
+  genURIRegName = do
+    numSegments <- choose (1, 5)
+    List.intercalate "." <$> vectorOf numSegments (getSimpleString <$> arbitrary)
+
+  genURIPort =
+    maybe "" show <$> frequency [(9, pure Nothing), (1, Just <$> choose (1 :: Int, 65535))]

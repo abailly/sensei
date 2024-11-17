@@ -3,8 +3,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -21,15 +21,12 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import Sensei.Backend.Class (IsBackend (..))
+import Sensei.Bsky.Core
+import Sensei.Event (Event)
 import Sensei.Server (SerializedToken (..))
 import Servant
 import Servant.Client (ClientM, client)
-
-data BskyLogin = BskyLogin
-  { identifier :: Text
-  , password :: Text
-  }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken
@@ -71,7 +68,7 @@ data BskyContent = BskyContent
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-data PostResult = PostResult
+data Record = Record
   { uri :: Text
   , cid :: Text
   }
@@ -94,10 +91,14 @@ type CreatePost =
     :> "com.atproto.repo.createRecord"
     :> Header "Authorization" BearerToken
     :> ReqBody '[JSON] BskyPost
-    :> Post '[JSON] PostResult
+    :> Post '[JSON] Record
 
 type BskyAPI = Login :<|> CreatePost
 
-bskyCreatePost :: Maybe BearerToken -> BskyPost -> ClientM PostResult
+bskyCreatePost :: Maybe BearerToken -> BskyPost -> ClientM Record
 bskyLogin :: BskyLogin -> ClientM BskySession
 bskyLogin :<|> bskyCreatePost = client (Proxy @BskyAPI)
+
+instance IsBackend BskyBackend where
+  postEvent :: Monad m => BskyBackend -> Event -> m ()
+  postEvent = undefined
