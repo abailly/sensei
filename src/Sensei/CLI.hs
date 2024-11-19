@@ -81,13 +81,12 @@ import Sensei.Client (
   updateFlowC,
  )
 import Sensei.IO (getConfigDirectory, writeConfig)
+import Sensei.Server (encryptPassword, setPassword)
 import Sensei.Server.Auth (
   Credentials (..),
   createKeys,
   createToken,
-  encryptPassword,
   getPublicKey,
-  setPassword,
  )
 import Sensei.Version (
   Versions (clientStorageVersion, clientVersion),

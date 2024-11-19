@@ -26,11 +26,11 @@ import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import Network.URI.Extra (uriFromString)
 import Sensei.Backend.Class (IsBackend (..))
 import Sensei.Bsky.Core
-import Sensei.Client (ClientConfig (..))
+import Sensei.Client.Monad (ClientConfig (..), ClientMonad)
 import Sensei.Event (Event)
-import Sensei.Server (SerializedToken (..))
+import Sensei.Server.Auth (SerializedToken (..))
 import Servant
-import Servant.Client (ClientM, client)
+import Servant.Client.Core (clientIn)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken
@@ -99,9 +99,9 @@ type CreatePost =
 
 type BskyAPI = Login :<|> CreatePost
 
-bskyCreatePost :: Maybe BearerToken -> BskyPost -> ClientM Record
-bskyLogin :: BskyLogin -> ClientM BskySession
-bskyLogin :<|> bskyCreatePost = client (Proxy @BskyAPI)
+bskyCreatePost :: Maybe BearerToken -> BskyPost -> ClientMonad BskyClientConfig Record
+bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
+bskyLogin :<|> bskyCreatePost = clientIn (Proxy @BskyAPI) Proxy
 
 instance IsBackend BskyBackend where
   postEvent :: Monad m => BskyBackend -> Event -> m ()

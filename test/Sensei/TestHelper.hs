@@ -1,4 +1,6 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
@@ -89,8 +91,8 @@ data AppBuilder = AppBuilder
   , withStorage :: Bool
   , withFailingStorage :: Bool
   , withEnv :: Env
+  , bskyClient :: forall a. ClientMonad BskyClientConfig a -> WaiSession (Encoded Hex) a
   }
-  deriving (Show)
 
 app :: AppBuilder
 app =
@@ -100,6 +102,7 @@ app =
     , withStorage = True
     , withFailingStorage = False
     , withEnv = Dev
+    , bskyClient = undefined
     }
 
 withoutStorage :: AppBuilder -> AppBuilder
@@ -117,11 +120,12 @@ withRootPassword password builder =
       encrypted = encryptWithSalt salt password
    in builder{rootPassword = Just encrypted}
 
+withBskyClient :: (forall a. ClientMonad BskyClientConfig a -> WaiSession (Encoded Hex) a) -> AppBuilder -> AppBuilder
+withBskyClient bskyClient builder =
+  builder{bskyClient}
+
 withApp :: AppBuilder -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
-
-withBskyClient :: (ClientMonad BskyClientConfig a -> WaiSession (Encoded Hex) a) -> AppBuilder -> AppBuilder
-withBskyClient = undefined
 
 withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempFile =

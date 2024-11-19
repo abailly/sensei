@@ -1,13 +1,12 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Sensei.Backend where
 
 import Data.Aeson (FromJSON (..), ToJSON (..))
-import Sensei.Bsky.Core (BskyBackend)
+import Sensei.Backend.Class (IsBackend)
 
 data Backend where
-  Backend :: (Show backend, ToJSON backend, FromJSON backend) => backend -> Backend
+  Backend :: (IsBackend backend, Show backend, ToJSON backend, FromJSON backend) => backend -> Backend
 
 instance Eq Backend where
   Backend backend == Backend backend' = toJSON backend == toJSON backend'
@@ -15,8 +14,9 @@ instance Eq Backend where
 instance Show Backend where
   show (Backend backend) = show backend
 
+-- NOTE: There's no FromJSON instance because it's not possible to construct
+-- one for an existential type like `Backend`: While you know the contained
+-- value has a `FromJSON` instance, you can't tell which one so you cannot
+-- construct a `Backend` value.
 instance ToJSON Backend where
   toJSON (Backend backend) = toJSON backend
-
-instance FromJSON Backend where
-  parseJSON v = Backend <$> parseJSON @BskyBackend v

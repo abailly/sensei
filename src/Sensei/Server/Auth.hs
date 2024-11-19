@@ -3,7 +3,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -26,15 +25,12 @@ module Sensei.Server.Auth (
   makeToken,
   getKey,
   getPublicKey,
-  setPassword,
   encrypt,
-  authenticateUser,
   module Crypto.JOSE.JWK,
   decodeCompact,
   Error (..),
   SignedJWT,
   module SAS,
-  encryptPassword,
   encryptWithSalt,
 ) where
 
@@ -57,12 +53,10 @@ import GHC.Generics
 import GHC.Stack (HasCallStack)
 import GHC.TypeLits (KnownNat, Nat, natVal)
 import Preface.Codec
-import Sensei.User (UserProfile (..))
 import Servant
 import Servant.Auth.Server as SAS
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-import System.Random (newStdGen, randoms)
 
 -- Tokens structure from AWS
 -- AWS ID Token structure
@@ -229,28 +223,6 @@ encryptWithSalt salt clearText =
 
 cost :: Int
 cost = 10
-
-setPassword :: UserProfile -> Text -> IO UserProfile
-setPassword oldProfile newPassword = do
-  userPassword <- encryptPassword newPassword
-  pure $ oldProfile{userPassword}
-
--- | Encrypt a password with a randomly generated 16-bytes salt.
---
--- Uses `bcrypt` hashing algorithm, returns salt and encrypted result as base64 encoded
--- bytestring.
-encryptPassword :: Text -> IO (Encoded Base64, Encoded Base64)
-encryptPassword newPassword = do
-  g <- newStdGen
-  let s = BS.pack $ take 16 $ randoms g
-      encrypted = encryptWithSalt s newPassword
-  pure encrypted
-
-authenticateUser :: Text -> UserProfile -> AuthResult AuthenticationToken
-authenticateUser password UserProfile{userId, userPassword = (userSalt, hashedPassword)}
-  | encrypt (fromBase64 userSalt) (encodeUtf8 password) == fromBase64 hashedPassword =
-      SAS.Authenticated $ AuthToken userId 1
-  | otherwise = SAS.BadPassword
 
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
   deriving (Eq, Show)

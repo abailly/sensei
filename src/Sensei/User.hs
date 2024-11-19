@@ -4,6 +4,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 module Sensei.User where
@@ -21,9 +22,11 @@ import Data.Time.Format.ISO8601 (iso8601ParseM, iso8601Show)
 import GHC.Generics (Generic)
 import Numeric.Natural
 import Preface.Codec (Base64, Encoded, Hex)
-import Sensei.Backend (Backend)
+import Sensei.Backend (Backend (..))
+import Sensei.Bsky ()
+import Sensei.Bsky.Core (BskyBackend)
 import Sensei.Color
-import Sensei.Flow
+import Sensei.FlowType (FlowType)
 import Sensei.Project (ProjectName, Regex)
 import Sensei.Time (TZLabel (..))
 import Sensei.Version (currentVersion)
@@ -172,7 +175,9 @@ parseJSONFromVersion v o =
   parseBackends =
     if v < 11
       then pure []
-      else o .: "backends"
+      else o .: "backends" >>= traverse parseBackend
+
+  parseBackend obj = Backend <$> parseJSON @BskyBackend obj
 
 instance ToJSON TimeZone where
   toJSON = String . Text.pack . iso8601Show

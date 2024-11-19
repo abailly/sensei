@@ -45,21 +45,28 @@ module Sensei.Server (
   -- * Server-side HTML
   module Sensei.Server.UI,
   logoutS,
+
+  -- * PasswordCorrect
+  setPassword,
+  authenticateUser,
+  encryptPassword,
 ) where
 
 import Control.Concurrent.MVar (MVar, putMVar)
 import Control.Exception.Safe (throwM, try)
-import Control.Monad (join, void)
+import Control.Monad (forM_, join, void)
 import Control.Monad.Trans
+import qualified Data.ByteString as BS
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
+import qualified Data.Text.Encoding as Encoding
 import Data.Text.Lazy (pack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import GHC.Stack (HasCallStack)
 import Network.HTTP.Link as Link
 import Network.URI.Extra ()
-import Preface.Codec (Encoded, Hex)
+import Preface.Codec (Base64, Encoded, Hex, fromBase64)
 import Sensei.API (
   CommandView,
   CurrentGoals (CurrentGoals),
@@ -89,6 +96,8 @@ import Sensei.API (
   rangeFromDay,
   toNominalDiffTime,
  )
+import Sensei.Backend (Backend (..))
+import Sensei.Backend.Class (IsBackend (..))
 import Sensei.DB (
   DB (..),
   EventsQueryResult (..),
@@ -101,6 +110,7 @@ import Sensei.Server.OpenApi
 import Sensei.Server.Options
 import Sensei.Server.UI
 import Sensei.Time ()
+import Sensei.User (UserName (..))
 import Sensei.Version (Versions (..), currentVersion, senseiVersion)
 import Servant (
   Header,
@@ -112,7 +122,8 @@ import Servant (
   err401,
   noHeader,
  )
-import Servant.Auth.Server as SAS (AuthResult (Authenticated))
+import qualified Servant.Auth.Server as SAS
+import System.Random (newStdGen, randoms)
 
 killS ::
   MonadIO m => MVar () -> m ()
@@ -132,7 +143,11 @@ getCurrentTimeS usr = do
 
 postEventS ::
   DB m => UserName -> [Event] -> m ()
-postEventS _user = mapM_ writeEvent
+postEventS (UserName usr) events = do
+  UserProfile{backends} <- getUserProfileS usr
+  forM_ backends $ \(Backend backend) ->
+    forM_ events $ postEvent backend
+  mapM_ writeEvent events
 
 updateFlowStartTimeS ::
   DB m => Text -> TimeDifference -> m Event
@@ -302,3 +317,29 @@ logoutS ::
         NoContent
     )
 logoutS cs = pure $ clearSession cs NoContent
+
+-- TODO: These should not be here, but there's a dependency on
+-- UserProfile which is problematic because it introduces
+-- cyclic dependencies
+
+setPassword :: UserProfile -> Text -> IO UserProfile
+setPassword oldProfile newPassword = do
+  userPassword <- encryptPassword newPassword
+  pure $ oldProfile{userPassword}
+
+-- | Encrypt a password with a randomly generated 16-bytes salt.
+--
+-- Uses `bcrypt` hashing algorithm, returns salt and encrypted result as base64 encoded
+-- bytestring.
+encryptPassword :: Text -> IO (Encoded Base64, Encoded Base64)
+encryptPassword newPassword = do
+  g <- newStdGen
+  let s = BS.pack $ take 16 $ randoms g
+      encrypted = encryptWithSalt s newPassword
+  pure encrypted
+
+authenticateUser :: Text -> UserProfile -> AuthResult AuthenticationToken
+authenticateUser password UserProfile{userId, userPassword = (userSalt, hashedPassword)}
+  | encrypt (fromBase64 userSalt) (Encoding.encodeUtf8 password) == fromBase64 hashedPassword =
+      SAS.Authenticated $ AuthToken userId 1
+  | otherwise = SAS.BadPassword
