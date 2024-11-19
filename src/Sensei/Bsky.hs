@@ -5,6 +5,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -14,6 +15,7 @@ module Sensei.Bsky where
 
 import Data.Aeson (FromJSON, ToJSON (..), withText)
 import Data.Aeson.Types (FromJSON (..))
+import Data.Maybe (fromJust)
 import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -21,8 +23,10 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import Network.URI.Extra (uriFromString)
 import Sensei.Backend.Class (IsBackend (..))
 import Sensei.Bsky.Core
+import Sensei.Client (ClientConfig (..))
 import Sensei.Event (Event)
 import Sensei.Server (SerializedToken (..))
 import Servant
@@ -102,3 +106,34 @@ bskyLogin :<|> bskyCreatePost = client (Proxy @BskyAPI)
 instance IsBackend BskyBackend where
   postEvent :: Monad m => BskyBackend -> Event -> m ()
   postEvent = undefined
+
+data BskyClientConfig = BskyClientConfig
+  { backend :: BskyBackend
+  , bskySession :: Maybe BskySession
+  }
+  deriving (Eq, Show)
+
+instance ClientConfig BskyClientConfig where
+  defConfig =
+    BskyClientConfig
+      { backend =
+          BskyBackend
+            { login = BskyLogin "" ""
+            , pdsUrl = fromJust $ uriFromString "http://localhost:12345"
+            }
+      , bskySession = Nothing
+      }
+
+  additionalHeaders _ hdrs = hdrs
+
+  setServerUri pdsUrl config@BskyClientConfig{backend} = config{backend = backend{pdsUrl}}
+
+  getServerUri BskyClientConfig{backend = BskyBackend{pdsUrl}} = pdsUrl
+
+  setAuthToken token config@BskyClientConfig{bskySession} = config{bskySession = updateLogin}
+   where
+    updateLogin = do
+      l <- bskySession
+      t <- token
+      pure $ l{accessJwt = t}
+  getAuthToken BskyClientConfig{bskySession} = accessJwt <$> bskySession

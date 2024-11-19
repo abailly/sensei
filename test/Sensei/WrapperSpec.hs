@@ -12,7 +12,7 @@ import Sensei.API (
   UserProfile (userCommands, userName),
   defaultProfile,
  )
-import Sensei.Client (setUserProfileC)
+import Sensei.Client (SenseiClientConfig, setUserProfileC)
 import Sensei.TestHelper (WaiSession, app, withApp)
 import Sensei.WaiTestHelper (isExpectedToBe, runRequest)
 import Sensei.Wrapper (
@@ -24,7 +24,7 @@ import Sensei.Wrapper (
 import System.Exit (ExitCode (ExitSuccess))
 import Test.Hspec (Spec, describe, it)
 
-io :: WrapperIO (WaiSession (Encoded Hex))
+io :: WrapperIO SenseiClientConfig (WaiSession (Encoded Hex))
 io = WrapperIO{..}
  where
   runProcess _ _ = pure ExitSuccess

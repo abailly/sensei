@@ -13,7 +13,8 @@ import Sensei.Backend (Backend (..))
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote_)
 import Sensei.Generators ()
-import Sensei.TestHelper (app, postJSON_, withApp)
+import Sensei.TestHelper (app, postJSON_, withApp, withBskyClient)
+import Sensei.WaiTestHelper (runRequest)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
 import Test.Hspec (Spec, it, pendingWith)
 
@@ -21,7 +22,7 @@ spec :: Spec
 spec = do
   roundtripAndGoldenSpecs (Proxy @BskyBackend)
 
-  withApp app $
+  withApp (withBskyClient runRequest app) $
     it "POST /api/log with configured Bksy account authenticates user and send post" $ do
       let profileWithBsky =
             defaultProfile

@@ -61,7 +61,7 @@ import Sensei.CLI.Options (
  )
 import Sensei.CLI.Terminal (captureNote, readPassword)
 import Sensei.Client (
-  ClientConfig (authToken),
+  SenseiClientConfig (authToken),
   getFlowC,
   getFreshTokenC,
   getGoalsC,
@@ -108,7 +108,7 @@ import System.IO (hPutStrLn, stderr)
 display :: ToJSON a => a -> IO ()
 display = LBS.putStr . encodePretty
 
-ep :: ClientConfig -> Options -> Text -> UTCTime -> Text -> IO ()
+ep :: SenseiClientConfig -> Options -> Text -> UTCTime -> Text -> IO ()
 ep config (QueryOptions (FlowQuery day False [])) usrName _ _ =
   send config (queryFlowDayC usrName day) >>= display
 ep config (QueryOptions (FlowQuery day True [])) usrName _ _ =

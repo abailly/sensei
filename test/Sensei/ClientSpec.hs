@@ -14,7 +14,7 @@ import Data.Sequence (fromList)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import Network.HTTP.Types (http11, status200)
-import Sensei.Client (ClientConfig (..), defaultConfig, getVersionsC, unClient)
+import Sensei.Client (SenseiClientConfig (..), defaultConfig, getVersionsC, unClient)
 import Sensei.Server (AuthenticationToken (..), SerializedToken (..))
 import Sensei.TestHelper (authTokenFor, sampleKey)
 import Sensei.Version (Version (..), Versions (..), currentVersion, senseiVersion, senseiVersionLBS, showVersion)
@@ -35,7 +35,7 @@ response = Response status200 (fromList [("Content-type", "application/json")]) 
 
 spec :: Spec
 spec = describe "ClientMonad" $ do
-  let aConfig = ClientConfig "http://1.2.3.4:1234" Nothing False Nothing Nothing
+  let aConfig = SenseiClientConfig "http://1.2.3.4:1234" Nothing False Nothing Nothing
   it "sets Host, Origin and X-API-Version header from ClientConfig info" $ do
     let [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) aConfig)
 

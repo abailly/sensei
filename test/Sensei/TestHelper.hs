@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Sensei.TestHelper (
@@ -45,6 +44,7 @@ module Sensei.TestHelper (
   withoutRootUser,
   withRootUser,
   withRootPassword,
+  withBskyClient,
 ) where
 
 import Control.Concurrent.MVar
@@ -66,6 +66,8 @@ import Network.Wai.Test (SResponse, modifyClientCookies, simpleHeaders)
 import Preface.Codec
 import Preface.Log
 import Sensei.App (initDB, senseiApp)
+import Sensei.Bsky (BskyClientConfig)
+import Sensei.Client (ClientMonad)
 import Sensei.Server
 import Sensei.Version
 import Servant
@@ -117,6 +119,9 @@ withRootPassword password builder =
 
 withApp :: AppBuilder -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
+
+withBskyClient :: (ClientMonad BskyClientConfig a -> WaiSession (Encoded Hex) a) -> AppBuilder -> AppBuilder
+withBskyClient = undefined
 
 withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempFile =
