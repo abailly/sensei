@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Sensei.Client.Monad (
   ClientConfig (..),
@@ -13,25 +14,34 @@ module Sensei.Client.Monad (
   ClientMonad (..),
   module Control.Monad.Reader,
   defaultConfig,
+  Config,
+  send,
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Concurrent.STM (newTVarIO)
+import Control.Exception (throwIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Trans (MonadTrans (..))
 import Data.Aeson (FromJSON (..), Object, ToJSON (..), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser)
 import Data.CaseInsensitive
+import Data.Kind (Type)
 import Data.Maybe (fromMaybe)
 import Data.Sequence
 import Data.Text (Text, pack)
 import Data.Text.Encoding (encodeUtf8)
+import Network.HTTP.Client (createCookieJar, defaultManagerSettings, newManager)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types (Header)
 import Network.URI.Extra (uriAuthToString, uriFromString, uriToString')
 import Numeric.Natural (Natural)
 import Sensei.Server.Auth (SerializedToken (..))
 import Sensei.Version
 import Servant hiding (Header)
+import Servant.Client (cookieJar, runClientM)
 import Servant.Client.Core
+import Servant.Client.Internal.HttpClient (mkClientEnv)
 
 data SenseiClientConfig = SenseiClientConfig
   { serverUri :: URI
@@ -82,6 +92,10 @@ parseJSONFromVersion n _ = fail $ "Unsupported version " <> show n
 
 defaultConfig :: SenseiClientConfig
 defaultConfig = SenseiClientConfig "http://localhost:23456" Nothing True Nothing Nothing
+
+-- | A type family to map a specfic backend insatnce to
+-- the required configuration
+type family Config backend :: Type
 
 class ClientConfig config where
   defConfig :: config
@@ -134,3 +148,16 @@ instance ClientConfig config => RunClient (ClientMonad config) where
     lift (runRequestAcceptStatus st request)
 
   throwClientError err = ClientMonad $ lift $ throwClientError err
+
+send :: ClientConfig config => config -> ClientMonad config a -> IO a
+send config act = do
+  let base = fromMaybe (BaseUrl Http "localhost" 23456 "") $ parseBaseUrl $ uriToString' $ getServerUri config
+  mgr <- case baseUrlScheme base of
+    Http -> newManager defaultManagerSettings
+    Https -> newManager tlsManagerSettings
+  jar <- newTVarIO (createCookieJar [])
+  let env = (mkClientEnv mgr base){cookieJar = Just jar}
+  res <- runClientM (runReaderT (unClient act) config) env
+  case res of
+    Left err -> throwIO err
+    Right v -> pure v

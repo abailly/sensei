@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -32,15 +31,9 @@ module Sensei.Client (
   send,
 ) where
 
-import Control.Concurrent.STM (newTVarIO)
-import Control.Exception (throwIO)
 import Data.Functor (void)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Time
-import Network.HTTP.Client (createCookieJar, defaultManagerSettings, newManager)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Network.URI.Extra (uriToString')
 import Preface.Codec (Encoded, Hex)
 import Sensei.API
 import Sensei.Client.Monad
@@ -85,16 +78,3 @@ getGoalsC :: Text -> ClientMonad SenseiClientConfig Goals
   :<|> (getFreshTokenC :<|> createUserProfileC :<|> getUserProfileC :<|> setUserProfileC)
   :<|> getVersionsC
   :<|> (postGoalC :<|> getGoalsC) = clientIn (Proxy @SenseiAPI) Proxy
-
-send :: ClientConfig config => config -> ClientMonad config a -> IO a
-send config act = do
-  let base = fromMaybe (BaseUrl Http "localhost" 23456 "") $ parseBaseUrl $ uriToString' $ getServerUri config
-  mgr <- case baseUrlScheme base of
-    Http -> newManager defaultManagerSettings
-    Https -> newManager tlsManagerSettings
-  jar <- newTVarIO (createCookieJar [])
-  let env = (mkClientEnv mgr base){cookieJar = Just jar}
-  res <- runClientM (runReaderT (unClient act) config) env
-  case res of
-    Left err -> throwIO err
-    Right v -> pure v

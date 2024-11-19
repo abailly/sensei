@@ -146,7 +146,7 @@ postEventS ::
 postEventS (UserName usr) events = do
   UserProfile{backends} <- getUserProfileS usr
   forM_ backends $ \(Backend backend) ->
-    forM_ events $ postEvent backend
+    forM_ events $ postEvent backend undefined
   mapM_ writeEvent events
 
 updateFlowStartTimeS ::

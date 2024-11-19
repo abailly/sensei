@@ -4,17 +4,20 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Sensei.Bsky where
 
+import Control.Lens ((^.))
 import Data.Aeson (FromJSON, ToJSON (..), withText)
 import Data.Aeson.Types (FromJSON (..))
+import Data.Functor (void)
 import Data.Maybe (fromJust)
 import Data.String (IsString)
 import Data.Text (Text)
@@ -24,10 +27,11 @@ import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import Network.URI.Extra (uriFromString)
-import Sensei.Backend.Class (IsBackend (..))
+import Sensei.Backend.Class (BackendIO (BackendIO, send), IsBackend (..))
 import Sensei.Bsky.Core
-import Sensei.Client.Monad (ClientConfig (..), ClientMonad)
-import Sensei.Event (Event)
+import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config)
+import Sensei.Event (Event (..))
+import Sensei.Flow (noteContent, noteTimestamp)
 import Sensei.Server.Auth (SerializedToken (..))
 import Servant
 import Servant.Client.Core (clientIn)
@@ -93,25 +97,42 @@ type Login =
 type CreatePost =
   "xrpc"
     :> "com.atproto.repo.createRecord"
-    :> Header "Authorization" BearerToken
     :> ReqBody '[JSON] BskyPost
     :> Post '[JSON] Record
 
 type BskyAPI = Login :<|> CreatePost
 
-bskyCreatePost :: Maybe BearerToken -> BskyPost -> ClientMonad BskyClientConfig Record
+bskyCreatePost :: BskyPost -> ClientMonad BskyClientConfig Record
 bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
 bskyLogin :<|> bskyCreatePost = clientIn (Proxy @BskyAPI) Proxy
 
 instance IsBackend BskyBackend where
-  postEvent :: Monad m => BskyBackend -> Event -> m ()
-  postEvent = undefined
+  postEvent :: Monad m => BskyBackend -> BackendIO BskyBackend m -> Event -> m ()
+  postEvent backend BackendIO{send} = \case
+    EventNote note -> do
+      let config = BskyClientConfig backend Nothing
+      session <- send config $ bskyLogin (login backend)
+      void $
+        send (config{bskySession = Just session}) $
+          bskyCreatePost
+            BskyPost
+              { record =
+                  BskyContent
+                    { text = note ^. noteContent
+                    , createdAt = note ^. noteTimestamp
+                    }
+              , repo = ""
+              , collection = BskyType
+              }
+    _ -> pure ()
 
 data BskyClientConfig = BskyClientConfig
   { backend :: BskyBackend
   , bskySession :: Maybe BskySession
   }
   deriving (Eq, Show)
+
+type instance Config BskyBackend = BskyClientConfig
 
 instance ClientConfig BskyClientConfig where
   defConfig =
