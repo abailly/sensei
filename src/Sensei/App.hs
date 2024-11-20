@@ -196,7 +196,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
               :<|> queryFlowS
            )
       :<|> searchNoteS
-      :<|> (postEventS :<|> getLogS)
+      :<|> (postEventS undefined :<|> getLogS)
       :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileIdS userId :<|> setUserProfileS)
       :<|> getVersionsS
       :<|> (postGoalS :<|> getGoalsS)

@@ -7,58 +7,59 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Sensei.DB
-  ( DB (..),
-    Event (..),
-    Reference (..),
-    Pagination (..),
-    EventsQueryResult (..),
-    TimeRange (..),
-    inRange,
-    flowView,
-    flowViewBuilder,
-    notesViewBuilder,
-    toNoteView,
-    commandViewBuilder,
-  )
+module Sensei.DB (
+  DB (..),
+  Event (..),
+  Reference (..),
+  Pagination (..),
+  EventsQueryResult (..),
+  TimeRange (..),
+  inRange,
+  flowView,
+  flowViewBuilder,
+  notesViewBuilder,
+  toNoteView,
+  commandViewBuilder,
+)
 where
 
-import Data.Kind(Type)
 import Control.Exception.Safe (Exception, MonadCatch)
 import Control.Lens ((^.))
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Data (Typeable)
+import Data.Kind (Type)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Time (NominalDiffTime, TimeOfDay, UTCTime)
 import GHC.Generics (Generic)
 import Preface.Codec (Encoded, Hex)
-import Sensei.API
-  ( CommandView,
-    Event (..),
-    EventView (EventView, event),
-    FlowView,
-    GoalOp,
-    Natural,
-    NoteFlow,
-    NoteView (..),
-    ProjectsMap,
-    Reference (..),
-    UserProfile,
-    appendFlow,
-    eventUser,
-    mkCommandView,
-    noteContent,
-    noteDir,
-    noteTimestamp,
-    selectProject,
-  )
-import Sensei.Time
-  ( TZLabel,
-    TimeRange (..),
-    inRange,
-    tzByLabel,
-    utcToLocalTimeTZ,
-  )
+import Sensei.API (
+  CommandView,
+  Event (..),
+  EventView (EventView, event),
+  FlowView,
+  GoalOp,
+  Natural,
+  NoteFlow,
+  NoteView (..),
+  ProjectsMap,
+  Reference (..),
+  UserProfile,
+  appendFlow,
+  eventUser,
+  mkCommandView,
+  noteContent,
+  noteDir,
+  noteTimestamp,
+  selectProject,
+ )
+import Sensei.Time (
+  TZLabel,
+  TimeRange (..),
+  inRange,
+  tzByLabel,
+  utcToLocalTimeTZ,
+ )
 
 data Pagination
   = Page {pageNumber :: Natural, pageSize :: Natural}
@@ -67,11 +68,11 @@ data Pagination
   deriving anyclass (ToJSON, FromJSON)
 
 data EventsQueryResult = EventsQueryResult
-  { resultEvents :: [EventView],
-    eventsCount :: Natural,
-    startIndex :: Natural,
-    endIndex :: Natural,
-    totalEvents :: Natural
+  { resultEvents :: [EventView]
+  , eventsCount :: Natural
+  , startIndex :: Natural
+  , endIndex :: Natural
+  , totalEvents :: Natural
   }
   deriving (Eq, Show)
 
@@ -79,7 +80,7 @@ data EventsQueryResult = EventsQueryResult
 -- This interface provide high-level functions to retrieve
 -- and store various pieces of data for the `Server`-side operations. It is expected
 -- to throw exceptions of type `DBError m`.
-class (Exception (DBError m), Eq (DBError m), MonadCatch m) => DB m where
+class (Exception (DBError m), Eq (DBError m), MonadCatch m, Typeable m) => DB m where
   type DBError m :: Type
 
   -- | Stores the current timestamp
@@ -143,23 +144,23 @@ flowViewBuilder usrName usrTimezone usrEndOfDay projectsMap flow =
 
 notesViewBuilder :: Text -> TZLabel -> ProjectsMap -> EventView -> [NoteView] -> [NoteView]
 notesViewBuilder usrName usrTimezone projectsMap flow = flowView flow usrName f
-  where
-    f :: EventView -> [NoteView] -> [NoteView]
-    f EventView {event = (EventNote note)} fragments =
-      toNoteView usrTimezone projectsMap note : fragments
-    f _ fragments = fragments
+ where
+  f :: EventView -> [NoteView] -> [NoteView]
+  f EventView{event = (EventNote note)} fragments =
+    toNoteView usrTimezone projectsMap note : fragments
+  f _ fragments = fragments
 
 toNoteView :: TZLabel -> ProjectsMap -> NoteFlow -> NoteView
 toNoteView (tzByLabel -> tz) projectsMap note =
   NoteView
-    { noteStart = utcToLocalTimeTZ tz (note ^. noteTimestamp),
-      noteView = note ^. noteContent,
-      noteProject = projectsMap `selectProject` (note ^. noteDir),
-      noteTags = []
+    { noteStart = utcToLocalTimeTZ tz (note ^. noteTimestamp)
+    , noteView = note ^. noteContent
+    , noteProject = projectsMap `selectProject` (note ^. noteDir)
+    , noteTags = []
     }
 
 commandViewBuilder :: TZLabel -> ProjectsMap -> EventView -> [CommandView] -> [CommandView]
-commandViewBuilder usrTimezone projectsMap EventView {event = t@(EventTrace _)} acc =
+commandViewBuilder usrTimezone projectsMap EventView{event = t@(EventTrace _)} acc =
   fromJust (mkCommandView usrTimezone projectsMap t) : acc
 commandViewBuilder _ _ _ acc = acc
 

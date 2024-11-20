@@ -57,6 +57,7 @@ import Control.Exception.Safe (throwM, try)
 import Control.Monad (forM_, join, void)
 import Control.Monad.Trans
 import qualified Data.ByteString as BS
+import Data.Data (Proxy (Proxy), Typeable)
 import qualified Data.List as List
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
@@ -97,7 +98,8 @@ import Sensei.API (
   toNominalDiffTime,
  )
 import Sensei.Backend (Backend (..))
-import Sensei.Backend.Class (IsBackend (..))
+import Sensei.Backend.Class (Backends, IsBackend (..))
+import qualified Sensei.Backend.Class as Backend
 import Sensei.DB (
   DB (..),
   EventsQueryResult (..),
@@ -142,12 +144,17 @@ getCurrentTimeS usr = do
   Timestamp <$> getCurrentTime usrProfile
 
 postEventS ::
-  DB m => UserName -> [Event] -> m ()
-postEventS (UserName usr) events = do
+  DB m => Backends m -> UserName -> [Event] -> m ()
+postEventS backendsMap (UserName usr) events = do
   UserProfile{backends} <- getUserProfileS usr
-  forM_ backends $ \(Backend backend) ->
-    forM_ events $ postEvent backend undefined
+  forM_ backends $ \(Backend backend) -> handleBackend backendsMap backend events
   mapM_ writeEvent events
+
+handleBackend :: forall m backend. (Monad m, Typeable m, IsBackend backend) => Backends m -> backend -> [Event] -> m ()
+handleBackend backendsMap backend events =
+  maybe (pure ()) (forM_ events . postEvent backend) backendIO
+ where
+  backendIO = Backend.lookup (Proxy @backend) backendsMap
 
 updateFlowStartTimeS ::
   DB m => Text -> TimeDifference -> m Event
