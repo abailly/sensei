@@ -98,7 +98,7 @@ import Sensei.API (
   toNominalDiffTime,
  )
 import Sensei.Backend (Backend (..))
-import Sensei.Backend.Class (Backends, IsBackend (..))
+import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
 import Sensei.DB (
   DB (..),
@@ -147,12 +147,12 @@ postEventS ::
   DB m => Backends -> UserName -> [Event] -> m ()
 postEventS backendsMap (UserName usr) events = do
   UserProfile{backends} <- getUserProfileS usr
-  forM_ backends $ \(Backend backend) -> handleEvents backend
+  forM_ backends $ \(Backend backend) -> handleEvents backendsMap events backend
   mapM_ writeEvent events
- where
-  handleEvents :: forall m backend. (Monad m, Typeable m, IsBackend backend) => backend -> m ()
-  handleEvents backend =
-    maybe (pure ()) (forM_ events . postEvent backend) (Backend.lookup (Proxy @backend) backendsMap)
+
+handleEvents :: forall m backend. (Monad m, Typeable m, Typeable backend) => Backends -> [Event] -> backend -> m ()
+handleEvents backendsMap events backend =
+  maybe (pure ()) (\BackendHandler{handleEvent} -> forM_ events $ handleEvent backend) (Backend.lookup (Proxy @backend) backendsMap)
 
 updateFlowStartTimeS ::
   DB m => Text -> TimeDifference -> m Event

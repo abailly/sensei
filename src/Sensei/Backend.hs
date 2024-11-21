@@ -3,10 +3,10 @@
 module Sensei.Backend where
 
 import Data.Aeson (FromJSON (..), ToJSON (..))
-import Sensei.Backend.Class (IsBackend)
+import Data.Typeable (Typeable)
 
 data Backend where
-  Backend :: (IsBackend backend, Show backend, ToJSON backend, FromJSON backend) => backend -> Backend
+  Backend :: (Show backend, ToJSON backend, FromJSON backend, Typeable backend) => backend -> Backend
 
 instance Eq Backend where
   Backend backend == Backend backend' = toJSON backend == toJSON backend'

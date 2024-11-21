@@ -18,7 +18,7 @@ spec =
         getJSON "/api/flows/arnaud"
           `shouldRespondWith` 200
 
-    withApp (app {withEnv = Prod}) $
+    withApp (app{withEnv = Prod}) $
       it "serves 'index.html' embedded" $ do
         get "/index.html"
           `shouldRespondWith` 200
@@ -32,10 +32,10 @@ spec =
         getJSON "/time/arnaud"
           `shouldRespondJSONBody` times
 
-    withApp (app {withFailingStorage = True}) $
-      it "returns error 500 with details given DB fails to access storage file" $ do
+    withApp (app{withFailingStorage = True}) $
+      it "returns error 400 with details given DB fails to access storage file" $ do
         postFlow anOtherFlow
-          `shouldRespondWith` 500
+          `shouldRespondWith` 400
 
     describe "Run mode and Options" $ do
       it "parses client mode and pass arguments to it" $ do

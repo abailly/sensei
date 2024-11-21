@@ -7,22 +7,16 @@
 
 module Sensei.Backend.Class where
 
-import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.Dynamic (Dynamic (..), fromDynamic, toDyn)
 import qualified Data.Map as Map
 import Data.Typeable (Proxy (Proxy), Typeable)
-import Sensei.Client.Monad (ClientMonad, Config)
 import Sensei.Event (Event)
 import Type.Reflection (SomeTypeRep, someTypeRep)
 
-data BackendIO backend m = BackendIO
-  { send :: forall a. Config backend -> ClientMonad (Config backend) a -> m a
-  }
+-- | Handles a single `Event` for the given `backend`.
+newtype BackendHandler backend m = BackendHandler {handleEvent :: backend -> Event -> m ()}
 
-class (ToJSON backend, FromJSON backend, Show backend, Typeable backend) => IsBackend backend where
-  postEvent :: Monad m => backend -> BackendIO backend m -> Event -> m ()
-
--- | Provides type-indexed mapping to `BackendIO` instances.
+-- | Provides type-indexed mapping to `BackendHandler` instances.
 newtype Backends = Backends {backendsMap :: Map.Map SomeTypeRep Dynamic}
 
 keys :: Backends -> [SomeTypeRep]
@@ -36,14 +30,14 @@ lookup ::
   (Typeable m, Typeable backend) =>
   proxy backend ->
   Backends ->
-  Maybe (BackendIO backend m)
+  Maybe (BackendHandler backend m)
 lookup proxy Backends{backendsMap} =
   Map.lookup (someTypeRep proxy) backendsMap >>= fromDynamic
 
 insert ::
   forall m backend.
   (Typeable m, Typeable backend) =>
-  BackendIO backend m ->
+  BackendHandler backend m ->
   Backends ->
   Backends
 insert backend Backends{backendsMap} =

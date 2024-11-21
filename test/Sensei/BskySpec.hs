@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wwarn #-}
 
 module Sensei.BskySpec where
 
@@ -10,12 +9,11 @@ import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Maybe (fromJust)
 import Data.Time (UTCTime (..))
 import Network.URI.Extra (uriFromString)
-import Sensei.API (NoteFlow (..), UserProfile (..), defaultProfile)
+import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.App (AppM)
 import Sensei.Backend (Backend (..))
-import Sensei.Backend.Class (BackendIO (..), Backends)
+import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyClientConfig, backend)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote_)
 import Sensei.Generators ()
@@ -52,13 +50,13 @@ spec = do
 
       postNote_ flow2
 
-      liftIO $ (backend . head <$> readIORef calls) `shouldReturn` bskyBackend
+      liftIO $ (head <$> readIORef calls) `shouldReturn` EventNote flow2
 
-mkBackends :: IORef [BskyClientConfig] -> Backends
+mkBackends :: IORef [Event] -> Backends
 mkBackends ref = Backend.insert bskyIO Backend.empty
  where
-  bskyIO :: BackendIO BskyBackend AppM
+  bskyIO :: BackendHandler BskyBackend AppM
   bskyIO =
-    BackendIO
-      { send = \config _a -> liftIO $ atomicModifyIORef' ref (\cs -> (config : cs, undefined))
+    BackendHandler
+      { handleEvent = \_ event -> liftIO $ atomicModifyIORef' ref (\es -> (event : es, ()))
       }

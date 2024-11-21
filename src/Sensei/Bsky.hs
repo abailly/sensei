@@ -3,10 +3,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -27,7 +27,7 @@ import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import Network.URI.Extra (uriFromString)
-import Sensei.Backend.Class (BackendIO (BackendIO, send), IsBackend (..))
+import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config)
 import Sensei.Event (Event (..))
@@ -106,9 +106,18 @@ bskyCreatePost :: BskyPost -> ClientMonad BskyClientConfig Record
 bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
 bskyLogin :<|> bskyCreatePost = clientIn (Proxy @BskyAPI) Proxy
 
-instance IsBackend BskyBackend where
-  postEvent :: Monad m => BskyBackend -> BackendIO BskyBackend m -> Event -> m ()
-  postEvent backend BackendIO{send} = \case
+-- | An Event handler that transforms `FlowNote` into `BskyPost`s.
+--
+-- This requires a function to hander `ClientMonad`'s requests.
+bskyEventHandler ::
+  forall m.
+  Monad m =>
+  (forall a. BskyClientConfig -> ClientMonad BskyClientConfig a -> m a) ->
+  BackendHandler BskyBackend m
+bskyEventHandler send = BackendHandler{handleEvent}
+ where
+  handleEvent :: Monad m => BskyBackend -> Event -> m ()
+  handleEvent backend = \case
     EventNote note -> do
       let config = BskyClientConfig backend Nothing
       session <- send config $ bskyLogin (login backend)
