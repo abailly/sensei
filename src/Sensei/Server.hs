@@ -144,17 +144,15 @@ getCurrentTimeS usr = do
   Timestamp <$> getCurrentTime usrProfile
 
 postEventS ::
-  DB m => Backends m -> UserName -> [Event] -> m ()
+  DB m => Backends -> UserName -> [Event] -> m ()
 postEventS backendsMap (UserName usr) events = do
   UserProfile{backends} <- getUserProfileS usr
-  forM_ backends $ \(Backend backend) -> handleBackend backendsMap backend events
+  forM_ backends $ \(Backend backend) -> handleEvents backend
   mapM_ writeEvent events
-
-handleBackend :: forall m backend. (Monad m, Typeable m, IsBackend backend) => Backends m -> backend -> [Event] -> m ()
-handleBackend backendsMap backend events =
-  maybe (pure ()) (forM_ events . postEvent backend) backendIO
  where
-  backendIO = Backend.lookup (Proxy @backend) backendsMap
+  handleEvents :: forall m backend. (Monad m, Typeable m, IsBackend backend) => backend -> m ()
+  handleEvents backend =
+    maybe (pure ()) (forM_ events . postEvent backend) (Backend.lookup (Proxy @backend) backendsMap)
 
 updateFlowStartTimeS ::
   DB m => Text -> TimeDifference -> m Event

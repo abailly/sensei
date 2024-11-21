@@ -27,6 +27,7 @@ library
     Sensei.API
     Sensei.App
     Sensei.Backend
+    Sensei.Backend.Class
     Sensei.Bsky
     Sensei.Bsky.Core
     Sensei.CLI
@@ -46,7 +47,6 @@ library
 
   other-modules:
     Paths_sensei
-    Sensei.Backend.Class
     Sensei.CLI.Options
     Sensei.CLI.Terminal
     Sensei.Client.Monad

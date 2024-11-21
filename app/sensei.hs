@@ -1,13 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Main where
 
@@ -16,16 +10,27 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack, unpack)
 import qualified Data.Time as Time
 import Sensei.API (userDefinedFlows)
-import Sensei.App
-import Sensei.CLI
+import Sensei.App (startServer)
+import Sensei.CLI (ep, runOptionsParser)
 import qualified Sensei.Client as Client
 import Sensei.IO (readConfig)
 import qualified Sensei.Server as Server
-import Sensei.Wrapper
-import System.Directory
-import System.Environment
+import Sensei.Wrapper (
+  WrapperIO (send),
+  handleWrapperResult,
+  tryWrapProg,
+  wrapperIO,
+ )
+import System.Directory (getCurrentDirectory)
+import System.Environment (getArgs, getProgName, lookupEnv)
 import System.Exit (exitFailure)
-import System.IO
+import System.IO (
+  BufferMode (NoBuffering),
+  hPutStrLn,
+  hSetBuffering,
+  stderr,
+  stdout,
+ )
 
 main :: IO ()
 main = do
@@ -48,24 +53,24 @@ main = do
       opts <- Server.parseSenseiOptions
       case opts of
         Server.ServerOptions _ -> startServer configDir
-        Server.ClientOptions args -> runClient io args realUser config st currentDir
+        Server.ClientOptions arguments -> runClient io arguments realUser config st currentDir
     _ -> do
       res <- tryWrapProg io realUser prog progArgs currentDir
       handleWrapperResult prog res
 
 runClient ::
-  WrapperIO IO ->
+  WrapperIO Client.SenseiClientConfig IO ->
   [String] ->
   Text ->
-  Client.ClientConfig ->
+  Client.SenseiClientConfig ->
   Time.UTCTime ->
   Text ->
   IO ()
-runClient io args realUser config st currentDir = do
+runClient io arguments realUser config st currentDir = do
   res <- try @Client.ClientError $ send io Client.getUserProfileC
   let flows = case res of
         Left _err -> Nothing
         Right profile -> userDefinedFlows profile
-  case runOptionsParser flows args of
+  case runOptionsParser flows arguments of
     Left err -> hPutStrLn stderr (unpack err) >> exitFailure
     Right opts -> ep config opts realUser st currentDir

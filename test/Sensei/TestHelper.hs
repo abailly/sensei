@@ -46,7 +46,7 @@ module Sensei.TestHelper (
   withoutRootUser,
   withRootUser,
   withRootPassword,
-  withBskyClient,
+  withBackends,
 ) where
 
 import Control.Concurrent.MVar
@@ -68,8 +68,8 @@ import Network.Wai.Test (SResponse, modifyClientCookies, simpleHeaders)
 import Preface.Codec
 import Preface.Log
 import Sensei.App (initDB, senseiApp)
-import Sensei.Bsky (BskyClientConfig)
-import Sensei.Client (ClientMonad)
+import Sensei.Backend.Class (Backends)
+import qualified Sensei.Backend.Class as Backend
 import Sensei.Server
 import Sensei.Version
 import Servant
@@ -91,7 +91,7 @@ data AppBuilder = AppBuilder
   , withStorage :: Bool
   , withFailingStorage :: Bool
   , withEnv :: Env
-  , bskyClient :: forall a. ClientMonad BskyClientConfig a -> WaiSession (Encoded Hex) a
+  , backends :: Backends
   }
 
 app :: AppBuilder
@@ -102,7 +102,7 @@ app =
     , withStorage = True
     , withFailingStorage = False
     , withEnv = Dev
-    , bskyClient = undefined
+    , backends = Backend.empty
     }
 
 withoutStorage :: AppBuilder -> AppBuilder
@@ -120,9 +120,9 @@ withRootPassword password builder =
       encrypted = encryptWithSalt salt password
    in builder{rootPassword = Just encrypted}
 
-withBskyClient :: (forall a. ClientMonad BskyClientConfig a -> WaiSession (Encoded Hex) a) -> AppBuilder -> AppBuilder
-withBskyClient bskyClient builder =
-  builder{bskyClient}
+withBackends :: Backends -> AppBuilder -> AppBuilder
+withBackends backends builder =
+  builder{backends}
 
 withApp :: AppBuilder -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
@@ -142,7 +142,7 @@ buildApp AppBuilder{..} act =
     withTempDir $ \config -> do
       signal <- newEmptyMVar
       userId <- initDB rootUser rootPassword file config fakeLogger
-      application <- senseiApp Nothing signal sampleKey file config fakeLogger
+      application <- senseiApp Nothing signal sampleKey file config fakeLogger backends
       when withFailingStorage $ removePathForcibly file
       act (userId, application)
 

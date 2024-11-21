@@ -52,6 +52,7 @@ import Sensei.API (
   UserProfile (userId, userName, userPassword),
   defaultProfile,
  )
+import Sensei.Backend.Class (Backends)
 import Sensei.DB (DB (initLogStorage, insertProfile, readProfile))
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite (
@@ -81,6 +82,8 @@ import Servant (
  )
 import System.Environment (lookupEnv)
 import System.FilePath ((</>))
+
+type AppM = ReaderT LoggerEnv SQLiteDB
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -133,7 +136,7 @@ sensei output = do
     serverConfig
     ( \logger -> do
         void $ initDB rootUser rootPassword output configDir logger
-        senseiApp env signal key output configDir logger
+        senseiApp env signal key output configDir logger undefined
     )
     $ \server ->
       waitServer server `race_` (takeMVar signal >> stopServer server)
@@ -150,8 +153,8 @@ initDB rootUser rootPassword output configDir logger =
     let rootProfile = defaultProfile{userName, userPassword = fromMaybe ("", "") rootPassword}
     either (const $ insertProfile rootProfile) (pure . userId) prof
 
-senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> IO Application
-senseiApp env signal publicAuthKey output configDir logger = do
+senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> Backends -> IO Application
+senseiApp env signal publicAuthKey output configDir logger backends = do
   let jwtConfig = defaultJWTSettings publicAuthKey
       cookieConfig = defaultCookieSettings{cookieXsrfSetting = Nothing}
       contextConfig = jwtConfig :. cookieConfig :. EmptyContext
@@ -162,27 +165,28 @@ senseiApp env signal publicAuthKey output configDir logger = do
       hoistServerWithContext fullAPI contextProxy runApp $
         pure senseiSwagger
           :<|> loginS jwtConfig cookieConfig
-          :<|> validateAuth jwtConfig cookieConfig
+          :<|> validateAuth backends jwtConfig cookieConfig
           :<|> Tagged (userInterface env)
  where
-  runApp :: ReaderT LoggerEnv SQLiteDB x -> Handler x
+  runApp :: AppM x -> Handler x
   runApp = Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger
 
   handleDBError :: IO a -> IO a
   handleDBError io =
     io `catch` \(SQLiteDBError _q txt) -> throwM $ err500{errBody = fromStrict $ encodeUtf8 txt}
 
-  validateAuth jwtConfig cookieConfig (Authenticated (AuthToken userId _)) =
-    baseServer jwtConfig cookieConfig userId
-  validateAuth _ _ _ = throwAll err401{errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
+  validateAuth backendMap jwtConfig cookieConfig (Authenticated (AuthToken userId _)) =
+    baseServer backendMap jwtConfig cookieConfig userId
+  validateAuth _ _ _ _ = throwAll err401{errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}
 
   baseServer ::
     (MonadIO m, DB m) =>
+    Backends ->
     JWTSettings ->
     CookieSettings ->
     Encoded Hex ->
     ServerT (KillServer :<|> LogoutAPI :<|> SetCurrentTime :<|> GetCurrentTime :<|> SenseiAPI) m
-  baseServer jwtSettings cookieSettings userId =
+  baseServer backendMap jwtSettings cookieSettings userId =
     killS signal
       :<|> logoutS cookieSettings
       :<|> setCurrentTimeS
@@ -196,7 +200,7 @@ senseiApp env signal publicAuthKey output configDir logger = do
               :<|> queryFlowS
            )
       :<|> searchNoteS
-      :<|> (postEventS undefined :<|> getLogS)
+      :<|> (postEventS backendMap :<|> getLogS)
       :<|> (getFreshTokenS jwtSettings :<|> createUserProfileS :<|> getUserProfileIdS userId :<|> setUserProfileS)
       :<|> getVersionsS
       :<|> (postGoalS :<|> getGoalsS)
