@@ -16,6 +16,7 @@ import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote_)
+import Sensei.DB.SQLite (SQLiteDB)
 import Sensei.Generators ()
 import Sensei.TestHelper (app, putJSON_, withApp, withBackends)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
@@ -65,7 +66,7 @@ spec = do
 mkBackends :: IORef [Event] -> Backends
 mkBackends ref = Backend.insert bskyIO Backend.empty
  where
-  bskyIO :: BackendHandler BskyBackend AppM
+  bskyIO :: BackendHandler BskyBackend (AppM SQLiteDB)
   bskyIO =
     BackendHandler
       { handleEvent = \_ event -> liftIO $ atomicModifyIORef' ref (\es -> (event : es, ()))

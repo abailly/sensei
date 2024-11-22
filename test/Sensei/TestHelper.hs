@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -52,7 +53,8 @@ module Sensei.TestHelper (
 import Control.Concurrent.MVar
 import Control.Exception.Safe (Exception, bracket, catch)
 import Control.Monad (unless, when)
-import Control.Monad.Reader (ReaderT (..))
+import Control.Monad.Error.Class (MonadError)
+import Control.Monad.Reader (MonadIO, ReaderT (..))
 import qualified Data.Aeson as A
 import Data.ByteString (ByteString, isInfixOf)
 import qualified Data.ByteString as BS
@@ -67,9 +69,11 @@ import qualified Network.HTTP.Types.Header as HTTP
 import Network.Wai.Test (SResponse, modifyClientCookies, simpleHeaders)
 import Preface.Codec
 import Preface.Log
-import Sensei.App (initDB, senseiApp)
+import Sensei.App (initDB, runApp, senseiApp)
 import Sensei.Backend.Class (Backends)
 import qualified Sensei.Backend.Class as Backend
+import Sensei.DB (DB)
+import Sensei.DB.SQLite (SQLiteDB, runDB)
 import Sensei.Server
 import Sensei.Version
 import Servant
@@ -85,16 +89,17 @@ import Test.Hspec.Wai.Internal (WaiSession (..))
 import Test.Hspec.Wai.Matcher as W
 import Web.Cookie (parseCookies)
 
-data AppBuilder = AppBuilder
+data AppBuilder db = AppBuilder
   { rootUser :: Maybe Text
   , rootPassword :: Maybe (Encoded Base64, Encoded Base64)
   , withStorage :: Bool
   , withFailingStorage :: Bool
   , withEnv :: Env
   , backends :: Backends
+  , dbRunner :: forall x. FilePath -> FilePath -> LoggerEnv -> (db x -> IO x)
   }
 
-app :: AppBuilder
+app :: AppBuilder SQLiteDB
 app =
   AppBuilder
     { rootUser = Just "arnaud"
@@ -103,28 +108,29 @@ app =
     , withFailingStorage = False
     , withEnv = Dev
     , backends = Backend.empty
+    , dbRunner = runDB
     }
 
-withoutStorage :: AppBuilder -> AppBuilder
+withoutStorage :: AppBuilder db -> AppBuilder db
 withoutStorage builder = builder{withStorage = False}
 
-withoutRootUser :: AppBuilder -> AppBuilder
+withoutRootUser :: AppBuilder db -> AppBuilder db
 withoutRootUser builder = builder{rootUser = Nothing}
 
-withRootUser :: Text -> AppBuilder -> AppBuilder
+withRootUser :: Text -> AppBuilder db -> AppBuilder db
 withRootUser user builder = builder{rootUser = Just user}
 
-withRootPassword :: HasCallStack => Text -> AppBuilder -> AppBuilder
+withRootPassword :: HasCallStack => Text -> AppBuilder db -> AppBuilder db
 withRootPassword password builder =
   let salt = BS.pack $ take 16 $ randoms (mkStdGen 12)
       encrypted = encryptWithSalt salt password
    in builder{rootPassword = Just encrypted}
 
-withBackends :: Backends -> AppBuilder -> AppBuilder
+withBackends :: Backends -> AppBuilder db -> AppBuilder db
 withBackends backends builder =
   builder{backends}
 
-withApp :: AppBuilder -> SpecWith (Encoded Hex, Application) -> Spec
+withApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
 
 withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
@@ -135,14 +141,15 @@ withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempDir =
   bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
-buildApp :: AppBuilder -> ActionWith (Encoded Hex, Application) -> IO ()
+buildApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> ActionWith (Encoded Hex, Application) -> IO ()
 buildApp AppBuilder{..} act =
   withTempFile $ \file -> do
     unless withStorage $ removePathForcibly file
     withTempDir $ \config -> do
       signal <- newEmptyMVar
-      userId <- initDB rootUser rootPassword file config fakeLogger
-      application <- senseiApp Nothing signal sampleKey file config fakeLogger backends
+      let dbRun = dbRunner file config fakeLogger
+      userId <- initDB rootUser rootPassword dbRun
+      application <- senseiApp Nothing signal sampleKey (runApp dbRun fakeLogger) backends
       when withFailingStorage $ removePathForcibly file
       act (userId, application)
 

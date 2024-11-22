@@ -15,6 +15,7 @@ module Sensei.App where
 
 import Control.Concurrent.Async (race_)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, takeMVar)
+import Control.Exception (Exception)
 import Control.Exception.Safe (catch, throwM, try)
 import Control.Monad (void)
 import Control.Monad.Except (ExceptT (ExceptT), MonadError (..))
@@ -58,7 +59,6 @@ import Sensei.DB (DB (initLogStorage, insertProfile, readProfile), DBError)
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite (
   SQLiteDB,
-  SQLiteDBError (..),
   getDataFile,
   runDB,
  )
@@ -83,8 +83,6 @@ import Servant (
  )
 import System.Environment (lookupEnv)
 import System.FilePath ((</>))
-
-type AppM db = ReaderT LoggerEnv db
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -137,17 +135,29 @@ sensei output = do
     serverConfig
     ( \logger -> do
         let dbRunner = runDB output configDir logger
-
-            handleDBError io =
-              io `catch` \(SQLiteDBError _q txt) -> throwM $ err500{errBody = fromStrict $ encodeUtf8 txt}
-
-            runApp = Handler . ExceptT . try . handleDBError . dbRunner . flip runReaderT logger
-
         void $ initDB rootUser rootPassword dbRunner
-        senseiApp env signal key runApp undefined
+        senseiApp env signal key (runApp dbRunner logger) undefined
     )
     $ \server ->
       waitServer server `race_` (takeMVar signal >> stopServer server)
+
+-- | Type of full application parameterised by underlying `DB` driver
+type AppM db = ReaderT LoggerEnv db
+
+-- | Turn an `AppM` into a Servant's `Handler` monad.
+-- This is parameterised by a `DB` runner to access underlying storage, and a `LoggerEnv` providing
+-- raw logging backend.
+runApp ::
+  forall db a.
+  (Exception (DBError db), Show (DBError db)) =>
+  (forall x. db x -> IO x) ->
+  LoggerEnv ->
+  AppM db a ->
+  Handler a
+runApp dbRunner logger = Handler . ExceptT . try . handleDBError . dbRunner . flip runReaderT logger
+ where
+  handleDBError io =
+    io `catch` \(e :: DBError db) -> throwM $ err500{errBody = fromStrict $ encodeUtf8 $ pack $ show e}
 
 -- | Initialises the DB and returns the root user's id.
 initDB :: forall db. DB db => Maybe Text -> Maybe (Encoded Base64, Encoded Base64) -> (forall x. db x -> IO x) -> IO (Encoded Hex)
@@ -170,7 +180,7 @@ senseiApp ::
   (forall x. AppM db x -> Handler x) ->
   Backends ->
   IO Application
-senseiApp env signal publicAuthKey runApp backends = do
+senseiApp env signal publicAuthKey appRunner backends = do
   let jwtConfig = defaultJWTSettings publicAuthKey
       cookieConfig = defaultCookieSettings{cookieXsrfSetting = Nothing}
       contextConfig = jwtConfig :. cookieConfig :. EmptyContext
@@ -178,7 +188,7 @@ senseiApp env signal publicAuthKey runApp backends = do
       contextProxy = Proxy
   pure $
     serveWithContext fullAPI contextConfig $
-      hoistServerWithContext fullAPI contextProxy runApp $
+      hoistServerWithContext fullAPI contextProxy appRunner $
         pure senseiSwagger
           :<|> loginS jwtConfig cookieConfig
           :<|> validateAuth backends jwtConfig cookieConfig
