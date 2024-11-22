@@ -54,7 +54,7 @@ import Sensei.API (
   defaultProfile,
  )
 import Sensei.Backend.Class (Backends)
-import Sensei.DB (DB (initLogStorage, insertProfile, readProfile))
+import Sensei.DB (DB (initLogStorage, insertProfile, readProfile), DBError)
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite (
   SQLiteDB,
@@ -84,7 +84,7 @@ import Servant (
 import System.Environment (lookupEnv)
 import System.FilePath ((</>))
 
-type AppM = ReaderT LoggerEnv SQLiteDB
+type AppM db = ReaderT LoggerEnv db
 
 type FullAPI =
   "swagger.json" :> Get '[JSON] Swagger
@@ -137,26 +137,40 @@ sensei output = do
     serverConfig
     ( \logger -> do
         let dbRunner = runDB output configDir logger
+
+            handleDBError io =
+              io `catch` \(SQLiteDBError _q txt) -> throwM $ err500{errBody = fromStrict $ encodeUtf8 txt}
+
+            runApp = Handler . ExceptT . try . handleDBError . dbRunner . flip runReaderT logger
+
         void $ initDB rootUser rootPassword dbRunner
-        senseiApp env signal key dbRunner logger undefined
+        senseiApp env signal key runApp undefined
     )
     $ \server ->
       waitServer server `race_` (takeMVar signal >> stopServer server)
 
 -- | Initialises the DB and returns the root user's id.
-initDB :: Maybe Text -> Maybe (Encoded Base64, Encoded Base64) -> (forall x. SQLiteDB x -> IO x) -> IO (Encoded Hex)
+initDB :: forall db. DB db => Maybe Text -> Maybe (Encoded Base64, Encoded Base64) -> (forall x. db x -> IO x) -> IO (Encoded Hex)
 initDB rootUser rootPassword dbRunner =
   dbRunner $ do
     initLogStorage
     maybe (pure "") ensureUserExists rootUser
  where
+  ensureUserExists :: Text -> db (Encoded Hex)
   ensureUserExists userName = do
-    prof <- try @_ @SQLiteDBError $ readProfile userName
+    prof <- try @_ @(DBError db) $ readProfile userName
     let rootProfile = defaultProfile{userName, userPassword = fromMaybe ("", "") rootPassword}
     either (const $ insertProfile rootProfile) (pure . userId) prof
 
-senseiApp :: Maybe Env -> MVar () -> JWK -> (forall x. SQLiteDB x -> IO x) -> LoggerEnv -> Backends -> IO Application
-senseiApp env signal publicAuthKey dbRunner logger backends = do
+senseiApp ::
+  (MonadIO db, DB db, MonadError ServerError db) =>
+  Maybe Env ->
+  MVar () ->
+  JWK ->
+  (forall x. AppM db x -> Handler x) ->
+  Backends ->
+  IO Application
+senseiApp env signal publicAuthKey runApp backends = do
   let jwtConfig = defaultJWTSettings publicAuthKey
       cookieConfig = defaultCookieSettings{cookieXsrfSetting = Nothing}
       contextConfig = jwtConfig :. cookieConfig :. EmptyContext
@@ -170,13 +184,6 @@ senseiApp env signal publicAuthKey dbRunner logger backends = do
           :<|> validateAuth backends jwtConfig cookieConfig
           :<|> Tagged (userInterface env)
  where
-  runApp :: AppM x -> Handler x
-  runApp = Handler . ExceptT . try . handleDBError . dbRunner . flip runReaderT logger
-
-  handleDBError :: IO a -> IO a
-  handleDBError io =
-    io `catch` \(SQLiteDBError _q txt) -> throwM $ err500{errBody = fromStrict $ encodeUtf8 txt}
-
   validateAuth backendMap jwtConfig cookieConfig (Authenticated (AuthToken userId _)) =
     baseServer backendMap jwtConfig cookieConfig userId
   validateAuth _ _ _ _ = throwAll err401{errHeaders = [("www-authenticate", "Bearer realm=\"sensei\"")]}

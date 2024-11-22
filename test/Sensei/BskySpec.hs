@@ -25,26 +25,36 @@ spec :: Spec
 spec = do
   roundtripAndGoldenSpecs (Proxy @BskyBackend)
 
+  let bskyBackend =
+        BskyBackend
+          { login =
+              BskyLogin
+                { identifier = "bob.bsky.social"
+                , password = "password"
+                }
+          , pdsUrl = fromJust $ uriFromString "https://some.social"
+          }
+      profileWithBsky =
+        defaultProfile
+          { backends =
+              [ Backend bskyBackend
+              ]
+          }
+
   calls <- runIO (newIORef [])
 
-  withApp (withBackends (mkBackends calls) app) $
+  withApp (withBackends (mkBackends calls) app) $ do
     it "POST /api/log with configured Bsky backend config leads to backend being called" $ do
-      let bskyBackend =
-            BskyBackend
-              { login =
-                  BskyLogin
-                    { identifier = "bob.bsky.social"
-                    , password = "password"
-                    }
-              , pdsUrl = fromJust $ uriFromString "https://some.social"
-              }
-          profileWithBsky =
-            defaultProfile
-              { backends =
-                  [ Backend bskyBackend
-                  ]
-              }
-          flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
+      let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
+
+      putJSON_ "/api/users/arnaud" profileWithBsky
+
+      postNote_ flow2
+
+      liftIO $ (head <$> readIORef calls) `shouldReturn` EventNote flow2
+
+    it "POST /api/log does not propagate events to backend if write fails" $ do
+      let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
 
       putJSON_ "/api/users/arnaud" profileWithBsky
 
