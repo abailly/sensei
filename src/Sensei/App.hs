@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
@@ -135,16 +136,17 @@ sensei output = do
   withAppServer
     serverConfig
     ( \logger -> do
-        void $ initDB rootUser rootPassword output configDir logger
-        senseiApp env signal key output configDir logger undefined
+        let dbRunner = runDB output configDir logger
+        void $ initDB rootUser rootPassword dbRunner
+        senseiApp env signal key dbRunner logger undefined
     )
     $ \server ->
       waitServer server `race_` (takeMVar signal >> stopServer server)
 
 -- | Initialises the DB and returns the root user's id.
-initDB :: Maybe Text -> Maybe (Encoded Base64, Encoded Base64) -> FilePath -> FilePath -> LoggerEnv -> IO (Encoded Hex)
-initDB rootUser rootPassword output configDir logger =
-  runDB output configDir logger $ do
+initDB :: Maybe Text -> Maybe (Encoded Base64, Encoded Base64) -> (forall x. SQLiteDB x -> IO x) -> IO (Encoded Hex)
+initDB rootUser rootPassword dbRunner =
+  dbRunner $ do
     initLogStorage
     maybe (pure "") ensureUserExists rootUser
  where
@@ -153,8 +155,8 @@ initDB rootUser rootPassword output configDir logger =
     let rootProfile = defaultProfile{userName, userPassword = fromMaybe ("", "") rootPassword}
     either (const $ insertProfile rootProfile) (pure . userId) prof
 
-senseiApp :: Maybe Env -> MVar () -> JWK -> FilePath -> FilePath -> LoggerEnv -> Backends -> IO Application
-senseiApp env signal publicAuthKey output configDir logger backends = do
+senseiApp :: Maybe Env -> MVar () -> JWK -> (forall x. SQLiteDB x -> IO x) -> LoggerEnv -> Backends -> IO Application
+senseiApp env signal publicAuthKey dbRunner logger backends = do
   let jwtConfig = defaultJWTSettings publicAuthKey
       cookieConfig = defaultCookieSettings{cookieXsrfSetting = Nothing}
       contextConfig = jwtConfig :. cookieConfig :. EmptyContext
@@ -169,7 +171,7 @@ senseiApp env signal publicAuthKey output configDir logger backends = do
           :<|> Tagged (userInterface env)
  where
   runApp :: AppM x -> Handler x
-  runApp = Handler . ExceptT . try . handleDBError . runDB output configDir logger . flip runReaderT logger
+  runApp = Handler . ExceptT . try . handleDBError . dbRunner . flip runReaderT logger
 
   handleDBError :: IO a -> IO a
   handleDBError io =
