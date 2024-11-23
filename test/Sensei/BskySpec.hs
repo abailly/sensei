@@ -15,7 +15,8 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
 import Data.Data (Proxy (..))
-import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
+import Data.Dynamic (Dynamic, toDyn)
+import Data.IORef (IORef, atomicModifyIORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
 import Data.Time (UTCTime (..))
@@ -27,18 +28,21 @@ import Sensei.App (AppM)
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyAPI, BskyPost, BskySession, Record, bskyEventHandler)
+import Sensei.Bsky (BskyAPI, BskyPost, BskySession (..), CreatePost, Login, Record (..), bskyEventHandler)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
 import Sensei.DB.SQLite (SQLiteDB)
 import Sensei.Generators ()
-import Sensei.TestHelper (app, putJSON_, shouldRespondWith, withApp, withBackends, withDBRunner)
+import Sensei.TestHelper (WaiSession, app, getState, putJSON_, shouldRespondWith, withApp, withBackends, withDBRunner)
 import Sensei.WaiTestHelper (runRequestWith)
 import Servant.API (type (:<|>) ((:<|>)))
 import Servant.Server (Application, Handler, ServerError, serve)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, SpecWith, after_, around, describe, it, runIO, shouldReturn)
+import Test.Hspec (Arg, Example (..), Spec, SpecWith, after_, around, aroundWith, describe, it, runIO, shouldContain, shouldReturn)
+import Test.Hspec.Wai
+import Test.Hspec.Wai.Internal (runWithState)
+import Type.Reflection (SomeTypeRep, someTypeRep)
 
 spec :: Spec
 spec = do
@@ -64,54 +68,72 @@ spec = do
 
   after_ (writeIORef calls []) $
     describe "POST /api/log with configured Bsky backend" $ do
-      withApp (withBackends (mkBackends (Proxy @SQLiteDB) calls) app) $ do
-        it "propagate posted event to backend" $ do
+      withApp (withBackends (mkBackends (Proxy @SQLiteDB) calls) app) $ it "propagate posted event to backend" $ do
+        let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
+
+        putJSON_ "/api/users/arnaud" profileWithBsky
+
+        postNote_ flow2
+
+        liftIO $ (head <$> readIORef calls) `shouldReturn` EventNote flow2
+
+      withApp
+        ( withBackends (mkBackends (Proxy @TestDB) calls) $
+            withDBRunner (dbFailsToWriteEvents profileWithBsky) app
+        )
+        $ it "does not propagate events to backend if DB write fails"
+        $ do
           let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
 
           putJSON_ "/api/users/arnaud" profileWithBsky
 
-          postNote_ flow2
+          postNote flow2 `shouldRespondWith` 500
 
-          liftIO $ (head <$> readIORef calls) `shouldReturn` EventNote flow2
-
-      withApp
-        ( withBackends (mkBackends (Proxy @TestDB) calls) $
-            withDBRunner (dbFailsToWriteEvents profileWithBsky) $
-              app
-        )
-        $ do
-          it "does not propagate events to backend if DB write fails" $ do
-            let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
-
-            putJSON_ "/api/users/arnaud" profileWithBsky
-
-            postNote flow2 `shouldRespondWith` 500
-
-            liftIO $ (length <$> readIORef calls) `shouldReturn` 0
+          liftIO $ (length <$> readIORef calls) `shouldReturn` 0
 
   withMock bskyMock $
-    describe "Bsky Backend" $ do
-      it "login with given credentials then post event with token" $ do
-        let handler = bskyEventHandler runRequestWith
-            flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
+    describe "Bsky Backend" $
+      it "login with given credentials then post event with token" $ \((uid, ref), application) -> do
+        let test = do
+              let handler = bskyEventHandler runRequestWith
+                  flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
 
-        handleEvent handler bskyBackend (EventNote flow2)
+              handleEvent handler bskyBackend (EventNote flow2)
 
-withMock :: IO Application -> SpecWith (Maybe (Encoded Hex), Application) -> Spec
+        runWithState test (uid, application)
+
+        ref
+          `hasCalled` [ someTypeRep (Proxy @Login)
+                      , someTypeRep (Proxy @CreatePost)
+                      ]
+
+hasCalled :: IORef [Call BskyAPI] -> [SomeTypeRep] -> IO ()
+hasCalled ref calls = do
+  readIORef ref >>= (`shouldContain` calls) . fmap called . reverse
+
+withMock :: IO (IORef [Call BskyAPI], Application) -> SpecWith ((Maybe (Encoded Hex), IORef [Call BskyAPI]), Application) -> Spec
 withMock makeApp = around mkApp
  where
   mkApp act = do
-    server <- makeApp
-    act (Nothing, server)
+    (ref, server) <- makeApp
+    act ((Nothing, ref), server)
 
-bskyMock :: IO Application
-bskyMock = pure $ serve (Proxy @BskyAPI) (mockLogin :<|> mockPost)
+newtype Call api = Called {called :: SomeTypeRep}
+
+bskyMock :: IO (IORef [Call BskyAPI], Application)
+bskyMock = do
+  called <- newIORef []
+  pure (called, serve (Proxy @BskyAPI) (mockLogin called :<|> mockPost called))
  where
-  mockPost :: BskyPost -> Handler Record
-  mockPost = undefined
+  mockPost :: IORef [Call BskyAPI] -> BskyPost -> Handler Record
+  mockPost ref _post = do
+    liftIO $ atomicModifyIORef ref (\cs -> (Called (someTypeRep (Proxy @CreatePost)) : cs, ()))
+    pure $ Record "foo" "bar"
 
-  mockLogin :: BskyLogin -> Handler BskySession
-  mockLogin = undefined
+  mockLogin :: IORef [Call BskyAPI] -> BskyLogin -> Handler BskySession
+  mockLogin ref _login = do
+    liftIO $ atomicModifyIORef ref (\cs -> (Called (someTypeRep (Proxy @Login)) : cs, ()))
+    pure $ BskySession "token" "refresh"
 
 newtype TestDB a = TestDB {runTestDB :: ReaderT UserProfile IO a}
   deriving (Functor, Applicative, Monad, MonadReader UserProfile, MonadIO, MonadThrow, MonadCatch)

@@ -225,7 +225,7 @@ cost :: Int
 cost = 10
 
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
-  deriving (Eq, Show)
+  deriving (Eq, Show, IsString)
 
 instance ToJSON SerializedToken where
   toJSON (SerializedToken bs) = String $ decodeUtf8 bs

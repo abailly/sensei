@@ -92,7 +92,7 @@ runRequest :: ClientConfig config => ClientMonad config a -> WaiSession (Maybe (
 runRequest (ClientMonad a) =
   getState >>= \u -> runReaderT a (defConfig & setServerUri "http://localhost:23456" & setAuthToken (validSerializedToken <$> u))
 
-runRequestWith :: (ClientConfig config, RunClient (WaiSession b)) => config -> ClientMonad config a -> WaiSession b a
+runRequestWith :: ClientConfig config => config -> ClientMonad config a -> WaiSession (Maybe (Encoded Hex)) a
 runRequestWith config (ClientMonad a) = runReaderT a config
 
 isExpectedToBe ::
