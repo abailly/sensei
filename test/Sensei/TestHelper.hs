@@ -48,6 +48,7 @@ module Sensei.TestHelper (
   withRootUser,
   withRootPassword,
   withBackends,
+  withDBRunner,
 ) where
 
 import Control.Concurrent.MVar
@@ -132,6 +133,10 @@ withBackends backends builder =
 
 withApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> SpecWith (Encoded Hex, Application) -> Spec
 withApp builder = around (buildApp builder)
+
+withDBRunner :: (forall x. FilePath -> FilePath -> LoggerEnv -> (db2 x -> IO x)) -> AppBuilder db1 -> AppBuilder db2
+withDBRunner db AppBuilder{..} =
+  AppBuilder{dbRunner = db, ..}
 
 withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempFile =

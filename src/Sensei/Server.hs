@@ -146,9 +146,9 @@ getCurrentTimeS usr = do
 postEventS ::
   DB m => Backends -> UserName -> [Event] -> m ()
 postEventS backendsMap (UserName usr) events = do
+  mapM_ writeEvent events
   UserProfile{backends} <- getUserProfileS usr
   forM_ backends $ \(Backend backend) -> handleEvents backendsMap events backend
-  mapM_ writeEvent events
 
 handleEvents :: forall m backend. (Monad m, Typeable m, Typeable backend) => Backends -> [Event] -> backend -> m ()
 handleEvents backendsMap events backend =

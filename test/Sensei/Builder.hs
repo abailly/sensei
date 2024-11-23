@@ -18,6 +18,7 @@ module Sensei.Builder (
   seconds,
   month,
   aBskyBackend,
+  postNote,
 ) where
 
 import Control.Lens ((%~))
@@ -45,6 +46,9 @@ postFlow_ = postEvent_ . pure . EventFlow
 
 postNote_ :: NoteFlow -> WaiSession (Encoded Hex) ()
 postNote_ = postEvent_ . pure . EventNote
+
+postNote :: NoteFlow -> WaiSession (Encoded Hex) SResponse
+postNote = postEvent . pure . EventNote
 
 postTrace_ :: Trace -> WaiSession (Encoded Hex) ()
 postTrace_ = postEvent_ . pure . EventTrace
