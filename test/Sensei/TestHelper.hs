@@ -131,7 +131,7 @@ withBackends :: Backends -> AppBuilder db -> AppBuilder db
 withBackends backends builder =
   builder{backends}
 
-withApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> SpecWith (Encoded Hex, Application) -> Spec
+withApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> SpecWith (Maybe (Encoded Hex), Application) -> Spec
 withApp builder = around (buildApp builder)
 
 withDBRunner :: (forall x. FilePath -> FilePath -> LoggerEnv -> (db2 x -> IO x)) -> AppBuilder db1 -> AppBuilder db2
@@ -146,7 +146,7 @@ withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempDir =
   bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
-buildApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> ActionWith (Encoded Hex, Application) -> IO ()
+buildApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> ActionWith (Maybe (Encoded Hex), Application) -> IO ()
 buildApp AppBuilder{..} act =
   withTempFile $ \file -> do
     unless withStorage $ removePathForcibly file
@@ -156,43 +156,43 @@ buildApp AppBuilder{..} act =
       userId <- initDB rootUser rootPassword dbRun
       application <- senseiApp Nothing signal sampleKey (runApp dbRun fakeLogger) backends
       when withFailingStorage $ removePathForcibly file
-      act (userId, application)
+      act (Just userId, application)
 
 mkTempFile :: HasCallStack => IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
-postJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+postJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
 postJSON path payload =
   defaultHeaders >>= \h -> request "POST" path h (A.encode payload)
 
-putJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+putJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
 putJSON path payload =
   defaultHeaders >>= \h -> request "PUT" path h (A.encode payload)
 
-patchJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) SResponse
+patchJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
 patchJSON path payload =
   defaultHeaders >>= \h -> request "PATCH" path h (A.encode payload)
 
-postJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) ()
+postJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) ()
 postJSON_ path payload =
   postJSON path payload `shouldRespondWith` 200
 
-putJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Encoded Hex) ()
+putJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) ()
 putJSON_ path payload = void $ putJSON path payload
 
-getJSON :: ByteString -> WaiSession (Encoded Hex) SResponse
+getJSON :: ByteString -> WaiSession (Maybe (Encoded Hex)) SResponse
 getJSON path =
   defaultHeaders >>= \h -> request "GET" path h mempty
 
-defaultHeaders :: WaiSession (Encoded Hex) [HTTP.Header]
+defaultHeaders :: WaiSession (Maybe (Encoded Hex)) [HTTP.Header]
 defaultHeaders = do
   userId <- getState
   pure $
     [ ("Accept", "application/json")
     , ("Content-Type", "application/json")
     , ("X-API-Version", toHeader senseiVersion)
-    , ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken userId)
     ]
+      <> maybe [] (\u -> [("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken u)]) userId
 
 shouldMatchJSONBody ::
   (HasCallStack, Eq a, Show a, A.FromJSON a) =>

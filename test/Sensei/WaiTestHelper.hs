@@ -33,8 +33,8 @@ import Test.Hspec.Wai hiding (request)
 import Test.Hspec.Wai.Internal (WaiSession (..))
 
 fromClientRequest ::
-  MonadIO m => Encoded Hex -> Request -> m Wai.Request
-fromClientRequest uid inReq =
+  MonadIO m => Maybe (Encoded Hex) -> Request -> m Wai.Request
+fromClientRequest maybeUid inReq =
   let acceptHeaders = (\mt -> ("Accept", renderHeader mt)) <$> toList (requestAccept inReq)
       headers = toList (requestHeaders inReq) <> acceptHeaders
       rawPath = LBS.toStrict (toLazyByteString $ requestPath inReq)
@@ -57,8 +57,10 @@ fromClientRequest uid inReq =
           , Wai.requestMethod = requestMethod inReq
           , Wai.requestHeaders =
               ("Content-type", "application/json")
-                : ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken uid)
-                : headers
+                : maybe
+                  headers
+                  (\uid -> ("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken uid) : headers)
+                  maybeUid
           , Wai.requestBody = b
           , Wai.httpVersion = requestHttpVersion inReq
           , Wai.pathInfo = segments
@@ -76,18 +78,18 @@ toClientResponse ::
 toClientResponse SResponse{..} =
   pure $ Response simpleStatus (fromList simpleHeaders) http11 simpleBody
 
-instance RunClient (WaiSession (Encoded Hex)) where
+instance RunClient (WaiSession (Maybe (Encoded Hex))) where
   runRequestAcceptStatus _ req = do
     WaiSession $ ReaderT $ \uid -> fromClientRequest uid req >>= request >>= toClientResponse
 
   throwClientError err = error (show err)
 
-asUser :: Encoded Hex -> WaiSession (Encoded Hex) a -> WaiSession (Encoded Hex) a
-asUser uid (WaiSession s) = WaiSession $ local (const uid) s
+asUser :: Encoded Hex -> WaiSession (Maybe (Encoded Hex)) a -> WaiSession (Maybe (Encoded Hex)) a
+asUser uid (WaiSession s) = WaiSession $ local (const $ Just uid) s
 
-runRequest :: ClientConfig config => ClientMonad config a -> WaiSession (Encoded Hex) a
+runRequest :: ClientConfig config => ClientMonad config a -> WaiSession (Maybe (Encoded Hex)) a
 runRequest (ClientMonad a) =
-  getState >>= \u -> runReaderT a (defConfig & setServerUri "http://localhost:23456" & setAuthToken (Just $ validSerializedToken u))
+  getState >>= \u -> runReaderT a (defConfig & setServerUri "http://localhost:23456" & setAuthToken (validSerializedToken <$> u))
 
 isExpectedToBe ::
   (Eq a, Show a, HasCallStack) => a -> a -> WaiSession st ()

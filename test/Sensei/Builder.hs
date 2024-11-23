@@ -32,25 +32,25 @@ import Sensei.Backend (Backend (..))
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.TestHelper
 
-postEvent :: [Event] -> WaiSession (Encoded Hex) SResponse
+postEvent :: [Event] -> WaiSession (Maybe (Encoded Hex)) SResponse
 postEvent = postJSON "/api/log/arnaud"
 
-postEvent_ :: [Event] -> WaiSession (Encoded Hex) ()
+postEvent_ :: [Event] -> WaiSession (Maybe (Encoded Hex)) ()
 postEvent_ = void . postEvent
 
-postFlow :: Flow -> WaiSession (Encoded Hex) SResponse
+postFlow :: Flow -> WaiSession (Maybe (Encoded Hex)) SResponse
 postFlow = postEvent . pure . EventFlow
 
-postFlow_ :: Flow -> WaiSession (Encoded Hex) ()
+postFlow_ :: Flow -> WaiSession (Maybe (Encoded Hex)) ()
 postFlow_ = postEvent_ . pure . EventFlow
 
-postNote_ :: NoteFlow -> WaiSession (Encoded Hex) ()
+postNote_ :: NoteFlow -> WaiSession (Maybe (Encoded Hex)) ()
 postNote_ = postEvent_ . pure . EventNote
 
-postNote :: NoteFlow -> WaiSession (Encoded Hex) SResponse
+postNote :: NoteFlow -> WaiSession (Maybe (Encoded Hex)) SResponse
 postNote = postEvent . pure . EventNote
 
-postTrace_ :: Trace -> WaiSession (Encoded Hex) ()
+postTrace_ :: Trace -> WaiSession (Maybe (Encoded Hex)) ()
 postTrace_ = postEvent_ . pure . EventTrace
 
 anOtherFlow :: Flow

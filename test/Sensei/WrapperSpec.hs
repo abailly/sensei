@@ -24,7 +24,7 @@ import Sensei.Wrapper (
 import System.Exit (ExitCode (ExitSuccess))
 import Test.Hspec (Spec, describe, it)
 
-io :: WrapperIO SenseiClientConfig (WaiSession (Encoded Hex))
+io :: WrapperIO SenseiClientConfig (WaiSession (Maybe (Encoded Hex)))
 io = WrapperIO{..}
  where
   runProcess _ _ = pure ExitSuccess

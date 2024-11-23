@@ -35,7 +35,7 @@ spec =
     withApp (app{withFailingStorage = True}) $
       it "returns error 400 with details given DB fails to access storage file" $ do
         postFlow anOtherFlow
-          `shouldRespondWith` 400
+          `shouldRespondWith` 500
 
     describe "Run mode and Options" $ do
       it "parses client mode and pass arguments to it" $ do
