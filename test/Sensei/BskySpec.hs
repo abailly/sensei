@@ -120,7 +120,13 @@ instance DB TestDB where
   writeProfile _ = pure ()
   insertProfile _ = pure ""
 
-dbFailsToWriteEvents :: UserProfile -> FilePath -> FilePath -> LoggerEnv -> TestDB x -> IO x
+dbFailsToWriteEvents ::
+  UserProfile ->
+  FilePath ->
+  FilePath ->
+  LoggerEnv ->
+  TestDB x ->
+  IO x
 dbFailsToWriteEvents user _ _ _ = (`runReaderT` user) . runTestDB
 
 mkBackends :: forall db. (MonadIO db, DB db) => Proxy db -> IORef [Event] -> Backends
