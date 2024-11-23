@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -90,6 +91,9 @@ asUser uid (WaiSession s) = WaiSession $ local (const $ Just uid) s
 runRequest :: ClientConfig config => ClientMonad config a -> WaiSession (Maybe (Encoded Hex)) a
 runRequest (ClientMonad a) =
   getState >>= \u -> runReaderT a (defConfig & setServerUri "http://localhost:23456" & setAuthToken (validSerializedToken <$> u))
+
+runRequestWith :: (ClientConfig config, RunClient (WaiSession b)) => config -> ClientMonad config a -> WaiSession b a
+runRequestWith config (ClientMonad a) = runReaderT a config
 
 isExpectedToBe ::
   (Eq a, Show a, HasCallStack) => a -> a -> WaiSession st ()

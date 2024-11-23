@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -147,6 +148,7 @@ instance ClientConfig config => RunClient (ClientMonad config) where
             }
     lift (runRequestAcceptStatus st request)
 
+  throwClientError :: ClientConfig config => ClientError -> ClientMonad config a
   throwClientError err = ClientMonad $ lift $ throwClientError err
 
 send :: ClientConfig config => config -> ClientMonad config a -> IO a

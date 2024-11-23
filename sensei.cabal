@@ -201,6 +201,7 @@ test-suite sensei-test
     , random
     , safe-exceptions
     , sensei
+    , servant
     , servant-client-core
     , servant-server
     , servant-server-base
