@@ -30,6 +30,7 @@ import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import Network.URI.Extra (uriFromString)
+import Preface.Log (LoggerEnv (withLog))
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config)
@@ -109,31 +110,38 @@ bskyCreatePost :: BskyPost -> ClientMonad BskyClientConfig Record
 bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
 bskyLogin :<|> bskyCreatePost = clientIn (Proxy @BskyAPI) Proxy
 
+data BskyLog
+  = PostCreated {content :: !Text, session :: !BskySession}
+  | UserAuthenticated {user :: !Text}
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
 -- | An Event handler that transforms `FlowNote` into `BskyPost`s.
 --
 -- This requires a function to hander `ClientMonad`'s requests.
 bskyEventHandler ::
   forall m.
   MonadIO m =>
+  LoggerEnv ->
   (forall a. BskyClientConfig -> ClientMonad BskyClientConfig a -> m a) ->
   m (BackendHandler BskyBackend m)
-bskyEventHandler send = do
+bskyEventHandler logger send = do
   sessionMap <- liftIO $ newTVarIO mempty
   pure $ BackendHandler{handleEvent = handleEvent sessionMap}
  where
   postWith backend session note =
-    void $
-      send (BskyClientConfig{backend, bskySession = Just session}) $
-        bskyCreatePost
-          BskyPost
-            { record =
-                BskyContent
-                  { text = note ^. noteContent
-                  , createdAt = note ^. noteTimestamp
-                  }
-            , repo = ""
-            , collection = BskyType
-            }
+    withLog logger PostCreated{content = note ^. noteContent, session} $
+      void $
+        send (BskyClientConfig{backend, bskySession = Just session}) $
+          bskyCreatePost
+            BskyPost
+              { record =
+                  BskyContent
+                    { text = note ^. noteContent
+                    , createdAt = note ^. noteTimestamp
+                    }
+              , repo = ""
+              , collection = BskyType
+              }
 
   handleEvent :: TVar (Map.Map Text BskySession) -> BskyBackend -> Event -> m ()
   handleEvent sessionMap backend = \case
@@ -144,7 +152,10 @@ bskyEventHandler send = do
         Just session ->
           postWith backend session note
         Nothing -> do
-          session <- send (BskyClientConfig backend Nothing) $ bskyLogin credentials
+          session <-
+            withLog logger UserAuthenticated{user = identifier credentials} $
+              send (BskyClientConfig backend Nothing) $
+                bskyLogin credentials
           liftIO $
             atomically $
               modifyTVar' sessionMap $

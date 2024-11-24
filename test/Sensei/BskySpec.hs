@@ -21,7 +21,7 @@ import Data.Text (Text, pack)
 import Data.Time (UTCTime (..))
 import Network.URI.Extra (uriFromString)
 import Preface.Codec (Encoded, Hex)
-import Preface.Log (LoggerEnv)
+import Preface.Log (LoggerEnv, fakeLogger)
 import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.App (AppM)
 import Sensei.Backend (Backend (..))
@@ -96,7 +96,7 @@ spec = do
 
       it "login with given credentials then post event with token" $ \(uid, ref, application) -> do
         let test = do
-              handler <- bskyEventHandler runRequestWith
+              handler <- bskyEventHandler fakeLogger runRequestWith
 
               handleEvent handler bskyBackend (EventNote flow2)
 
@@ -109,7 +109,7 @@ spec = do
 
       it "login only once when posting several events" $ \(uid, ref, application) -> do
         let test = do
-              handler <- bskyEventHandler runRequestWith
+              handler <- bskyEventHandler fakeLogger runRequestWith
 
               handleEvent handler bskyBackend (EventNote flow2)
               handleEvent handler bskyBackend (EventNote flow2)
@@ -125,7 +125,7 @@ spec = do
       it "discard note if it does not contain #bsky tag" $ \(uid, ref, application) -> do
         let notForBsky = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #foo"
             test = do
-              handler <- bskyEventHandler runRequestWith
+              handler <- bskyEventHandler fakeLogger runRequestWith
 
               handleEvent handler bskyBackend (EventNote notForBsky)
 

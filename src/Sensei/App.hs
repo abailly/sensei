@@ -137,7 +137,7 @@ sensei output = do
   withAppServer
     serverConfig
     ( \logger -> do
-        handler <- bskyEventHandler send
+        handler <- bskyEventHandler logger send
         let dbRunner = runDB output configDir logger
             backends = Backend.insert handler Backend.empty
 
