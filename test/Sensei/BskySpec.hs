@@ -10,7 +10,6 @@ module Sensei.BskySpec where
 
 import Control.Exception (Exception, throwIO)
 import Control.Exception.Safe (MonadCatch, MonadThrow, catch, throwM)
-import Control.Monad (forM_)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
@@ -160,8 +159,8 @@ newtype Call api = Called {called :: SomeTypeRep}
 
 bskyMock :: IO (IORef [Call BskyAPI], Application)
 bskyMock = do
-  called <- newIORef []
-  pure (called, serve (Proxy @BskyAPI) (mockLogin called :<|> mockPost called))
+  calls <- newIORef []
+  pure (calls, serve (Proxy @BskyAPI) (mockLogin calls :<|> mockPost calls))
  where
   mockPost :: IORef [Call BskyAPI] -> BskyPost -> Handler Record
   mockPost ref _post = do
