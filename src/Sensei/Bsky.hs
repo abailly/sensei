@@ -23,7 +23,7 @@ import Data.Functor (void)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Data.String (IsString)
-import Data.Text (Text)
+import Data.Text (Text, isInfixOf)
 import qualified Data.Text as Text
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time (UTCTime)
@@ -137,7 +137,7 @@ bskyEventHandler send = do
 
   handleEvent :: TVar (Map.Map Text BskySession) -> BskyBackend -> Event -> m ()
   handleEvent sessionMap backend = \case
-    EventNote note -> do
+    EventNote note | "#bsky" `isInfixOf` (note ^. noteContent) -> do
       let credentials = login backend
       maybeSession <- Map.lookup (identifier credentials) <$> liftIO (readTVarIO sessionMap)
       case maybeSession of

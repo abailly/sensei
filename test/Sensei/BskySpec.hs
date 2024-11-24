@@ -10,6 +10,7 @@ module Sensei.BskySpec where
 
 import Control.Exception (Exception, throwIO)
 import Control.Exception.Safe (MonadCatch, MonadThrow, catch, throwM)
+import Control.Monad (forM_)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
@@ -38,7 +39,7 @@ import Sensei.WaiTestHelper (runRequestWith)
 import Servant.API (type (:<|>) ((:<|>)))
 import Servant.Server (Application, Handler, ServerError, serve)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, SpecWith, after_, around, describe, it, runIO, shouldContain, shouldReturn)
+import Test.Hspec (Spec, SpecWith, after_, around, describe, it, runIO, shouldContain, shouldNotContain, shouldReturn)
 import Test.Hspec.Wai
 import Test.Hspec.Wai.Internal (runWithState)
 import Type.Reflection (SomeTypeRep, someTypeRep)
@@ -92,7 +93,7 @@ spec = do
 
   withMock bskyMock $ do
     describe "Bsky Backend" $ do
-      let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
+      let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #bsky"
 
       it "login with given credentials then post event with token" $ \(uid, ref, application) -> do
         let test = do
@@ -122,9 +123,28 @@ spec = do
                       , someTypeRep (Proxy @CreatePost)
                       ]
 
+      it "discard note if it does not contain #bsky tag" $ \(uid, ref, application) -> do
+        let notForBsky = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #foo"
+            test = do
+              handler <- bskyEventHandler runRequestWith
+
+              handleEvent handler bskyBackend (EventNote notForBsky)
+
+        runWithState test (uid, application)
+
+        ref
+          `hasNotCalled` [ someTypeRep (Proxy @Login)
+                         , someTypeRep (Proxy @CreatePost)
+                         ]
+
 hasCalled :: IORef [Call BskyAPI] -> [SomeTypeRep] -> IO ()
 hasCalled ref calls = do
   readIORef ref >>= (`shouldContain` calls) . fmap called . reverse
+
+hasNotCalled :: IORef [Call BskyAPI] -> [SomeTypeRep] -> IO ()
+hasNotCalled ref expected = do
+  actual <- reverse . fmap called <$> readIORef ref
+  actual `shouldNotContain` expected
 
 withMock ::
   IO (IORef [Call BskyAPI], Application) ->
