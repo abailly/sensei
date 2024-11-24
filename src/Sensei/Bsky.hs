@@ -14,10 +14,13 @@
 
 module Sensei.Bsky where
 
+import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
 import Control.Lens ((^.))
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON (..), withText)
 import Data.Aeson.Types (FromJSON (..))
 import Data.Functor (void)
+import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Data.String (IsString)
 import Data.Text (Text)
@@ -111,28 +114,42 @@ bskyLogin :<|> bskyCreatePost = clientIn (Proxy @BskyAPI) Proxy
 -- This requires a function to hander `ClientMonad`'s requests.
 bskyEventHandler ::
   forall m.
-  Monad m =>
+  MonadIO m =>
   (forall a. BskyClientConfig -> ClientMonad BskyClientConfig a -> m a) ->
-  BackendHandler BskyBackend m
-bskyEventHandler send = BackendHandler{handleEvent}
+  m (BackendHandler BskyBackend m)
+bskyEventHandler send = do
+  sessionMap <- liftIO $ newTVarIO mempty
+  pure $ BackendHandler{handleEvent = handleEvent sessionMap}
  where
-  handleEvent :: Monad m => BskyBackend -> Event -> m ()
-  handleEvent backend = \case
+  postWith backend session note =
+    void $
+      send (BskyClientConfig{backend, bskySession = Just session}) $
+        bskyCreatePost
+          BskyPost
+            { record =
+                BskyContent
+                  { text = note ^. noteContent
+                  , createdAt = note ^. noteTimestamp
+                  }
+            , repo = ""
+            , collection = BskyType
+            }
+
+  handleEvent :: TVar (Map.Map Text BskySession) -> BskyBackend -> Event -> m ()
+  handleEvent sessionMap backend = \case
     EventNote note -> do
-      let config = BskyClientConfig backend Nothing
-      session <- send config $ bskyLogin (login backend)
-      void $
-        send (config{bskySession = Just session}) $
-          bskyCreatePost
-            BskyPost
-              { record =
-                  BskyContent
-                    { text = note ^. noteContent
-                    , createdAt = note ^. noteTimestamp
-                    }
-              , repo = ""
-              , collection = BskyType
-              }
+      let credentials = login backend
+      maybeSession <- Map.lookup (identifier credentials) <$> liftIO (readTVarIO sessionMap)
+      case maybeSession of
+        Just session ->
+          postWith backend session note
+        Nothing -> do
+          session <- send (BskyClientConfig backend Nothing) $ bskyLogin credentials
+          liftIO $
+            atomically $
+              modifyTVar' sessionMap $
+                \sessions -> Map.insert (identifier credentials) session sessions
+          postWith backend session note
     _ -> pure ()
 
 data BskyClientConfig = BskyClientConfig

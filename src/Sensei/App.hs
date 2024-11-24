@@ -55,6 +55,9 @@ import Sensei.API (
   defaultProfile,
  )
 import Sensei.Backend.Class (Backends)
+import qualified Sensei.Backend.Class as Backend
+import Sensei.Bsky (bskyEventHandler)
+import Sensei.Client (send)
 import Sensei.DB (DB (initLogStorage, insertProfile, readProfile), DBError)
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite (
@@ -134,9 +137,12 @@ sensei output = do
   withAppServer
     serverConfig
     ( \logger -> do
+        handler <- bskyEventHandler send
         let dbRunner = runDB output configDir logger
+            backends = Backend.insert handler Backend.empty
+
         void $ initDB rootUser rootPassword dbRunner
-        senseiApp env signal key (runApp dbRunner logger) undefined
+        senseiApp env signal key (runApp dbRunner logger) backends
     )
     $ \server ->
       waitServer server `race_` (takeMVar signal >> stopServer server)

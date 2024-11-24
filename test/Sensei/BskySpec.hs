@@ -12,10 +12,9 @@ import Control.Exception (Exception, throwIO)
 import Control.Exception.Safe (MonadCatch, MonadThrow, catch, throwM)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
 import Data.Data (Proxy (..))
-import Data.Dynamic (Dynamic, toDyn)
 import Data.IORef (IORef, atomicModifyIORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
@@ -34,12 +33,12 @@ import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
 import Sensei.DB.SQLite (SQLiteDB)
 import Sensei.Generators ()
-import Sensei.TestHelper (WaiSession, app, getState, putJSON_, shouldRespondWith, withApp, withBackends, withDBRunner)
+import Sensei.TestHelper (app, putJSON_, withApp, withBackends, withDBRunner)
 import Sensei.WaiTestHelper (runRequestWith)
 import Servant.API (type (:<|>) ((:<|>)))
 import Servant.Server (Application, Handler, ServerError, serve)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Arg, Example (..), Spec, SpecWith, after_, around, aroundWith, describe, it, runIO, shouldContain, shouldReturn)
+import Test.Hspec (Spec, SpecWith, after_, around, describe, it, runIO, shouldContain, shouldReturn)
 import Test.Hspec.Wai
 import Test.Hspec.Wai.Internal (runWithState)
 import Type.Reflection (SomeTypeRep, someTypeRep)
@@ -91,12 +90,13 @@ spec = do
 
           liftIO $ (length <$> readIORef calls) `shouldReturn` 0
 
-  withMock bskyMock $
-    describe "Bsky Backend" $
-      it "login with given credentials then post event with token" $ \((uid, ref), application) -> do
+  withMock bskyMock $ do
+    describe "Bsky Backend" $ do
+      let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
+
+      it "login with given credentials then post event with token" $ \(uid, ref, application) -> do
         let test = do
-              let handler = bskyEventHandler runRequestWith
-                  flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
+              handler <- bskyEventHandler runRequestWith
 
               handleEvent handler bskyBackend (EventNote flow2)
 
@@ -107,16 +107,34 @@ spec = do
                       , someTypeRep (Proxy @CreatePost)
                       ]
 
+      it "login only once when posting several events" $ \(uid, ref, application) -> do
+        let test = do
+              handler <- bskyEventHandler runRequestWith
+
+              handleEvent handler bskyBackend (EventNote flow2)
+              handleEvent handler bskyBackend (EventNote flow2)
+
+        runWithState test (uid, application)
+
+        ref
+          `hasCalled` [ someTypeRep (Proxy @Login)
+                      , someTypeRep (Proxy @CreatePost)
+                      , someTypeRep (Proxy @CreatePost)
+                      ]
+
 hasCalled :: IORef [Call BskyAPI] -> [SomeTypeRep] -> IO ()
 hasCalled ref calls = do
   readIORef ref >>= (`shouldContain` calls) . fmap called . reverse
 
-withMock :: IO (IORef [Call BskyAPI], Application) -> SpecWith ((Maybe (Encoded Hex), IORef [Call BskyAPI]), Application) -> Spec
+withMock ::
+  IO (IORef [Call BskyAPI], Application) ->
+  SpecWith (Maybe (Encoded Hex), IORef [Call BskyAPI], Application) ->
+  Spec
 withMock makeApp = around mkApp
  where
   mkApp act = do
     (ref, server) <- makeApp
-    act ((Nothing, ref), server)
+    act (Nothing, ref, server)
 
 newtype Call api = Called {called :: SomeTypeRep}
 

@@ -12,25 +12,49 @@
 module Sensei.WaiTestHelper where
 
 import Control.Monad (unless)
-import Control.Monad.Reader
-import Data.Binary.Builder
+import Control.Monad.Reader (
+  MonadIO (..),
+  MonadReader (local),
+  ReaderT (ReaderT, runReaderT),
+ )
+import Data.Binary.Builder (toLazyByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import Data.Foldable
+import Data.Foldable (Foldable (toList))
 import Data.Function ((&))
-import Data.IORef
-import Data.Sequence
-import Network.HTTP.Media.RenderHeader
+import Data.IORef (atomicModifyIORef, newIORef)
+import Data.Sequence (fromList)
+import Network.HTTP.Media.RenderHeader (
+  RenderHeader (renderHeader),
+ )
 import qualified Network.HTTP.Types as H
-import Network.HTTP.Types.Version
+import Network.HTTP.Types.Version (http11)
 import qualified Network.Wai as Wai
-import Network.Wai.Test as Wai
-import Preface.Codec
+import Network.Wai.Test as Wai (
+  SResponse (..),
+  defaultRequest,
+  request,
+ )
+import Preface.Codec (Encoded, Hex)
 import Sensei.Client (ClientConfig (..), ClientMonad (..))
 import Sensei.TestHelper (validAuthToken, validSerializedToken)
-import Servant.Client.Core
-import Test.Hspec
-import Test.Hspec.Wai hiding (request)
+import Servant.Client.Core (
+  Request,
+  RequestBody (RequestBodyBS, RequestBodyLBS),
+  RequestF (
+    requestAccept,
+    requestBody,
+    requestHeaders,
+    requestHttpVersion,
+    requestMethod,
+    requestPath
+  ),
+  Response,
+  ResponseF (Response),
+  RunClient (..),
+ )
+import Test.Hspec (HasCallStack, expectationFailure)
+import Test.Hspec.Wai (WaiSession, getState)
 import Test.Hspec.Wai.Internal (WaiSession (..))
 
 fromClientRequest ::

@@ -206,6 +206,7 @@ test-suite sensei-test
     , servant-server
     , servant-server-base
     , sqlite-simple
+    , stm
     , text
     , time
     , time-lens
