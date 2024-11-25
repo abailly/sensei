@@ -128,7 +128,7 @@ bskyEventHandler logger send = do
   sessionMap <- liftIO $ newTVarIO mempty
   pure $ BackendHandler{handleEvent = handleEvent sessionMap}
  where
-  postWith backend session note =
+  postWith backend session repo note =
     withLog logger PostCreated{content = note ^. noteContent, session} $
       void $
         send (BskyClientConfig{backend, bskySession = Just session}) $
@@ -139,7 +139,8 @@ bskyEventHandler logger send = do
                     { text = note ^. noteContent
                     , createdAt = note ^. noteTimestamp
                     }
-              , repo = ""
+              , -- TODO: test me!
+                repo
               , collection = BskyType
               }
 
@@ -147,10 +148,11 @@ bskyEventHandler logger send = do
   handleEvent sessionMap backend = \case
     EventNote note | "#bsky" `isInfixOf` (note ^. noteContent) -> do
       let credentials = login backend
+          repo = BskyHandle $ identifier credentials
       maybeSession <- Map.lookup (identifier credentials) <$> liftIO (readTVarIO sessionMap)
       case maybeSession of
         Just session ->
-          postWith backend session note
+          postWith backend session repo note
         Nothing -> do
           session <-
             withLog logger UserAuthenticated{user = identifier credentials} $
@@ -160,7 +162,7 @@ bskyEventHandler logger send = do
             atomically $
               modifyTVar' sessionMap $
                 \sessions -> Map.insert (identifier credentials) session sessions
-          postWith backend session note
+          postWith backend session repo note
     _ -> pure ()
 
 data BskyClientConfig = BskyClientConfig
