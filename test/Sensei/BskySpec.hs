@@ -23,7 +23,6 @@ import Network.URI.Extra (uriFromString)
 import Preface.Codec (Encoded, Hex)
 import Preface.Log (LoggerEnv, fakeLogger)
 import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
-import Sensei.App (AppM)
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
@@ -31,7 +30,6 @@ import Sensei.Bsky (BskyAPI, BskyPost, BskySession (..), CreatePost, Login, Reco
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
-import Sensei.DB.SQLite (SQLiteDB)
 import Sensei.Generators ()
 import Sensei.TestHelper (app, putJSON_, withApp, withBackends, withDBRunner)
 import Sensei.WaiTestHelper (runRequestWith)
@@ -67,7 +65,7 @@ spec = do
 
   after_ (writeIORef calls []) $
     describe "POST /api/log with configured Bsky backend" $ do
-      withApp (withBackends (mkBackends (Proxy @SQLiteDB) calls) app) $ it "propagate posted event to backend" $ do
+      withApp (withBackends (mkBackends calls) app) $ it "propagate posted event to backend" $ do
         let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
 
         putJSON_ "/api/users/arnaud" profileWithBsky
@@ -77,7 +75,7 @@ spec = do
         liftIO $ (head <$> readIORef calls) `shouldReturn` EventNote flow2
 
       withApp
-        ( withBackends (mkBackends (Proxy @TestDB) calls) $
+        ( withBackends (mkBackends calls) $
             withDBRunner (dbFailsToWriteEvents profileWithBsky) app
         )
         $ it "does not propagate events to backend if DB write fails"
@@ -216,10 +214,10 @@ dbFailsToWriteEvents ::
   IO x
 dbFailsToWriteEvents user _ _ _ = (`runReaderT` user) . runTestDB
 
-mkBackends :: forall db. (MonadIO db, DB db) => Proxy db -> IORef [Event] -> Backends
-mkBackends _ ref = Backend.insert bskyIO Backend.empty
+mkBackends :: IORef [Event] -> Backends
+mkBackends ref = Backend.insert bskyIO Backend.empty
  where
-  bskyIO :: BackendHandler BskyBackend (AppM db)
+  bskyIO :: BackendHandler BskyBackend IO
   bskyIO =
     BackendHandler
       { handleEvent = \_ event -> liftIO $ atomicModifyIORef' ref (\es -> (event : es, ()))

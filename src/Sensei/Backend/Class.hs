@@ -34,6 +34,10 @@ lookup ::
 lookup proxy Backends{backendsMap} =
   Map.lookup (someTypeRep proxy) backendsMap >>= fromDynamic
 
+-- | Insert an handler running in some `Monad` m with the `Backends` map.
+--
+-- NOTE: In practice, `m` must be `IO` otherwise lookup will fail at runtime. This is so
+-- because handlers are created within the `IO` monad early in the bootstrap process.
 insert ::
   forall m backend.
   (Typeable m, Typeable backend) =>
