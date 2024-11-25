@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -26,7 +27,7 @@ import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultPr
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyAPI, BskyPost, BskySession (..), CreatePost, Login, Record (..), bskyEventHandler)
+import Sensei.Bsky (BskyAPI, BskyNet (..), BskyPost, BskySession (..), CreatePost, Login, Record (..), bskyCreatePost, bskyEventHandler, bskyLogin)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
@@ -94,7 +95,7 @@ spec = do
 
       it "login with given credentials then post event with token" $ \(uid, ref, application) -> do
         let test = do
-              handler <- bskyEventHandler fakeLogger runRequestWith
+              handler <- bskyEventHandler fakeLogger testBskyNet
 
               handleEvent handler bskyBackend (EventNote flow2)
 
@@ -107,7 +108,7 @@ spec = do
 
       it "login only once when posting several events" $ \(uid, ref, application) -> do
         let test = do
-              handler <- bskyEventHandler fakeLogger runRequestWith
+              handler <- bskyEventHandler fakeLogger testBskyNet
 
               handleEvent handler bskyBackend (EventNote flow2)
               handleEvent handler bskyBackend (EventNote flow2)
@@ -123,7 +124,7 @@ spec = do
       it "discard note if it does not contain #bsky tag" $ \(uid, ref, application) -> do
         let notForBsky = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #foo"
             test = do
-              handler <- bskyEventHandler fakeLogger runRequestWith
+              handler <- bskyEventHandler fakeLogger testBskyNet
 
               handleEvent handler bskyBackend (EventNote notForBsky)
 
@@ -133,6 +134,12 @@ spec = do
           `hasNotCalled` [ someTypeRep (Proxy @Login)
                          , someTypeRep (Proxy @CreatePost)
                          ]
+
+testBskyNet :: BskyNet (WaiSession (Maybe (Encoded Hex)))
+testBskyNet = BskyNet{doCreatePost, doLogin}
+ where
+  doCreatePost config = runRequestWith config . bskyCreatePost
+  doLogin config = runRequestWith config . bskyLogin
 
 hasCalled :: IORef [Call BskyAPI] -> [SomeTypeRep] -> IO ()
 hasCalled ref calls = do

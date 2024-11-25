@@ -56,8 +56,7 @@ import Sensei.API (
  )
 import Sensei.Backend.Class (Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (bskyEventHandler)
-import Sensei.Client (send)
+import Sensei.Bsky (bskyEventHandler, defaultBskyNet)
 import Sensei.DB (DB (initLogStorage, insertProfile, readProfile), DBError)
 import Sensei.DB.Log ()
 import Sensei.DB.SQLite (
@@ -137,7 +136,7 @@ sensei output = do
   withAppServer
     serverConfig
     ( \logger -> do
-        handler <- bskyEventHandler logger send
+        handler <- bskyEventHandler logger defaultBskyNet
         let dbRunner = runDB output configDir logger
             backends = Backend.insert handler Backend.empty
 
