@@ -16,7 +16,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
 import Data.Data (Proxy (..))
-import Data.IORef (IORef, atomicModifyIORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, atomicModifyIORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
 import Data.Time (UTCTime (..))
@@ -61,14 +61,13 @@ spec = do
               [ Backend bskyBackend
               ]
           }
+      flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #bsky"
 
   calls <- runIO (newIORef [])
 
   after_ (writeIORef calls []) $
     describe "POST /api/log with configured Bsky backend" $ do
       withApp (withBackends (mkBackends calls) app) $ it "propagate posted event to backend" $ do
-        let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
-
         putJSON_ "/api/users/arnaud" profileWithBsky
 
         postNote_ flow2
@@ -81,8 +80,6 @@ spec = do
         )
         $ it "does not propagate events to backend if DB write fails"
         $ do
-          let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note"
-
           putJSON_ "/api/users/arnaud" profileWithBsky
 
           postNote flow2 `shouldRespondWith` 500
@@ -91,8 +88,6 @@ spec = do
 
   withMock bskyMock $ do
     describe "Bsky Backend" $ do
-      let flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #bsky"
-
       it "login with given credentials then post event with token" $ \(uid, ref, application) -> do
         let test = do
               handler <- bskyEventHandler fakeLogger testBskyNet
@@ -103,21 +98,6 @@ spec = do
 
         ref
           `hasCalled` [ someTypeRep (Proxy @Login)
-                      , someTypeRep (Proxy @CreatePost)
-                      ]
-
-      it "login only once when posting several events" $ \(uid, ref, application) -> do
-        let test = do
-              handler <- bskyEventHandler fakeLogger testBskyNet
-
-              handleEvent handler bskyBackend (EventNote flow2)
-              handleEvent handler bskyBackend (EventNote flow2)
-
-        runWithState test (uid, application)
-
-        ref
-          `hasCalled` [ someTypeRep (Proxy @Login)
-                      , someTypeRep (Proxy @CreatePost)
                       , someTypeRep (Proxy @CreatePost)
                       ]
 
@@ -134,6 +114,21 @@ spec = do
           `hasNotCalled` [ someTypeRep (Proxy @Login)
                          , someTypeRep (Proxy @CreatePost)
                          ]
+  describe "Bsky logic" $ do
+    it "login only once when posting several events" $ do
+      calledLogin <- newIORef (0 :: Int)
+      let bskyNet =
+            BskyNet
+              { doLogin = \_ _ -> modifyIORef' calledLogin succ >> pure (BskySession "token" "refresh")
+              , doCreatePost = \_ _ -> pure $ Record "foo" "bar"
+              }
+
+      BackendHandler{handleEvent} <- bskyEventHandler fakeLogger bskyNet
+
+      handleEvent bskyBackend (EventNote flow2)
+      handleEvent bskyBackend (EventNote flow2)
+
+      readIORef calledLogin `shouldReturn` 1
 
 testBskyNet :: BskyNet (WaiSession (Maybe (Encoded Hex)))
 testBskyNet = BskyNet{doCreatePost, doLogin}
