@@ -7,6 +7,7 @@ module Sensei.Generators where
 
 import Control.Lens ((.~))
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base32 as Base32
 import Data.Function ((&))
 import qualified Data.List as List
 import Data.Text (Text, pack)
@@ -16,6 +17,7 @@ import Network.URI.Extra (URI (..), URIAuth (..))
 import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
 import Sensei.Backend (Backend (..))
+import Sensei.Bsky (BskyAuth (..))
 import Sensei.Bsky.Core (BskyBackend (BskyBackend), BskyLogin (..))
 import Sensei.ColorSpec ()
 import Sensei.DB
@@ -34,6 +36,7 @@ import Test.QuickCheck (
   suchThat,
   vectorOf,
  )
+import Prelude hiding (exp)
 
 -- * Orphan Instances
 
@@ -231,9 +234,19 @@ genURI = do
     numSegments <- choose (1, 10)
     ("/" <>) . List.intercalate "/" <$> vectorOf numSegments (getSimpleString <$> arbitrary)
 
-  genURIRegName = do
-    numSegments <- choose (1, 5)
-    List.intercalate "." <$> vectorOf numSegments ((getSimpleString <$> arbitrary) `suchThat` \s -> length s < 30)
-
   genURIPort =
     maybe "" show <$> frequency [(9, pure Nothing), (1, Just <$> choose (1 :: Int, 65535))]
+
+genURIRegName :: Gen String
+genURIRegName = do
+  numSegments <- choose (1, 5)
+  List.intercalate "." <$> vectorOf numSegments ((getSimpleString <$> arbitrary) `suchThat` \s -> length s < 30)
+
+instance Arbitrary BskyAuth where
+  arbitrary = do
+    let scope = "com.atproto.access"
+    sub <- ("did:plc:" <>) . Base32.encodeBase32 . BS.pack <$> vectorOf 10 arbitrary
+    iat <- choose (1732500000, 1732600000)
+    let exp = iat + 6200
+    aud <- ("did:web:" <>) . Text.pack <$> genURIRegName
+    pure $ BskyAuth{..}

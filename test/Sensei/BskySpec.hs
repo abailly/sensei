@@ -16,27 +16,32 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
+import qualified Data.ByteString.Lazy as LBS
 import Data.Data (Proxy (..))
 import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
 import Data.Time (UTCTime (..))
+import GHC.IO (unsafePerformIO)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv, fakeLogger)
 import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyNet (..), BskySession (..), Record (..), bskyEventHandler)
+import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskySession (..), Record (..), bskyEventHandler, decodeAuthToken)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
 import Sensei.Generators ()
-import Sensei.TestHelper (app, putJSON_, withApp, withBackends, withDBRunner)
+import Sensei.Server (SerializedToken (..), makeToken)
+import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBackends, withDBRunner)
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, after_, before, describe, it, runIO, shouldReturn)
+import Test.Hspec (Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn)
+import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai
+import Test.QuickCheck (Property, (===))
 
 spec :: Spec
 spec = do
@@ -82,6 +87,9 @@ spec = do
 
           liftIO $ (length <$> readIORef calls) `shouldReturn` 0
 
+  describe "Bsky auth token" $ do
+    prop "can deserialise base64-encoded auth token's claims" $ prop_deserialiseAuthToken
+
   before newBskyMockNet $
     describe "Bsky logic" $ do
       it "login with given credentials then post event with token" $ \bskyMockNet -> do
@@ -108,6 +116,22 @@ spec = do
         handleEvent bskyBackend (EventNote notForBsky)
 
         calledCreatePost bskyMockNet `shouldReturn` 0
+
+prop_deserialiseAuthToken :: BskyAuth -> Property
+prop_deserialiseAuthToken auth =
+  let token = unsafePerformIO $ serializedSampleToken auth
+      deserialised = decodeAuthToken token
+   in deserialised === Right auth
+
+-- it "refreshes token given it has expired" $ \bskyMockNet -> do
+--   BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
+--   bskyMockNet `loginReturns`
+
+--   handleEvent bskyBackend (EventNote notForBsky)
+--   bskyMockNet `delaysBy`
+--   handleEvent bskyBackend (EventNote notForBsky)
+
+--   calledRefreshToken bskyMockNet `shouldReturn` 1
 
 calledCreatePost :: BskyMockNet -> IO Int
 calledCreatePost = readIORef . createPostCount

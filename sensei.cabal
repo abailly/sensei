@@ -77,6 +77,7 @@ library
     , ansi-terminal
     , async
     , base
+    , base64-bytestring
     , bytestring
     , case-insensitive
     , colour
@@ -177,6 +178,7 @@ test-suite sensei-test
   build-depends:
       aeson
     , base
+    , base32
     , base64-bytestring
     , binary
     , bytestring

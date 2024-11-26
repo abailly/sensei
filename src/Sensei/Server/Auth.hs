@@ -40,21 +40,80 @@ import Crypto.JOSE.Compact (decodeCompact)
 import Crypto.JOSE.Error (Error (..))
 import Crypto.JOSE.JWK
 import Crypto.JWT (SignedJWT)
-import Crypto.KDF.BCrypt
-import Data.Aeson
+import Crypto.KDF.BCrypt (bcrypt)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value (String),
+  eitherDecode,
+  encode,
+  object,
+  withObject,
+  withText,
+  (.:),
+ )
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import Data.Proxy
+import Data.Proxy (Proxy (Proxy))
 import Data.String (IsString (..))
 import Data.Text (Text, pack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import GHC.Generics
+import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
 import GHC.TypeLits (KnownNat, Nat, natVal)
-import Preface.Codec
-import Servant
-import Servant.Auth.Server as SAS
+import Preface.Codec (Base64, Encoded (..), Hex, toBase64)
+import Servant (
+  BasicAuthData (..),
+  IsSecure (..),
+  MimeRender (..),
+  OctetStream,
+ )
+import Servant.Auth.Server as SAS (
+  AreAuths,
+  Auth,
+  AuthCheck (..),
+  AuthResult (..),
+  BasicAuth,
+  BasicAuthCfg,
+  BasicAuthData (..),
+  Cookie,
+  CookieSettings (..),
+  Default (..),
+  FromBasicAuthData (..),
+  FromJWT (..),
+  IsMatch (..),
+  IsPasswordCorrect (..),
+  IsSecure (..),
+  JWT,
+  JWTSettings (..),
+  SameSite (..),
+  SetCookie,
+  ThrowAll (..),
+  ToJWT (..),
+  XsrfCookieSettings (..),
+  acceptLogin,
+  clearSession,
+  defaultCookieSettings,
+  defaultJWTSettings,
+  defaultXsrfCookieSettings,
+  fromSecret,
+  generateKey,
+  generateSecret,
+  jwtAuthCheck,
+  makeCookie,
+  makeCookieBS,
+  makeCsrfCookie,
+  makeJWT,
+  makeSessionCookie,
+  makeSessionCookieBS,
+  makeXsrfCookie,
+  readKey,
+  verifyJWT,
+  writeKey,
+  wwwAuthenticatedErr,
+ )
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 
@@ -203,7 +262,7 @@ createToken directory = do
   key <- getKey (directory </> "sensei.jwk")
   makeToken (defaultJWTSettings key) (AuthToken "" 1)
 
-makeToken :: JWTSettings -> AuthenticationToken -> IO SerializedToken
+makeToken :: ToJWT a => JWTSettings -> a -> IO SerializedToken
 makeToken settings authId =
   makeJWT authId settings Nothing >>= \case
     Left err -> error $ "Failed to create token :" <> show err

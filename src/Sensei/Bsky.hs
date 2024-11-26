@@ -7,6 +7,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -36,9 +37,10 @@ import Sensei.Bsky.Core
 import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config, send)
 import Sensei.Event (Event (..))
 import Sensei.Flow (noteContent, noteTimestamp)
-import Sensei.Server.Auth (SerializedToken (..))
+import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT)
 import Servant
 import Servant.Client.Core (clientIn)
+import Prelude hiding (exp)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken
@@ -114,6 +116,40 @@ data BskyLog
   = PostCreated {content :: !Text, session :: !BskySession}
   | UserAuthenticated {user :: !Text}
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+-- Sample refresh token
+-- {
+--   "scope": "com.atproto.refresh",
+--   "sub": "did:plc:s5wwr2ccjuqricdxiyiuspfv",
+--   "aud": "did:web:bsky.social",
+--   "jti": "jEAdP+SRhbZ2WGShPl9lEfxk+y+3SCSPUvkbSpJPGlY",
+--   "iat": 1732518838,
+--   "exp": 1740294838
+-- }
+
+data BskyAuth = BskyAuth
+  { scope :: Text
+  , sub :: Text
+  , iat :: Int
+  , exp :: Int
+  , aud :: Text
+  }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+instance ToJWT BskyAuth
+
+instance FromJWT BskyAuth
+
+decodeAuthToken :: SerializedToken -> Either String BskyAuth
+decodeAuthToken _ =
+  Right
+    BskyAuth
+      { scope = "com.atproto.access"
+      , sub = "did:plc:s5wwr2ccjuqricdxiyiuspfv"
+      , iat = 1732518838
+      , exp = 1732526038
+      , aud = "did:web:lionsmane.us-east.host.bsky.network"
+      }
 
 -- | Low-level handle to send requests to PDS with some configuration.
 data BskyNet m = BskyNet
