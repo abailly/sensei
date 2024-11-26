@@ -3,11 +3,12 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Sensei.BskySpec where
+module Sensei.BskySpec (spec) where
 
 import Control.Exception (Exception, throwIO)
 import Control.Exception.Safe (MonadCatch, MonadThrow, catch, throwM)
@@ -16,31 +17,26 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
 import Data.Data (Proxy (..))
-import Data.IORef (IORef, atomicModifyIORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
 import Data.Time (UTCTime (..))
 import Network.URI.Extra (uriFromString)
-import Preface.Codec (Encoded, Hex)
 import Preface.Log (LoggerEnv, fakeLogger)
 import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyAPI, BskyNet (..), BskyPost, BskySession (..), CreatePost, Login, Record (..), bskyCreatePost, bskyEventHandler, bskyLogin)
+import Sensei.Bsky (BskyNet (..), BskySession (..), Record (..), bskyEventHandler)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
 import Sensei.Generators ()
 import Sensei.TestHelper (app, putJSON_, withApp, withBackends, withDBRunner)
-import Sensei.WaiTestHelper (runRequestWith)
-import Servant.API (type (:<|>) ((:<|>)))
-import Servant.Server (Application, Handler, ServerError, serve)
+import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, SpecWith, after_, around, describe, it, runIO, shouldContain, shouldNotContain, shouldReturn)
+import Test.Hspec (Spec, after_, before, describe, it, runIO, shouldReturn)
 import Test.Hspec.Wai
-import Test.Hspec.Wai.Internal (runWithState)
-import Type.Reflection (SomeTypeRep, someTypeRep)
 
 spec :: Spec
 spec = do
@@ -86,91 +82,55 @@ spec = do
 
           liftIO $ (length <$> readIORef calls) `shouldReturn` 0
 
-  withMock bskyMock $ do
-    describe "Bsky Backend" $ do
-      it "login with given credentials then post event with token" $ \(uid, ref, application) -> do
-        let test = do
-              handler <- bskyEventHandler fakeLogger testBskyNet
+  before newBskyMockNet $
+    describe "Bsky logic" $ do
+      it "login with given credentials then post event with token" $ \bskyMockNet -> do
+        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
 
-              handleEvent handler bskyBackend (EventNote flow2)
+        handleEvent bskyBackend (EventNote flow2)
 
-        runWithState test (uid, application)
+        calledLogin bskyMockNet `shouldReturn` 1
+        calledCreatePost bskyMockNet `shouldReturn` 1
 
-        ref
-          `hasCalled` [ someTypeRep (Proxy @Login)
-                      , someTypeRep (Proxy @CreatePost)
-                      ]
+      it "login only once when posting several events" $ \bskyMockNet -> do
+        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
 
-      it "discard note if it does not contain #bsky tag" $ \(uid, ref, application) -> do
+        handleEvent bskyBackend (EventNote flow2)
+        handleEvent bskyBackend (EventNote flow2)
+
+        calledLogin bskyMockNet `shouldReturn` 1
+        calledCreatePost bskyMockNet `shouldReturn` 2
+
+      it "discards note if it does not contain #bsky tag" $ \bskyMockNet -> do
         let notForBsky = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #foo"
-            test = do
-              handler <- bskyEventHandler fakeLogger testBskyNet
+        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
 
-              handleEvent handler bskyBackend (EventNote notForBsky)
+        handleEvent bskyBackend (EventNote notForBsky)
 
-        runWithState test (uid, application)
+        calledCreatePost bskyMockNet `shouldReturn` 0
 
-        ref
-          `hasNotCalled` [ someTypeRep (Proxy @Login)
-                         , someTypeRep (Proxy @CreatePost)
-                         ]
-  describe "Bsky logic" $ do
-    it "login only once when posting several events" $ do
-      calledLogin <- newIORef (0 :: Int)
-      let bskyNet =
-            BskyNet
-              { doLogin = \_ _ -> modifyIORef' calledLogin succ >> pure (BskySession "token" "refresh")
-              , doCreatePost = \_ _ -> pure $ Record "foo" "bar"
-              }
+calledCreatePost :: BskyMockNet -> IO Int
+calledCreatePost = readIORef . createPostCount
 
-      BackendHandler{handleEvent} <- bskyEventHandler fakeLogger bskyNet
+calledLogin :: BskyMockNet -> IO Int
+calledLogin = readIORef . loginCount
 
-      handleEvent bskyBackend (EventNote flow2)
-      handleEvent bskyBackend (EventNote flow2)
+data BskyMockNet = BskyMockNet
+  { loginCount :: IORef Int
+  , createPostCount :: IORef Int
+  , bskyNet :: BskyNet IO
+  }
 
-      readIORef calledLogin `shouldReturn` 1
-
-testBskyNet :: BskyNet (WaiSession (Maybe (Encoded Hex)))
-testBskyNet = BskyNet{doCreatePost, doLogin}
- where
-  doCreatePost config = runRequestWith config . bskyCreatePost
-  doLogin config = runRequestWith config . bskyLogin
-
-hasCalled :: IORef [Call BskyAPI] -> [SomeTypeRep] -> IO ()
-hasCalled ref calls = do
-  readIORef ref >>= (`shouldContain` calls) . fmap called . reverse
-
-hasNotCalled :: IORef [Call BskyAPI] -> [SomeTypeRep] -> IO ()
-hasNotCalled ref expected = do
-  actual <- reverse . fmap called <$> readIORef ref
-  actual `shouldNotContain` expected
-
-withMock ::
-  IO (IORef [Call BskyAPI], Application) ->
-  SpecWith (Maybe (Encoded Hex), IORef [Call BskyAPI], Application) ->
-  Spec
-withMock makeApp = around mkApp
- where
-  mkApp act = do
-    (ref, server) <- makeApp
-    act (Nothing, ref, server)
-
-newtype Call api = Called {called :: SomeTypeRep}
-
-bskyMock :: IO (IORef [Call BskyAPI], Application)
-bskyMock = do
-  calls <- newIORef []
-  pure (calls, serve (Proxy @BskyAPI) (mockLogin calls :<|> mockPost calls))
- where
-  mockPost :: IORef [Call BskyAPI] -> BskyPost -> Handler Record
-  mockPost ref _post = do
-    liftIO $ atomicModifyIORef ref (\cs -> (Called (someTypeRep (Proxy @CreatePost)) : cs, ()))
-    pure $ Record "foo" "bar"
-
-  mockLogin :: IORef [Call BskyAPI] -> BskyLogin -> Handler BskySession
-  mockLogin ref _login = do
-    liftIO $ atomicModifyIORef ref (\cs -> (Called (someTypeRep (Proxy @Login)) : cs, ()))
-    pure $ BskySession "token" "refresh"
+newBskyMockNet :: IO BskyMockNet
+newBskyMockNet = do
+  loginCount <- newIORef (0 :: Int)
+  createPostCount <- newIORef (0 :: Int)
+  let bskyNet =
+        BskyNet
+          { doLogin = \_ _ -> modifyIORef' loginCount succ >> pure (BskySession "token" "refresh")
+          , doCreatePost = \_ _ -> modifyIORef' createPostCount succ >> pure (Record "foo" "bar")
+          }
+  pure $ BskyMockNet{..}
 
 newtype TestDB a = TestDB {runTestDB :: ReaderT UserProfile IO a}
   deriving (Functor, Applicative, Monad, MonadReader UserProfile, MonadIO, MonadThrow, MonadCatch)
