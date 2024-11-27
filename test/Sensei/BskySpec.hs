@@ -17,14 +17,13 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Data (Proxy (..))
 import Data.Either (isLeft)
 import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
-import Data.Time (UTCTime (..))
+import Data.Time (UTCTime (..), addUTCTime)
 import GHC.IO (unsafePerformIO)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv, fakeLogger)
@@ -37,11 +36,11 @@ import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
 import Sensei.Generators ()
-import Sensei.Server (SerializedToken (..), makeToken)
+import Sensei.Server (SerializedToken (..))
 import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBackends, withDBRunner)
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn)
+import Test.Hspec (Spec, after_, before, describe, it, runIO, shouldReturn)
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
@@ -121,6 +120,36 @@ spec = do
 
         calledCreatePost bskyMockNet `shouldReturn` 0
 
+      it "refreshes token given it has expired" $ \bskyMockNet -> do
+        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
+        let accessJwt = defaultToken
+            refreshJwt =
+              unsafePerformIO $
+                serializedSampleToken $
+                  BskyAuth
+                    { scope = "com.atproto.refresh"
+                    , sub = "did:plc:234567"
+                    , aud = "did:web:bsky.social"
+                    , iat = 1732526308
+                    , exp = 1732598308
+                    }
+
+        bskyMockNet `loginReturns` BskySession{accessJwt, refreshJwt}
+
+        handleEvent bskyBackend (EventNote flow2)
+        bskyMockNet `delaysBy` 7300
+        handleEvent bskyBackend (EventNote flow2)
+
+        calledRefreshToken bskyMockNet `shouldReturn` 1
+
+delaysBy :: BskyMockNet -> Int -> IO ()
+delaysBy BskyMockNet{currentTimeCalls} delay =
+  modifyIORef' currentTimeCalls (const $ addUTCTime (fromIntegral delay))
+
+loginReturns :: BskyMockNet -> BskySession -> IO ()
+loginReturns BskyMockNet{loginCalls} session =
+  modifyIORef' loginCalls (const $ const session)
+
 prop_deserialiseAuthToken :: BskyAuth -> Property
 prop_deserialiseAuthToken auth =
   let token = unsafePerformIO $ serializedSampleToken auth
@@ -134,36 +163,38 @@ prop_rejectMalformedTokens =
         tampered = SerializedToken $ mconcat $ take 2 $ BS.split (fromIntegral $ ord '.') token
      in isLeft (decodeAuthToken tampered)
 
--- it "refreshes token given it has expired" $ \bskyMockNet -> do
---   BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
---   bskyMockNet `loginReturns`
-
---   handleEvent bskyBackend (EventNote notForBsky)
---   bskyMockNet `delaysBy`
---   handleEvent bskyBackend (EventNote notForBsky)
-
---   calledRefreshToken bskyMockNet `shouldReturn` 1
-
 calledCreatePost :: BskyMockNet -> IO Int
 calledCreatePost = readIORef . createPostCount
 
 calledLogin :: BskyMockNet -> IO Int
 calledLogin = readIORef . loginCount
 
+calledRefreshToken :: BskyMockNet -> IO Int
+calledRefreshToken = readIORef . refreshCount
+
 data BskyMockNet = BskyMockNet
   { loginCount :: IORef Int
   , createPostCount :: IORef Int
+  , refreshCount :: IORef Int
   , bskyNet :: BskyNet IO
+  , loginCalls :: IORef (BskyLogin -> BskySession)
+  , currentTimeCalls :: IORef (UTCTime -> UTCTime)
   }
 
 newBskyMockNet :: IO BskyMockNet
 newBskyMockNet = do
   loginCount <- newIORef (0 :: Int)
   createPostCount <- newIORef (0 :: Int)
+  refreshCount <- newIORef (0 :: Int)
+  let dummySession = BskySession defaultToken defaultToken
+  loginCalls <- newIORef $ const dummySession
+  currentTimeCalls <- newIORef id
   let bskyNet =
         BskyNet
-          { doLogin = \_ _ -> modifyIORef' loginCount succ >> pure (BskySession "token" "refresh")
+          { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login)
           , doCreatePost = \_ _ -> modifyIORef' createPostCount succ >> pure (Record "foo" "bar")
+          , doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession
+          , currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t
           }
   pure $ BskyMockNet{..}
 
@@ -219,3 +250,16 @@ mkBackends ref = Backend.insert bskyIO Backend.empty
     BackendHandler
       { handleEvent = \_ event -> liftIO $ atomicModifyIORef' ref (\es -> (event : es, ()))
       }
+
+defaultToken :: SerializedToken
+{-# NOINLINE defaultToken #-}
+defaultToken =
+  unsafePerformIO $
+    serializedSampleToken $
+      BskyAuth
+        { scope = "com.atproto.refresh"
+        , sub = "did:plc:1234567"
+        , aud = "did:web:bsky.social"
+        , iat = 1732518838
+        , exp = 1732526038
+        }
