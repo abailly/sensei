@@ -12,22 +12,30 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 module Sensei.Bsky where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
-import Control.Lens ((^.))
+import Control.Lens ((&), (?~), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Aeson (FromJSON, ToJSON (..), withText)
+import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
+import Data.Aeson (FromJSON, ToJSON (..), eitherDecodeStrict', withText)
+import qualified Data.Aeson as A
 import Data.Aeson.Types (FromJSON (..))
+import Data.Bifunctor (first)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base64 as Base64
+import Data.Char (ord)
 import Data.Functor (void)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
-import Data.String (IsString)
-import Data.Text (Text, isInfixOf)
+import Data.String (IsString (fromString))
+import Data.Text (Text, isInfixOf, unpack)
 import qualified Data.Text as Text
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time (UTCTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import Network.URI.Extra (uriFromString)
@@ -37,7 +45,7 @@ import Sensei.Bsky.Core
 import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config, send)
 import Sensei.Event (Event (..))
 import Sensei.Flow (noteContent, noteTimestamp)
-import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT)
+import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT (encodeJWT))
 import Servant
 import Servant.Client.Core (clientIn)
 import Prelude hiding (exp)
@@ -136,20 +144,25 @@ data BskyAuth = BskyAuth
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-instance ToJWT BskyAuth
+instance ToJWT BskyAuth where
+  encodeJWT BskyAuth{scope, sub, iat, exp, aud} =
+    addClaim "scope" (A.String scope) $
+      emptyClaimsSet
+        & claimAud ?~ Audience [fromString $ unpack aud]
+        -- FIXME: there's a stringOrUri prism in JOSE package but I have no idea how to use it :(
+        & claimIat ?~ NumericDate (posixSecondsToUTCTime $ fromIntegral iat)
+        & claimExp ?~ NumericDate (posixSecondsToUTCTime $ fromIntegral exp)
+        & claimSub ?~ fromString (unpack sub)
 
 instance FromJWT BskyAuth
 
 decodeAuthToken :: SerializedToken -> Either String BskyAuth
-decodeAuthToken _ =
-  Right
-    BskyAuth
-      { scope = "com.atproto.access"
-      , sub = "did:plc:s5wwr2ccjuqricdxiyiuspfv"
-      , iat = 1732518838
-      , exp = 1732526038
-      , aud = "did:web:lionsmane.us-east.host.bsky.network"
-      }
+decodeAuthToken (SerializedToken bytes) =
+  case BS.split (fromIntegral $ ord '.') bytes of
+    [_, tok, _] -> first show $ eitherDecodeStrict' decoded
+     where
+      decoded = Base64.decodeLenient tok
+    _other -> Left $ "invalid token format: " <> show bytes
 
 -- | Low-level handle to send requests to PDS with some configuration.
 data BskyNet m = BskyNet

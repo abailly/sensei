@@ -16,8 +16,11 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import Data.Char (ord)
 import Data.Data (Proxy (..))
+import Data.Either (isLeft)
 import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack)
@@ -41,7 +44,7 @@ import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
 import Test.Hspec (Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn)
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai
-import Test.QuickCheck (Property, (===))
+import Test.QuickCheck (Property, arbitrary, forAll, (===))
 
 spec :: Spec
 spec = do
@@ -89,6 +92,7 @@ spec = do
 
   describe "Bsky auth token" $ do
     prop "can deserialise base64-encoded auth token's claims" $ prop_deserialiseAuthToken
+    prop "reject malformed tokens" $ prop_rejectMalformedTokens
 
   before newBskyMockNet $
     describe "Bsky logic" $ do
@@ -122,6 +126,13 @@ prop_deserialiseAuthToken auth =
   let token = unsafePerformIO $ serializedSampleToken auth
       deserialised = decodeAuthToken token
    in deserialised === Right auth
+
+prop_rejectMalformedTokens :: Property
+prop_rejectMalformedTokens =
+  forAll arbitrary $ \(auth :: BskyAuth) ->
+    let SerializedToken token = unsafePerformIO $ serializedSampleToken auth
+        tampered = SerializedToken $ mconcat $ take 2 $ BS.split (fromIntegral $ ord '.') token
+     in isLeft (decodeAuthToken tampered)
 
 -- it "refreshes token given it has expired" $ \bskyMockNet -> do
 --   BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
