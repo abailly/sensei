@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -5,6 +6,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -40,7 +42,7 @@ import Sensei.Server (SerializedToken (..))
 import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBackends, withDBRunner)
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Expectation, Spec, after_, before, describe, it, runIO, shouldReturn)
+import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldReturn)
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
@@ -93,35 +95,29 @@ spec = do
     prop "can deserialise base64-encoded auth token's claims" $ prop_deserialiseAuthToken
     prop "reject malformed tokens" $ prop_rejectMalformedTokens
 
-  before newBskyMockNet $
+  before (newBskyMockNet >>= \mockNet -> (mockNet,) <$> bskyEventHandler fakeLogger (bskyNet mockNet)) $
     describe "Bsky logic" $ do
-      it "login with given credentials then post event with token" $ \bskyMockNet -> do
-        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
-
+      it "login with given credentials then post event with token" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
 
         calledLogin bskyMockNet `shouldReturn` 1
-        calledCreatePost bskyMockNet `shouldReturn` 1
+        bskyMockNet `calledCreatePost` (1 :: Int)
 
-      it "login only once when posting several events" $ \bskyMockNet -> do
-        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
-
+      it "login only once when posting several events" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
         handleEvent bskyBackend (EventNote aBskyNote)
 
         calledLogin bskyMockNet `shouldReturn` 1
-        calledCreatePost bskyMockNet `shouldReturn` 2
+        bskyMockNet `calledCreatePost` (2 :: Int)
 
-      it "discards note if it does not contain #bsky tag" $ \bskyMockNet -> do
+      it "discards note if it does not contain #bsky tag" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
         let notForBsky = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #foo"
-        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
 
         handleEvent bskyBackend (EventNote notForBsky)
 
-        calledCreatePost bskyMockNet `shouldReturn` 0
+        bskyMockNet `calledCreatePost` (0 :: Int)
 
-      it "refreshes token given it has expired" $ \bskyMockNet -> do
-        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
+      it "refreshes token given it has expired" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
         let accessJwt = defaultToken
             refreshJwt =
               unsafePerformIO $
@@ -142,27 +138,32 @@ spec = do
 
         calledRefreshToken bskyMockNet `shouldReturn` 1
 
-      it "discards #bsky tag when posting note" $ \bskyMockNet -> do
-        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
-
+      it "discards #bsky tag when posting note" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
 
-        bskyMockNet `calledCreatePost'` WithArgumentMatching ((== "some note ") . text . content)
+        bskyMockNet `calledCreatePost` ((== "some note ") . text . content)
 
-calledCreatePost' :: BskyMockNet -> Matcher -> Expectation
-calledCreatePost' net matcher = do
+calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet -> match -> IO ()
+calledCreatePost net matcher = do
   readIORef (createPostCalls net)
-    >>= \calls -> case head calls `matches` matcher of
+    >>= \calls -> case calls `matches` matcher of
       Right () -> pure ()
       Left err -> fail err
 
-matches :: BskyPost -> Matcher -> Either String ()
-matches bpost (WithArgumentMatching predicate) =
-  if predicate bpost
-    then Right ()
-    else Left $ "Post " <> show bpost <> " does not match"
+class IsMatcher m where
+  matches :: [BskyPost] -> m -> Either String ()
 
-data Matcher = WithArgumentMatching (BskyPost -> Bool)
+instance IsMatcher (BskyPost -> Bool) where
+  matches bposts predicate =
+    if predicate (head bposts)
+      then Right ()
+      else Left $ "Posts " <> show bposts <> " do not match predicate"
+
+instance IsMatcher Int where
+  matches bposts n =
+    if length bposts == n
+      then Right ()
+      else Left $ "Expected " <> show n <> " posts, got " <> show (length bposts)
 
 delaysBy :: BskyMockNet -> Int -> IO ()
 delaysBy BskyMockNet{currentTimeCalls} delay =
@@ -184,9 +185,6 @@ prop_rejectMalformedTokens =
     let SerializedToken token = unsafePerformIO $ serializedSampleToken auth
         tampered = SerializedToken $ mconcat $ take 2 $ BS.split (fromIntegral $ ord '.') token
      in isLeft (decodeAuthToken tampered)
-
-calledCreatePost :: BskyMockNet -> IO Int
-calledCreatePost = fmap length . readIORef . createPostCalls
 
 calledLogin :: BskyMockNet -> IO Int
 calledLogin = readIORef . loginCount
@@ -214,7 +212,7 @@ newBskyMockNet = do
   let bskyNet =
         BskyNet
           { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login)
-          , doCreatePost = \_ post -> modifyIORef' createPostCalls (post :) >> pure (Record "foo" "bar")
+          , doCreatePost = \_ p -> modifyIORef' createPostCalls (p :) >> pure (Record "foo" "bar")
           , doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession
           , currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t
           }
