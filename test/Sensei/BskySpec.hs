@@ -31,7 +31,7 @@ import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultPr
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskySession (..), Record (..), bskyEventHandler, decodeAuthToken)
+import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskyPost (..), BskySession (..), Record (..), bskyEventHandler, decodeAuthToken, text)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
@@ -40,7 +40,7 @@ import Sensei.Server (SerializedToken (..))
 import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBackends, withDBRunner)
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, after_, before, describe, it, runIO, shouldReturn)
+import Test.Hspec (Expectation, Spec, after_, before, describe, it, runIO, shouldReturn)
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
@@ -64,7 +64,7 @@ spec = do
               [ Backend bskyBackend
               ]
           }
-      flow2 = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #bsky"
+      aBskyNote = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #bsky"
 
   calls <- runIO (newIORef [])
 
@@ -73,9 +73,9 @@ spec = do
       withApp (withBackends (mkBackends calls) app) $ it "propagate posted event to backend" $ do
         putJSON_ "/api/users/arnaud" profileWithBsky
 
-        postNote_ flow2
+        postNote_ aBskyNote
 
-        liftIO $ (head <$> readIORef calls) `shouldReturn` EventNote flow2
+        liftIO $ (head <$> readIORef calls) `shouldReturn` EventNote aBskyNote
 
       withApp
         ( withBackends (mkBackends calls) $
@@ -85,7 +85,7 @@ spec = do
         $ do
           putJSON_ "/api/users/arnaud" profileWithBsky
 
-          postNote flow2 `shouldRespondWith` 500
+          postNote aBskyNote `shouldRespondWith` 500
 
           liftIO $ (length <$> readIORef calls) `shouldReturn` 0
 
@@ -98,7 +98,7 @@ spec = do
       it "login with given credentials then post event with token" $ \bskyMockNet -> do
         BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
 
-        handleEvent bskyBackend (EventNote flow2)
+        handleEvent bskyBackend (EventNote aBskyNote)
 
         calledLogin bskyMockNet `shouldReturn` 1
         calledCreatePost bskyMockNet `shouldReturn` 1
@@ -106,8 +106,8 @@ spec = do
       it "login only once when posting several events" $ \bskyMockNet -> do
         BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
 
-        handleEvent bskyBackend (EventNote flow2)
-        handleEvent bskyBackend (EventNote flow2)
+        handleEvent bskyBackend (EventNote aBskyNote)
+        handleEvent bskyBackend (EventNote aBskyNote)
 
         calledLogin bskyMockNet `shouldReturn` 1
         calledCreatePost bskyMockNet `shouldReturn` 2
@@ -136,11 +136,33 @@ spec = do
 
         bskyMockNet `loginReturns` BskySession{accessJwt, refreshJwt}
 
-        handleEvent bskyBackend (EventNote flow2)
+        handleEvent bskyBackend (EventNote aBskyNote)
         bskyMockNet `delaysBy` 7300
-        handleEvent bskyBackend (EventNote flow2)
+        handleEvent bskyBackend (EventNote aBskyNote)
 
         calledRefreshToken bskyMockNet `shouldReturn` 1
+
+      it "discards #bsky tag when posting note" $ \bskyMockNet -> do
+        BackendHandler{handleEvent} <- bskyEventHandler fakeLogger (bskyNet bskyMockNet)
+
+        handleEvent bskyBackend (EventNote aBskyNote)
+
+        bskyMockNet `calledCreatePost'` WithArgumentMatching ((== "some note ") . text . content)
+
+calledCreatePost' :: BskyMockNet -> Matcher -> Expectation
+calledCreatePost' net matcher = do
+  readIORef (createPostCalls net)
+    >>= \calls -> case head calls `matches` matcher of
+      Right () -> pure ()
+      Left err -> fail err
+
+matches :: BskyPost -> Matcher -> Either String ()
+matches bpost (WithArgumentMatching predicate) =
+  if predicate bpost
+    then Right ()
+    else Left $ "Post " <> show bpost <> " does not match"
+
+data Matcher = WithArgumentMatching (BskyPost -> Bool)
 
 delaysBy :: BskyMockNet -> Int -> IO ()
 delaysBy BskyMockNet{currentTimeCalls} delay =
@@ -164,7 +186,7 @@ prop_rejectMalformedTokens =
      in isLeft (decodeAuthToken tampered)
 
 calledCreatePost :: BskyMockNet -> IO Int
-calledCreatePost = readIORef . createPostCount
+calledCreatePost = fmap length . readIORef . createPostCalls
 
 calledLogin :: BskyMockNet -> IO Int
 calledLogin = readIORef . loginCount
@@ -174,7 +196,7 @@ calledRefreshToken = readIORef . refreshCount
 
 data BskyMockNet = BskyMockNet
   { loginCount :: IORef Int
-  , createPostCount :: IORef Int
+  , createPostCalls :: IORef [BskyPost]
   , refreshCount :: IORef Int
   , bskyNet :: BskyNet IO
   , loginCalls :: IORef (BskyLogin -> BskySession)
@@ -184,7 +206,7 @@ data BskyMockNet = BskyMockNet
 newBskyMockNet :: IO BskyMockNet
 newBskyMockNet = do
   loginCount <- newIORef (0 :: Int)
-  createPostCount <- newIORef (0 :: Int)
+  createPostCalls <- newIORef []
   refreshCount <- newIORef (0 :: Int)
   let dummySession = BskySession defaultToken defaultToken
   loginCalls <- newIORef $ const dummySession
@@ -192,7 +214,7 @@ newBskyMockNet = do
   let bskyNet =
         BskyNet
           { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login)
-          , doCreatePost = \_ _ -> modifyIORef' createPostCount succ >> pure (Record "foo" "bar")
+          , doCreatePost = \_ post -> modifyIORef' createPostCalls (post :) >> pure (Record "foo" "bar")
           , doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession
           , currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t
           }

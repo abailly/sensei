@@ -79,7 +79,7 @@ instance KnownSymbol bskyType => FromJSON (BskyType bskyType) where
 data BskyPost = BskyPost
   { repo :: BskyHandle
   , collection :: BskyType "app.bsky.feed.post"
-  , record :: BskyContent
+  , content :: BskyContent
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
@@ -206,9 +206,9 @@ bskyEventHandler logger BskyNet{doCreatePost, doLogin, doRefresh, currentTime} =
       void $
         doCreatePost (BskyClientConfig{backend, bskySession = Just session}) $
           BskyPost
-            { record =
+            { content =
                 BskyContent
-                  { text = note ^. noteContent
+                  { text = removeTag (note ^. noteContent)
                   , createdAt = note ^. noteTimestamp
                   }
             , -- TODO: test me!
@@ -251,6 +251,11 @@ bskyEventHandler logger BskyNet{doCreatePost, doLogin, doRefresh, currentTime} =
                 \sessions -> Map.insert (identifier credentials) session sessions
           postWith backend session repo note
     _ -> pure ()
+
+removeTag :: Text -> Text
+removeTag content =
+  let (tag, rest) = Text.breakOn "#bsky" content
+   in tag <> Text.drop 5 rest
 
 data BskyClientConfig = BskyClientConfig
   { backend :: BskyBackend
