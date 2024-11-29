@@ -141,7 +141,7 @@ spec = do
       it "discards #bsky tag when posting note" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
 
-        bskyMockNet `calledCreatePost` ((== "some note ") . text . content)
+        bskyMockNet `calledCreatePost` ((== "some note ") . text . record)
 
 calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet -> match -> IO ()
 calledCreatePost net matcher = do
