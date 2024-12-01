@@ -1,16 +1,18 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- | `RunClient` instance suitable for use with WAI hspec wrapper
 --   Provides
 module Sensei.WaiTestHelper where
 
+import Control.Exception.Safe (MonadCatch, MonadThrow)
 import Control.Monad (unless)
 import Control.Monad.Reader (
   MonadIO (..),
@@ -102,6 +104,11 @@ toClientResponse ::
   m Response
 toClientResponse SResponse{..} =
   pure $ Response simpleStatus (fromList simpleHeaders) http11 simpleBody
+
+-- These standalone instances are needed to ensure we can throw/catch
+-- exceptions within tests
+deriving instance MonadThrow (WaiSession a)
+deriving instance MonadCatch (WaiSession a)
 
 instance RunClient (WaiSession (Maybe (Encoded Hex))) where
   runRequestAcceptStatus _ req = do

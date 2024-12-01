@@ -5,12 +5,16 @@
 
 module Sensei.Wrapper where
 
+import Control.Exception.Safe (MonadCatch, catch)
+
+-- import Data.Functor (void)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
 import Data.Time (UTCTime, diffUTCTime)
 import qualified Data.Time as Time
-import Sensei.Client (ClientConfig, ClientMonad, SenseiClientConfig, getUserProfileC, postEventC)
+import GHC.Stack (HasCallStack)
+import Sensei.Client (ClientConfig, ClientError, ClientMonad, SenseiClientConfig, getUserProfileC, postEventC)
 import qualified Sensei.Client as Client
 import Sensei.Event (Event (..))
 import Sensei.Flow
@@ -31,8 +35,9 @@ data WrapperIO config m where
   WrapperIO ::
     { runProcess :: String -> [String] -> m ExitCode
     , currentTime :: m UTCTime
-    , send :: forall a. ClientMonad config a -> m a
+    , send :: forall a. HasCallStack => ClientMonad config a -> m a
     , fileExists :: FilePath -> m Bool
+    , notify :: String -> m ()
     } ->
     WrapperIO config m
 
@@ -52,6 +57,7 @@ wrapperIO config =
     , currentTime = Time.getCurrentTime
     , send = Client.send config
     , fileExists = doesFileExist
+    , notify = hPutStrLn stderr
     }
 
 handleWrapperResult :: String -> Either WrapperError ExitCode -> IO b
@@ -78,6 +84,7 @@ defaultCommands =
     , ("npm", "/usr/local/bin/npm")
     , ("az", "/usr/local/bin/az")
     , ("git", "/usr/bin/git")
+    , ("cabal", "/usr/local/bin/cabal")
     ]
 
 -- | Possible errors when trying to run an alias
@@ -87,7 +94,7 @@ data WrapperError
   deriving (Eq, Show)
 
 tryWrapProg ::
-  Monad m =>
+  (HasCallStack, MonadCatch m) =>
   WrapperIO SenseiClientConfig m ->
   Text ->
   String ->
@@ -95,8 +102,11 @@ tryWrapProg ::
   Text ->
   m (Either WrapperError ExitCode)
 tryWrapProg io@WrapperIO{..} curUser prog args currentDir = do
-  commands <- fromMaybe defaultCommands . userCommands <$> send getUserProfileC
-  case Map.lookup prog commands of
+  userProfile <-
+    (Just <$> send getUserProfileC) `catch` \(err :: ClientError) ->
+      notify ("failed to send execution result to server: " <> show err) >> pure Nothing
+  let commands = Map.lookup prog $ fromMaybe defaultCommands $ userCommands =<< userProfile
+  case commands of
     Just realPath -> do
       isFile <- fileExists realPath
       if isFile
@@ -105,7 +115,7 @@ tryWrapProg io@WrapperIO{..} curUser prog args currentDir = do
     Nothing -> pure $ Left (UnMappedAlias prog)
 
 wrapProg ::
-  Monad m =>
+  (Monad m, MonadCatch m) =>
   WrapperIO SenseiClientConfig m ->
   Text ->
   String ->
@@ -116,8 +126,19 @@ wrapProg WrapperIO{..} curUser realProg progArgs currentDir = do
   st <- currentTime
   ex <- runProcess realProg progArgs
   en <- currentTime
-  send (postEventC (UserName curUser) [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)])
+  recordExecutionSafely st en ex
   pure ex
+ where
+  recordExecutionSafely st en ex =
+    --    void
+    ( send
+        ( postEventC
+            (UserName curUser)
+            [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)]
+        )
+    )
+
+--      `catch` \(err :: ClientError) -> notify ("failed to send execution result to server: " <> show err)
 
 toInt :: ExitCode -> Int
 toInt ExitSuccess = 0

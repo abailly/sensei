@@ -84,6 +84,7 @@ library
     , containers
     , cryptonite
     , directory
+    , exceptions
     , file-embed
     , filepath
     , http-client
@@ -187,6 +188,7 @@ test-suite sensei-test
     , containers
     , cookie
     , directory
+    , exceptions
     , filepath
     , hspec
     , hspec-golden-aeson

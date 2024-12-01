@@ -132,7 +132,7 @@ withBackends :: Backends -> AppBuilder db -> AppBuilder db
 withBackends backends builder =
   builder{backends}
 
-withApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> SpecWith (Maybe (Encoded Hex), Application) -> Spec
+withApp :: (MonadIO db, MonadError ServerError db, DB db, HasCallStack) => AppBuilder db -> SpecWith (Maybe (Encoded Hex), Application) -> Spec
 withApp builder = around (buildApp builder)
 
 withDBRunner :: (forall x. FilePath -> FilePath -> LoggerEnv -> (db2 x -> IO x)) -> AppBuilder db1 -> AppBuilder db2
@@ -147,7 +147,7 @@ withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempDir =
   bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
-buildApp :: (MonadIO db, MonadError ServerError db, DB db) => AppBuilder db -> ActionWith (Maybe (Encoded Hex), Application) -> IO ()
+buildApp :: (MonadIO db, MonadError ServerError db, DB db, HasCallStack) => AppBuilder db -> ActionWith (Maybe (Encoded Hex), Application) -> IO ()
 buildApp AppBuilder{..} act =
   withTempFile $ \file -> do
     unless withStorage $ removePathForcibly file

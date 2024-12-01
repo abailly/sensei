@@ -4,6 +4,8 @@
 
 module Sensei.WrapperSpec where
 
+import Control.Exception (SomeException (..))
+import Control.Exception.Safe (throwM)
 import Data.Functor (void)
 import qualified Data.Map as Map
 import Preface.Codec (Encoded, Hex)
@@ -12,7 +14,7 @@ import Sensei.API (
   UserProfile (userCommands, userName),
   defaultProfile,
  )
-import Sensei.Client (SenseiClientConfig, setUserProfileC)
+import Sensei.Client (ClientMonad, SenseiClientConfig, setUserProfileC)
 import Sensei.TestHelper (WaiSession, app, withApp)
 import Sensei.WaiTestHelper (isExpectedToBe, runRequest)
 import Sensei.Wrapper (
@@ -21,8 +23,9 @@ import Sensei.Wrapper (
   tryWrapProg,
   wrapProg,
  )
+import Servant.Client.Core (ClientError (ConnectionError))
 import System.Exit (ExitCode (ExitSuccess))
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (HasCallStack, Spec, describe, it)
 
 io :: WrapperIO SenseiClientConfig (WaiSession (Maybe (Encoded Hex)))
 io = WrapperIO{..}
@@ -31,6 +34,7 @@ io = WrapperIO{..}
   currentTime = pure $ UTCTime (toEnum 50000) 0
   send = runRequest
   fileExists = const $ pure True
+  notify = const $ pure ()
 
 spec :: Spec
 spec =
@@ -55,3 +59,11 @@ spec =
         void $ send io $ setUserProfileC "arnaud" defaultProfile{userName = "arnaud", userCommands = Just $ Map.fromList [("foo", "qwerty123123")]}
         res <- tryWrapProg ioWithoutProg "arnaud" "foo" [] "somedir"
         res `isExpectedToBe` Left (NonExistentAlias "foo" "qwerty123123")
+
+      it "runs command if program exists at default paths  but calls to server fail" $ do
+        let ioWithSendFailing = io{send = throwConnectionError}
+        res <- tryWrapProg ioWithSendFailing "arnaud" "cabal" [] "somedir"
+        res `isExpectedToBe` Right ExitSuccess
+
+throwConnectionError :: HasCallStack => ClientMonad config a -> WaiSession (Maybe (Encoded Hex)) a
+throwConnectionError _ = throwM $ ConnectionError (SomeException $ userError "some error")
