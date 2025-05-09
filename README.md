@@ -1,6 +1,6 @@
 # sensei
 
-A personal information management and project tracking tool for developers
+A personal information management and project tracking tool for developers and more.
 
 # User Profile
 
