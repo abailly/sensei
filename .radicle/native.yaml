@@ -1,4 +1,6 @@
 shell: |
+  sleep 100
+
   ghc --version
   cabal --version
 
