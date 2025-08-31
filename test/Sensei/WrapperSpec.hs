@@ -60,7 +60,7 @@ spec =
         res <- tryWrapProg ioWithoutProg "arnaud" "foo" [] "somedir"
         res `isExpectedToBe` Left (NonExistentAlias "foo" "qwerty123123")
 
-      it "runs command if program exists at default paths  but calls to server fail" $ do
+      it "runs command if program exists at default paths but calls to server fail" $ do
         let ioWithSendFailing = io{send = throwConnectionError}
         res <- tryWrapProg ioWithSendFailing "arnaud" "cabal" [] "somedir"
         res `isExpectedToBe` Right ExitSuccess

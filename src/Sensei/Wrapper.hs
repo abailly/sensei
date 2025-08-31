@@ -6,7 +6,6 @@
 module Sensei.Wrapper where
 
 import Control.Exception.Safe (MonadCatch, catch)
-
 -- import Data.Functor (void)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -22,26 +21,26 @@ import Sensei.User
 import System.Directory (doesFileExist)
 import System.Exit (ExitCode (..), exitWith)
 import System.IO (hPutStrLn, stderr)
-import System.Process (
-  CreateProcess (std_err, std_in, std_out),
-  StdStream (Inherit),
-  createProcess,
-  proc,
-  waitForProcess,
- )
+import System.Process
+  ( CreateProcess (std_err, std_in, std_out),
+    StdStream (Inherit),
+    createProcess,
+    proc,
+    waitForProcess,
+  )
 
 -- | A record of functions exposing IO actions needed for wrapping program executions
 data WrapperIO config m where
   WrapperIO ::
-    { runProcess :: String -> [String] -> m ExitCode
-    , currentTime :: m UTCTime
-    , send :: forall a. HasCallStack => ClientMonad config a -> m a
-    , fileExists :: FilePath -> m Bool
-    , notify :: String -> m ()
+    { runProcess :: String -> [String] -> m ExitCode,
+      currentTime :: m UTCTime,
+      send :: forall a. (HasCallStack) => ClientMonad config a -> m a,
+      fileExists :: FilePath -> m Bool,
+      notify :: String -> m ()
     } ->
     WrapperIO config m
 
-wrapperIO :: forall config. ClientConfig config => config -> WrapperIO config IO
+wrapperIO :: forall config. (ClientConfig config) => config -> WrapperIO config IO
 wrapperIO config =
   WrapperIO
     { runProcess =
@@ -49,19 +48,19 @@ wrapperIO config =
           (_, _, _, h) <-
             createProcess
               (proc realProg progArgs)
-                { std_in = Inherit
-                , std_out = Inherit
-                , std_err = Inherit
+                { std_in = Inherit,
+                  std_out = Inherit,
+                  std_err = Inherit
                 }
-          waitForProcess h
-    , currentTime = Time.getCurrentTime
-    , send = Client.send config
-    , fileExists = doesFileExist
-    , notify = hPutStrLn stderr
+          waitForProcess h,
+      currentTime = Time.getCurrentTime,
+      send = Client.send config,
+      fileExists = doesFileExist,
+      notify = hPutStrLn stderr
     }
 
 handleWrapperResult :: String -> Either WrapperError ExitCode -> IO b
-handleWrapperResult prog (Left UnMappedAlias{}) = do
+handleWrapperResult prog (Left UnMappedAlias {}) = do
   hPutStrLn
     stderr
     ( "Don't know how to handle program '"
@@ -79,12 +78,12 @@ handleWrapperResult _ (Right ex) = exitWith ex
 defaultCommands :: Map.Map String String
 defaultCommands =
   Map.fromList
-    [ ("docker", "/usr/local/bin/docker")
-    , ("dotnet", "/usr/local/share/dotnet/dotnet")
-    , ("npm", "/usr/local/bin/npm")
-    , ("az", "/usr/local/bin/az")
-    , ("git", "/usr/bin/git")
-    , ("cabal", "/usr/local/bin/cabal")
+    [ ("docker", "/usr/local/bin/docker"),
+      ("dotnet", "/usr/local/share/dotnet/dotnet"),
+      ("npm", "/usr/local/bin/npm"),
+      ("az", "/usr/local/bin/az"),
+      ("git", "/usr/bin/git"),
+      ("cabal", "/usr/local/bin/cabal")
     ]
 
 -- | Possible errors when trying to run an alias
@@ -101,10 +100,9 @@ tryWrapProg ::
   [String] ->
   Text ->
   m (Either WrapperError ExitCode)
-tryWrapProg io@WrapperIO{..} curUser prog args currentDir = do
+tryWrapProg io@WrapperIO {..} curUser prog args currentDir = do
   userProfile <-
-    (Just <$> send getUserProfileC) `catch` \(err :: ClientError) ->
-      notify ("failed to send execution result to server: " <> show err) >> pure Nothing
+    (Just <$> send getUserProfileC) `catch` notifyError
   let commands = Map.lookup prog $ fromMaybe defaultCommands $ userCommands =<< userProfile
   case commands of
     Just realPath -> do
@@ -113,6 +111,10 @@ tryWrapProg io@WrapperIO{..} curUser prog args currentDir = do
         then Right <$> wrapProg io curUser realPath args currentDir
         else pure $ Left (NonExistentAlias prog realPath)
     Nothing -> pure $ Left (UnMappedAlias prog)
+  where
+    notifyError (err :: ClientError) = do
+      notify ("failed to send execution result to server: " <> show err)
+      pure Nothing
 
 wrapProg ::
   (Monad m, MonadCatch m) =>
@@ -122,23 +124,21 @@ wrapProg ::
   [String] ->
   Text ->
   m ExitCode
-wrapProg WrapperIO{..} curUser realProg progArgs currentDir = do
+wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   st <- currentTime
   ex <- runProcess realProg progArgs
   en <- currentTime
   recordExecutionSafely st en ex
   pure ex
- where
-  recordExecutionSafely st en ex =
-    --    void
-    ( send
-        ( postEventC
-            (UserName curUser)
-            [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)]
-        )
-    )
-
---      `catch` \(err :: ClientError) -> notify ("failed to send execution result to server: " <> show err)
+  where
+    recordExecutionSafely st en ex =
+      ( send
+          ( postEventC
+              (UserName curUser)
+              [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)]
+          )
+      )
+        `catch` \(err :: ClientError) -> notify ("failed to send execution result to server: " <> show err)
 
 toInt :: ExitCode -> Int
 toInt ExitSuccess = 0
