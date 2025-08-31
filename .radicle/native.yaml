@@ -1,4 +1,5 @@
 shell: |
+  # set PATH to use GHCUP installed GHC
   export PATH=~/.cabal/bin:~/.ghcup/bin:$PATH
   export PATH=~/.radicle/bin:$PATH
 
