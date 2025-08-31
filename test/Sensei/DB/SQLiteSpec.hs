@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns -Wno-x-partial #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Sensei.DB.SQLiteSpec where
 
