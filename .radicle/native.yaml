@@ -12,9 +12,10 @@ shell: |
   ./build.hs
 
   EXE=$(cabal list-bin sensei-exe)
+  HEAD=$(git rev-parse HEAD)
 
-  # restart service
-  if [[ "$(git branch --show-current)" == "master" ]]; then
+  # restart service only if building master branch
+  if git branch --column=never --no-color --contains $HEAD | grep master | tr -d ' ' 2>&1 > /dev/null; then
     [[ -d ${HOME}/.local/bin ]] || mkdir -p ${HOME}/.local/bin
     [[ -f ${HOME}/.local/bin/sensei-exe ]] && rm ${HOME}/.local/bin/sensei-exe
     cp "$EXE" ${HOME}/.local/bin/
