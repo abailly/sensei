@@ -3,7 +3,20 @@ shell: |
   export PATH=~/.cabal/bin:~/.ghcup/bin:$PATH
   export PATH=~/.radicle/bin:$PATH
 
+  USER=$(id -un)
+  HOME=$(getent passwd "$USER" | cut -d: -f6)
+
   ghc --version
   cabal --version
 
   ./build.hs
+
+  EXE=$(cabal list-bin sensei-exe)
+
+  # restart service
+  if [[ "$(git branch --show-current)" == "master" ]]; then
+    [[ -d ${HOME}/.local/bin ]] || mkdir -p ${HOME}/.local/bin
+    [[ -f ${HOME}/.local/bin/sensei-exe ]] && rm ${HOME}/.local/bin/sensei-exe
+    cp "$EXE" ${HOME}/.local/bin/
+    sudo systemctl restart sensei
+  fi
