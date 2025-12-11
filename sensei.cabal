@@ -30,6 +30,7 @@ library
     Sensei.Backend.Class
     Sensei.Bsky
     Sensei.Bsky.Core
+    Sensei.Bsky.TID
     Sensei.CLI
     Sensei.Client
     Sensei.DB
@@ -150,6 +151,7 @@ test-suite sensei-test
   main-is:            Spec.hs
   other-modules:
     Sensei.BskySpec
+    Sensei.Bsky.TIDSpec
     Sensei.Builder
     Sensei.ClientSpec
     Sensei.CLISpec

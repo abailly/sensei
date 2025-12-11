@@ -117,7 +117,7 @@ generateAction baseTime model count =
         [ (9, SomeAction <$> genEvent m n)
         , (2, SomeAction . ReadFlow <$> arbitrary)
         , (1, arbitrary >>= \p -> pure (SomeAction (ReadEvents p)))
-        , (1, choose (0, (count - n)) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k))))
+        , (1, choose (0, count - n) >>= \k -> pure $ SomeAction (ReadNotes (TimeRange baseTime (shiftTime baseTime k))))
         , (1, pure $ SomeAction ReadViews)
         , (1, pure $ SomeAction ReadGoals)
         , (1, SomeAction . NewUser <$> generateUserProfile)
