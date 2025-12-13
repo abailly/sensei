@@ -34,7 +34,7 @@ import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultPr
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskyPost (..), BskySession (..), Record (..), bskyEventHandler, decodeAuthToken, text)
+import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskyPost, BskyRecord (..), BskySession (..), Record (..), bskyEventHandler, decodeAuthToken, text)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
@@ -142,7 +142,7 @@ spec = do
       it "discards #bsky tag when posting note" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
 
-        bskyMockNet `calledCreatePost` ((== "some note ") . text . record)
+        bskyMockNet `calledCreatePost` ((\p -> text (record p) == "some note ") :: BskyPost -> Bool)
 
 calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet -> match -> IO ()
 calledCreatePost net matcher = do
@@ -213,7 +213,7 @@ newBskyMockNet = do
   let bskyNet =
         BskyNet
           { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login)
-          , doCreatePost = \_ p -> modifyIORef' createPostCalls (p :) >> pure (Record "foo" "bar")
+          , doCreateRecord = \_ p -> modifyIORef' createPostCalls (p :) >> pure (Record "foo" "bar")
           , doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession
           , currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t
           }

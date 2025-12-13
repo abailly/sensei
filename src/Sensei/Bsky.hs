@@ -20,8 +20,7 @@ import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVa
 import Control.Lens ((&), (?~), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
-import Data.Aeson (FromJSON, ToJSON (..), eitherDecodeStrict', withText)
-import qualified Data.Aeson as A
+import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, withText, (.:), (.=))
 import Data.Aeson.Types (FromJSON (..))
 import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
@@ -51,8 +50,8 @@ import Servant.Client.Core (clientIn)
 import Prelude hiding (exp)
 
 data BskySession = BskySession
-  { accessJwt :: SerializedToken
-  , refreshJwt :: SerializedToken
+  { accessJwt :: SerializedToken,
+    refreshJwt :: SerializedToken
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
@@ -61,38 +60,54 @@ newtype BskyHandle = BskyHandle Text
 
 data BskyType (bskyType :: Symbol) = BskyType
 
-instance KnownSymbol bskyType => Show (BskyType bskyType) where
+instance (KnownSymbol bskyType) => Show (BskyType bskyType) where
   show _ = symbolVal (Proxy :: Proxy bskyType)
 
 instance Eq (BskyType bskyType) where
   _ == _ = True
 
-instance KnownSymbol bskyType => ToJSON (BskyType bskyType) where
+instance (KnownSymbol bskyType) => ToJSON (BskyType bskyType) where
   toJSON _ = toJSON $ symbolVal (Proxy :: Proxy bskyType)
 
-instance KnownSymbol bskyType => FromJSON (BskyType bskyType) where
+instance (KnownSymbol bskyType) => FromJSON (BskyType bskyType) where
   parseJSON = withText "Bsky type" $ \txt ->
     if txt == Text.pack (symbolVal (Proxy :: Proxy bskyType))
       then pure BskyType
       else fail ("unexpected Bsky type " <> Text.unpack txt)
 
-data BskyPost = BskyPost
-  { repo :: BskyHandle
-  , collection :: BskyType "app.bsky.feed.post"
-  , record :: BskyContent
+data BskyRecord (collection :: Symbol) record = BskyRecord
+  { repo :: BskyHandle,
+    collection :: BskyType collection,
+    record :: record
   }
   deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+
+instance (KnownSymbol collection, ToJSON record) => ToJSON (BskyRecord collection record) where
+  toJSON (BskyRecord repo coll rec) =
+    object
+      [ "repo" .= repo,
+        "collection" .= coll,
+        "record" .= rec
+      ]
+
+instance (KnownSymbol collection, FromJSON record) => FromJSON (BskyRecord collection record) where
+  parseJSON = withObject "BskyRecord" $ \o ->
+    BskyRecord
+      <$> o .: "repo"
+      <*> o .: "collection"
+      <*> o .: "record"
+
+type BskyPost = BskyRecord "app.bsky.feed.post" BskyContent
 
 data BskyContent = BskyContent
-  { text :: Text
-  , createdAt :: UTCTime
+  { text :: Text,
+    createdAt :: UTCTime
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 data Record = Record
-  { uri :: Text
-  , cid :: Text
+  { uri :: Text,
+    cid :: Text
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
@@ -113,18 +128,18 @@ type Refresh =
     :> "com.atproto.server.refreshSession"
     :> Post '[JSON] BskySession
 
-type CreatePost =
+type CreateRecord =
   "xrpc"
     :> "com.atproto.repo.createRecord"
     :> ReqBody '[JSON] BskyPost
     :> Post '[JSON] Record
 
-type BskyAPI = Login :<|> Refresh :<|> CreatePost
+type BskyAPI = Login :<|> Refresh :<|> CreateRecord
 
-bskyCreatePost :: BskyPost -> ClientMonad BskyClientConfig Record
+bskyCreateRecord :: BskyPost -> ClientMonad BskyClientConfig Record
 bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
 bskyRefresh :: ClientMonad BskyClientConfig BskySession
-bskyLogin :<|> bskyRefresh :<|> bskyCreatePost = clientIn (Proxy @BskyAPI) Proxy
+bskyLogin :<|> bskyRefresh :<|> bskyCreateRecord = clientIn (Proxy @BskyAPI) Proxy
 
 data BskyLog
   = PostCreated {content :: !Text, session :: !BskySession}
@@ -144,17 +159,17 @@ data BskyLog
 -- }
 
 data BskyAuth = BskyAuth
-  { scope :: Text
-  , sub :: Text
-  , iat :: Int
-  , exp :: Int
-  , aud :: Text
+  { scope :: Text,
+    sub :: Text,
+    iat :: Int,
+    exp :: Int,
+    aud :: Text
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 instance ToJWT BskyAuth where
-  encodeJWT BskyAuth{scope, sub, iat, exp, aud} =
-    addClaim "scope" (A.String scope) $
+  encodeJWT BskyAuth {scope, sub, iat, exp, aud} =
+    addClaim "scope" (String scope) $
       emptyClaimsSet
         & claimAud ?~ Audience [fromString $ unpack aud]
         -- FIXME: there's a stringOrUri prism in JOSE package but I have no idea how to use it :(
@@ -168,89 +183,89 @@ decodeAuthToken :: SerializedToken -> Either String BskyAuth
 decodeAuthToken (SerializedToken bytes) =
   case BS.split (fromIntegral $ ord '.') bytes of
     [_, tok, _] -> first show $ eitherDecodeStrict' decoded
-     where
-      decoded = Base64.decodeLenient tok
+      where
+        decoded = Base64.decodeLenient tok
     _other -> Left $ "invalid token format: " <> show bytes
 
 -- | Low-level handle to send requests to PDS with some configuration.
 data BskyNet m = BskyNet
-  { doCreatePost :: BskyClientConfig -> BskyPost -> m Record
-  , doLogin :: BskyClientConfig -> BskyLogin -> m BskySession
-  , doRefresh :: BskyClientConfig -> m BskySession
-  , currentTime :: UTCTime -> m UTCTime
+  { doCreateRecord :: BskyClientConfig -> BskyPost -> m Record,
+    doLogin :: BskyClientConfig -> BskyLogin -> m BskySession,
+    doRefresh :: BskyClientConfig -> m BskySession,
+    currentTime :: UTCTime -> m UTCTime
   }
 
 defaultBskyNet :: BskyNet IO
-defaultBskyNet = BskyNet{doCreatePost, doLogin, doRefresh, currentTime}
- where
-  doCreatePost config = send config . bskyCreatePost
-  doLogin config = send config . bskyLogin
-  doRefresh config = send config bskyRefresh
-  currentTime = const $ liftIO getCurrentTime
+defaultBskyNet = BskyNet {doCreateRecord, doLogin, doRefresh, currentTime}
+  where
+    doCreateRecord config = send config . bskyCreateRecord
+    doLogin config = send config . bskyLogin
+    doRefresh config = send config bskyRefresh
+    currentTime = const $ liftIO getCurrentTime
 
 -- | An Event handler that transforms `FlowNote` into `BskyPost`s.
 --
 -- This requires a function to hander `ClientMonad`'s requests.
 bskyEventHandler ::
   forall m.
-  MonadIO m =>
+  (MonadIO m) =>
   LoggerEnv ->
   BskyNet m ->
   m (BackendHandler BskyBackend m)
-bskyEventHandler logger BskyNet{doCreatePost, doLogin, doRefresh, currentTime} = do
+bskyEventHandler logger BskyNet {doCreateRecord, doLogin, doRefresh, currentTime} = do
   sessionMap <- liftIO $ newTVarIO mempty
-  pure $ BackendHandler{handleEvent = handleEvent sessionMap}
- where
-  postWith backend session repo note =
-    withLog logger PostCreated{content = note ^. noteContent, session} $
-      void $
-        doCreatePost (BskyClientConfig{backend, bskySession = Just session}) $
-          BskyPost
-            { record =
-                BskyContent
-                  { text = removeTag (note ^. noteContent)
-                  , createdAt = note ^. noteTimestamp
-                  }
-            , -- TODO: test me!
-              repo
-            , collection = BskyType
-            }
+  pure $ BackendHandler {handleEvent = handleEvent sessionMap}
+  where
+    postWith backend session repo note =
+      withLog logger PostCreated {content = note ^. noteContent, session} $
+        void $
+          doCreateRecord (BskyClientConfig {backend, bskySession = Just session}) $
+            BskyRecord
+              { record =
+                  BskyContent
+                    { text = removeTag (note ^. noteContent),
+                      createdAt = note ^. noteTimestamp
+                    },
+                -- TODO: test me!
+                repo,
+                collection = BskyType
+              }
 
-  handleEvent :: TVar (Map.Map Text BskySession) -> BskyBackend -> Event -> m ()
-  handleEvent sessionMap backend = \case
-    EventNote note | "#bsky" `isInfixOf` (note ^. noteContent) -> do
-      let credentials = login backend
-          repo = BskyHandle $ identifier credentials
-      maybeSession <- Map.lookup (identifier credentials) <$> liftIO (readTVarIO sessionMap)
-      case maybeSession of
-        Just session@BskySession{accessJwt, refreshJwt} ->
-          case decodeAuthToken accessJwt of
-            Right auth -> do
-              let expires = fromIntegral $ exp auth
-                  issued = posixSecondsToUTCTime $ fromIntegral $ iat auth
-              now <- utcTimeToPOSIXSeconds <$> currentTime issued
-              if now < expires
-                then postWith backend session repo note
-                else do
-                  newSession <- withLog logger TokenRefreshed{refreshJwt} $ do
-                    doRefresh (BskyClientConfig backend (Just session{accessJwt = refreshJwt}))
-                  liftIO $
-                    atomically $
-                      modifyTVar' sessionMap $
-                        \sessions -> Map.insert (identifier credentials) newSession sessions
-                  postWith backend newSession repo note
-            Left _err ->
-              logInfo logger $ FailedToDecodeToken accessJwt
-        Nothing -> do
-          session <-
-            withLog logger UserAuthenticated{user = identifier credentials} $
-              doLogin (BskyClientConfig backend Nothing) credentials
-          liftIO $
-            atomically $
-              modifyTVar' sessionMap $
-                \sessions -> Map.insert (identifier credentials) session sessions
-          postWith backend session repo note
-    _ -> pure ()
+    handleEvent :: TVar (Map.Map Text BskySession) -> BskyBackend -> Event -> m ()
+    handleEvent sessionMap backend = \case
+      EventNote note | "#bsky" `isInfixOf` (note ^. noteContent) -> do
+        let credentials = login backend
+            repo = BskyHandle $ identifier credentials
+        maybeSession <- Map.lookup (identifier credentials) <$> liftIO (readTVarIO sessionMap)
+        case maybeSession of
+          Just session@BskySession {accessJwt, refreshJwt} ->
+            case decodeAuthToken accessJwt of
+              Right auth -> do
+                let expires = fromIntegral $ exp auth
+                    issued = posixSecondsToUTCTime $ fromIntegral $ iat auth
+                now <- utcTimeToPOSIXSeconds <$> currentTime issued
+                if now < expires
+                  then postWith backend session repo note
+                  else do
+                    newSession <- withLog logger TokenRefreshed {refreshJwt} $ do
+                      doRefresh (BskyClientConfig backend (Just session {accessJwt = refreshJwt}))
+                    liftIO $
+                      atomically $
+                        modifyTVar' sessionMap $
+                          \sessions -> Map.insert (identifier credentials) newSession sessions
+                    postWith backend newSession repo note
+              Left _err ->
+                logInfo logger $ FailedToDecodeToken accessJwt
+          Nothing -> do
+            session <-
+              withLog logger UserAuthenticated {user = identifier credentials} $
+                doLogin (BskyClientConfig backend Nothing) credentials
+            liftIO $
+              atomically $
+                modifyTVar' sessionMap $
+                  \sessions -> Map.insert (identifier credentials) session sessions
+            postWith backend session repo note
+      _ -> pure ()
 
 removeTag :: Text -> Text
 removeTag content =
@@ -258,8 +273,8 @@ removeTag content =
    in tag <> Text.drop 5 rest
 
 data BskyClientConfig = BskyClientConfig
-  { backend :: BskyBackend
-  , bskySession :: Maybe BskySession
+  { backend :: BskyBackend,
+    bskySession :: Maybe BskySession
   }
   deriving (Eq, Show)
 
@@ -270,22 +285,22 @@ instance ClientConfig BskyClientConfig where
     BskyClientConfig
       { backend =
           BskyBackend
-            { login = BskyLogin "" ""
-            , pdsUrl = fromJust $ uriFromString "http://localhost:12345"
-            }
-      , bskySession = Nothing
+            { login = BskyLogin "" "",
+              pdsUrl = fromJust $ uriFromString "http://localhost:12345"
+            },
+        bskySession = Nothing
       }
 
   additionalHeaders _ hdrs = hdrs
 
-  setServerUri pdsUrl config@BskyClientConfig{backend} = config{backend = backend{pdsUrl}}
+  setServerUri pdsUrl config@BskyClientConfig {backend} = config {backend = backend {pdsUrl}}
 
-  getServerUri BskyClientConfig{backend = BskyBackend{pdsUrl}} = pdsUrl
+  getServerUri BskyClientConfig {backend = BskyBackend {pdsUrl}} = pdsUrl
 
-  setAuthToken token config@BskyClientConfig{bskySession} = config{bskySession = updateLogin}
-   where
-    updateLogin = do
-      l <- bskySession
-      t <- token
-      pure $ l{accessJwt = t}
-  getAuthToken BskyClientConfig{bskySession} = accessJwt <$> bskySession
+  setAuthToken token config@BskyClientConfig {bskySession} = config {bskySession = updateLogin}
+    where
+      updateLogin = do
+        l <- bskySession
+        t <- token
+        pure $ l {accessJwt = t}
+  getAuthToken BskyClientConfig {bskySession} = accessJwt <$> bskySession
