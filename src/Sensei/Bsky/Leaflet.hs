@@ -82,3 +82,47 @@ data BackgroundImage = BackgroundImage
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
+
+-- | Record containing a document
+-- Lexicon: [pub.leaflet.document](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/document.json)
+data Document = Document
+  { documentTitle :: Text
+  -- ^ Required: Document title (max 1280 chars, 128 graphemes)
+  , documentDescription :: Maybe Text
+  -- ^ Optional: Document description (max 3000 chars, 300 graphemes)
+  , documentAuthor :: Text
+  -- ^ Required: Author (at-identifier format)
+  , documentPages :: [Page]
+  -- ^ Required: Pages (union of linearDocument or canvas)
+  , documentTags :: Maybe [Text]
+  -- ^ Optional: Tags (max 50 chars each)
+  , documentPublishedAt :: Maybe Text
+  -- ^ Optional: Publication datetime
+  , documentPostRef :: Maybe StrongRef
+  -- ^ Optional: Reference to associated post (com.atproto.repo.strongRef)
+  , documentPublication :: Maybe Text
+  -- ^ Optional: Publication (at-uri format)
+  , documentTheme :: Maybe Theme
+  -- ^ Optional: Theme configuration (pub.leaflet.publication#theme)
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | Placeholder for page type
+-- TODO: Implement union of pub.leaflet.pages.linearDocument and pub.leaflet.pages.canvas
+data Page
+  = LinearDocument
+  -- ^ Placeholder for pub.leaflet.pages.linearDocument
+  | Canvas
+  -- ^ Placeholder for pub.leaflet.pages.canvas
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | Placeholder for strong reference type
+-- TODO: Implement com.atproto.repo.strongRef
+data StrongRef = StrongRef
+  { uri :: Text
+  , cid :: Text
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
