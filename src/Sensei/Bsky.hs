@@ -3,15 +3,18 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
 module Sensei.Bsky where
@@ -48,6 +51,7 @@ import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT (encodeJWT))
 import Servant
 import Servant.Client.Core (clientIn)
 import Prelude hiding (exp)
+import Sensei.Bsky.TID (TID)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken,
@@ -75,31 +79,39 @@ instance (KnownSymbol bskyType) => FromJSON (BskyType bskyType) where
       then pure BskyType
       else fail ("unexpected Bsky type " <> Text.unpack txt)
 
-data BskyRecord (collection :: Symbol) record = BskyRecord
+data BskyRecord record = BskyRecord
   { repo :: BskyHandle,
-    collection :: BskyType collection,
+    collection :: BskyType (Lexicon record),
+    key :: Key record,
     record :: record
   }
-  deriving stock (Eq, Show, Generic)
+  deriving stock (Generic)
 
-instance (KnownSymbol collection, ToJSON record) => ToJSON (BskyRecord collection record) where
-  toJSON (BskyRecord repo coll rec) =
+deriving instance (Show record, KnownSymbol (Lexicon record), Show (Key record)) => Show (BskyRecord record)
+
+deriving instance (Eq record, Eq (Key record)) => Eq (BskyRecord record)
+
+instance (ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) => ToJSON (BskyRecord record) where
+  toJSON (BskyRecord repo coll key rec) =
     object
       [ "repo" .= repo,
         "collection" .= coll,
+        "key" .= key,
         "record" .= rec
       ]
 
-instance (KnownSymbol collection, FromJSON record) => FromJSON (BskyRecord collection record) where
+instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) => FromJSON (BskyRecord record) where
   parseJSON = withObject "BskyRecord" $ \o ->
     BskyRecord
       <$> o .: "repo"
       <*> o .: "collection"
+      <*> o .: "key"
       <*> o .: "record"
 
-type BskyPost = BskyRecord "app.bsky.feed.post" BskyContent
+type instance Lexicon BskyPost = "app.bsky.feed.post"
+type instance Key BskyPost = Maybe TID
 
-data BskyContent = BskyContent
+data BskyPost = BskyPost
   { text :: Text,
     createdAt :: UTCTime
   }
@@ -128,18 +140,20 @@ type Refresh =
     :> "com.atproto.server.refreshSession"
     :> Post '[JSON] BskySession
 
-type CreateRecord =
+type CreateRecord record =
   "xrpc"
     :> "com.atproto.repo.createRecord"
-    :> ReqBody '[JSON] BskyPost
+    :> ReqBody '[JSON] record
     :> Post '[JSON] Record
 
-type BskyAPI = Login :<|> Refresh :<|> CreateRecord
+type BskyLoginAPI = Login :<|> Refresh
 
-bskyCreateRecord :: BskyPost -> ClientMonad BskyClientConfig Record
 bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
 bskyRefresh :: ClientMonad BskyClientConfig BskySession
-bskyLogin :<|> bskyRefresh :<|> bskyCreateRecord = clientIn (Proxy @BskyAPI) Proxy
+bskyLogin :<|> bskyRefresh = clientIn (Proxy @BskyLoginAPI) Proxy
+
+bskyCreateRecord :: forall record. (MimeRender JSON record) => record -> ClientMonad BskyClientConfig Record
+bskyCreateRecord = clientIn (Proxy @(CreateRecord record)) Proxy
 
 data BskyLog
   = PostCreated {content :: !Text, session :: !BskySession}
@@ -189,7 +203,7 @@ decodeAuthToken (SerializedToken bytes) =
 
 -- | Low-level handle to send requests to PDS with some configuration.
 data BskyNet m = BskyNet
-  { doCreateRecord :: BskyClientConfig -> BskyPost -> m Record,
+  { doCreateRecord :: forall record. (MimeRender JSON record) => BskyClientConfig -> record -> m Record,
     doLogin :: BskyClientConfig -> BskyLogin -> m BskySession,
     doRefresh :: BskyClientConfig -> m BskySession,
     currentTime :: UTCTime -> m UTCTime
@@ -222,12 +236,13 @@ bskyEventHandler logger BskyNet {doCreateRecord, doLogin, doRefresh, currentTime
           doCreateRecord (BskyClientConfig {backend, bskySession = Just session}) $
             BskyRecord
               { record =
-                  BskyContent
+                  BskyPost
                     { text = removeTag (note ^. noteContent),
                       createdAt = note ^. noteTimestamp
                     },
                 -- TODO: test me!
                 repo,
+                key = Nothing,
                 collection = BskyType
               }
 

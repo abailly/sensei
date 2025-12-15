@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -19,7 +20,9 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
+import Data.Aeson (FromJSON, decode)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Data (Proxy (..))
 import Data.Either (isLeft)
@@ -34,13 +37,14 @@ import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultPr
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskyPost, BskyRecord (..), BskySession (..), Record (..), bskyEventHandler, decodeAuthToken, text)
+import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Record (..), bskyEventHandler, decodeAuthToken, record, text)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
 import Sensei.Generators ()
 import Sensei.Server (SerializedToken (..))
 import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBackends, withDBRunner)
+import Servant (JSON, mimeRender)
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
 import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldReturn)
@@ -56,10 +60,10 @@ spec = do
         BskyBackend
           { login =
               BskyLogin
-                { identifier = "bob.bsky.social"
-                , password = "password"
-                }
-          , pdsUrl = fromJust $ uriFromString "https://some.social"
+                { identifier = "bob.bsky.social",
+                  password = "password"
+                },
+            pdsUrl = fromJust $ uriFromString "https://some.social"
           }
       profileWithBsky =
         defaultProfile
@@ -98,40 +102,40 @@ spec = do
 
   before (newBskyMockNet >>= \mockNet -> (mockNet,) <$> bskyEventHandler fakeLogger (bskyNet mockNet)) $
     describe "Bsky logic" $ do
-      it "login with given credentials then post event with token" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
+      it "login with given credentials then post event with token" $ \(bskyMockNet, BackendHandler {handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
 
         calledLogin bskyMockNet `shouldReturn` 1
         bskyMockNet `calledCreatePost` (1 :: Int)
 
-      it "login only once when posting several events" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
+      it "login only once when posting several events" $ \(bskyMockNet, BackendHandler {handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
         handleEvent bskyBackend (EventNote aBskyNote)
 
         calledLogin bskyMockNet `shouldReturn` 1
         bskyMockNet `calledCreatePost` (2 :: Int)
 
-      it "discards note if it does not contain #bsky tag" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
+      it "discards note if it does not contain #bsky tag" $ \(bskyMockNet, BackendHandler {handleEvent}) -> do
         let notForBsky = NoteFlow "arnaud" (UTCTime aDay 0) "some/directory" "some note #foo"
 
         handleEvent bskyBackend (EventNote notForBsky)
 
         bskyMockNet `calledCreatePost` (0 :: Int)
 
-      it "refreshes token given it has expired" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
+      it "refreshes token given it has expired" $ \(bskyMockNet, BackendHandler {handleEvent}) -> do
         let accessJwt = defaultToken
             refreshJwt =
               unsafePerformIO $
                 serializedSampleToken $
                   BskyAuth
-                    { scope = "com.atproto.refresh"
-                    , sub = "did:plc:234567"
-                    , aud = "did:web:bsky.social"
-                    , iat = 1732526308
-                    , exp = 1732598308
+                    { scope = "com.atproto.refresh",
+                      sub = "did:plc:234567",
+                      aud = "did:web:bsky.social",
+                      iat = 1732526308,
+                      exp = 1732598308
                     }
 
-        bskyMockNet `loginReturns` BskySession{accessJwt, refreshJwt}
+        bskyMockNet `loginReturns` BskySession {accessJwt, refreshJwt}
 
         handleEvent bskyBackend (EventNote aBskyNote)
         bskyMockNet `delaysBy` 7300
@@ -139,12 +143,12 @@ spec = do
 
         calledRefreshToken bskyMockNet `shouldReturn` 1
 
-      it "discards #bsky tag when posting note" $ \(bskyMockNet, BackendHandler{handleEvent}) -> do
+      it "discards #bsky tag when posting note" $ \(bskyMockNet, BackendHandler {handleEvent}) -> do
         handleEvent bskyBackend (EventNote aBskyNote)
 
-        bskyMockNet `calledCreatePost` ((\p -> text (record p) == "some note ") :: BskyPost -> Bool)
+        bskyMockNet `calledCreatePost` ((\p -> text p == "some note ") :: BskyPost -> Bool)
 
-calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet -> match -> IO ()
+calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet BskyPost -> match -> IO ()
 calledCreatePost net matcher = do
   readIORef (createPostCalls net)
     >>= \calls -> case calls `matches` matcher of
@@ -152,11 +156,11 @@ calledCreatePost net matcher = do
       Left err -> fail err
 
 class IsMatcher m where
-  matches :: [BskyPost] -> m -> Either String ()
+  matches :: [LBS.ByteString] -> m -> Either String ()
 
-instance IsMatcher (BskyPost -> Bool) where
+instance forall a. (FromJSON (BskyRecord a)) => IsMatcher (a -> Bool) where
   matches bposts predicate =
-    if predicate (head bposts)
+    if predicate (record $ fromJust $ decode @(BskyRecord a) $ head bposts)
       then Right ()
       else Left $ "Posts " <> show bposts <> " do not match predicate"
 
@@ -166,12 +170,12 @@ instance IsMatcher Int where
       then Right ()
       else Left $ "Expected " <> show n <> " posts, got " <> show (length bposts)
 
-delaysBy :: BskyMockNet -> Int -> IO ()
-delaysBy BskyMockNet{currentTimeCalls} delay =
+delaysBy :: BskyMockNet record -> Int -> IO ()
+delaysBy BskyMockNet {currentTimeCalls} delay =
   modifyIORef' currentTimeCalls (const $ addUTCTime (fromIntegral delay))
 
-loginReturns :: BskyMockNet -> BskySession -> IO ()
-loginReturns BskyMockNet{loginCalls} session =
+loginReturns :: BskyMockNet record -> BskySession -> IO ()
+loginReturns BskyMockNet {loginCalls} session =
   modifyIORef' loginCalls (const $ const session)
 
 prop_deserialiseAuthToken :: BskyAuth -> Property
@@ -187,37 +191,37 @@ prop_rejectMalformedTokens =
         tampered = SerializedToken $ mconcat $ take 2 $ BS.split (fromIntegral $ ord '.') token
      in isLeft (decodeAuthToken tampered)
 
-calledLogin :: BskyMockNet -> IO Int
+calledLogin :: BskyMockNet record -> IO Int
 calledLogin = readIORef . loginCount
 
-calledRefreshToken :: BskyMockNet -> IO Int
+calledRefreshToken :: BskyMockNet record -> IO Int
 calledRefreshToken = readIORef . refreshCount
 
-data BskyMockNet = BskyMockNet
-  { loginCount :: IORef Int
-  , createPostCalls :: IORef [BskyPost]
-  , refreshCount :: IORef Int
-  , bskyNet :: BskyNet IO
-  , loginCalls :: IORef (BskyLogin -> BskySession)
-  , currentTimeCalls :: IORef (UTCTime -> UTCTime)
+data BskyMockNet record = BskyMockNet
+  { loginCount :: IORef Int,
+    createPostCalls :: IORef [LBS.ByteString],
+    refreshCount :: IORef Int,
+    bskyNet :: BskyNet IO,
+    loginCalls :: IORef (BskyLogin -> BskySession),
+    currentTimeCalls :: IORef (UTCTime -> UTCTime)
   }
 
-newBskyMockNet :: IO BskyMockNet
+newBskyMockNet :: forall record. IO (BskyMockNet record)
 newBskyMockNet = do
   loginCount <- newIORef (0 :: Int)
-  createPostCalls <- newIORef []
+  createPostCalls :: IORef [LBS.ByteString] <- newIORef []
   refreshCount <- newIORef (0 :: Int)
   let dummySession = BskySession defaultToken defaultToken
   loginCalls <- newIORef $ const dummySession
   currentTimeCalls <- newIORef id
   let bskyNet =
         BskyNet
-          { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login)
-          , doCreateRecord = \_ p -> modifyIORef' createPostCalls (p :) >> pure (Record "foo" "bar")
-          , doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession
-          , currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t
+          { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login),
+            doCreateRecord = \_ p -> modifyIORef' createPostCalls (mimeRender (Proxy @JSON) p :) >> pure (Record "foo" "bar"),
+            doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession,
+            currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t
           }
-  pure $ BskyMockNet{..}
+  pure $ BskyMockNet {..}
 
 newtype TestDB a = TestDB {runTestDB :: ReaderT UserProfile IO a}
   deriving (Functor, Applicative, Monad, MonadReader UserProfile, MonadIO, MonadThrow, MonadCatch)
@@ -265,12 +269,12 @@ dbFailsToWriteEvents user _ _ _ = (`runReaderT` user) . runTestDB
 
 mkBackends :: IORef [Event] -> Backends
 mkBackends ref = Backend.insert bskyIO Backend.empty
- where
-  bskyIO :: BackendHandler BskyBackend IO
-  bskyIO =
-    BackendHandler
-      { handleEvent = \_ event -> liftIO $ atomicModifyIORef' ref (\es -> (event : es, ()))
-      }
+  where
+    bskyIO :: BackendHandler BskyBackend IO
+    bskyIO =
+      BackendHandler
+        { handleEvent = \_ event -> liftIO $ atomicModifyIORef' ref (\es -> (event : es, ()))
+        }
 
 defaultToken :: SerializedToken
 {-# NOINLINE defaultToken #-}
@@ -278,9 +282,9 @@ defaultToken =
   unsafePerformIO $
     serializedSampleToken $
       BskyAuth
-        { scope = "com.atproto.refresh"
-        , sub = "did:plc:1234567"
-        , aud = "did:web:bsky.social"
-        , iat = 1732518838
-        , exp = 1732526038
+        { scope = "com.atproto.refresh",
+          sub = "did:plc:1234567",
+          aud = "did:web:bsky.social",
+          iat = 1732518838,
+          exp = 1732526038
         }
