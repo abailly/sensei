@@ -158,7 +158,7 @@ data TextAlignment
 -- TODO: Implement proper types for each block variant
 data BlockVariant
   = IframeBlock -- pub.leaflet.blocks.iframe
-  | TextBlock Text -- pub.leaflet.blocks.text (simplified for now)
+  | TextBlock RichText -- pub.leaflet.blocks.text
   | BlockquoteBlock -- pub.leaflet.blocks.blockquote
   | HeaderBlock -- pub.leaflet.blocks.header
   | ImageBlock -- pub.leaflet.blocks.image
@@ -171,6 +171,63 @@ data BlockVariant
   | PageBlock -- pub.leaflet.blocks.page
   | PollBlock -- pub.leaflet.blocks.poll
   | ButtonBlock -- pub.leaflet.blocks.button
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | Rich text block with optional formatting
+-- Lexicon: [pub.leaflet.blocks.text](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/text.json)
+data RichText = RichText
+  { -- | Required: Plain text content
+    plaintext :: Text,
+    -- | Optional: Array of formatting facets
+    facets :: Maybe [Facet]
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | Annotation of a sub-string within rich text
+-- Lexicon: [pub.leaflet.richtext.facet](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/richtext/facet.json)
+data Facet = Facet
+  { -- | Required: Byte range where the formatting applies
+    index :: ByteSlice,
+    -- | Required: Array of formatting features
+    features :: [Feature]
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | Byte range for text formatting (zero-indexed, inclusive start, exclusive end)
+data ByteSlice = ByteSlice
+  { -- | Required: Start index (inclusive, zero-indexed)
+    byteStart :: Int,
+    -- | Required: End index (exclusive, zero-indexed)
+    byteEnd :: Int
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | Text formatting feature types
+data Feature
+  = -- | URL link
+    Link {uri :: Text}
+  | -- | DID mention
+    DidMention {did :: Text}
+  | -- | AT URI mention
+    AtMention {atURI :: Text}
+  | -- | Inline code formatting
+    Code
+  | -- | Text highlighting
+    Highlight
+  | -- | Underline styling
+    Underline
+  | -- | Strikethrough styling
+    Strikethrough
+  | -- | Identifier for linking
+    Id {featureId :: Maybe Text}
+  | -- | Bold text formatting
+    Bold
+  | -- | Italic text formatting
+    Italic
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 

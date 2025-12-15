@@ -44,6 +44,7 @@ import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
+import Sensei.Bsky.TID (TID)
 import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config, send)
 import Sensei.Event (Event (..))
 import Sensei.Flow (noteContent, noteTimestamp)
@@ -51,7 +52,6 @@ import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT (encodeJWT))
 import Servant
 import Servant.Client.Core (clientIn)
 import Prelude hiding (exp)
-import Sensei.Bsky.TID (TID)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken,
@@ -61,6 +61,9 @@ data BskySession = BskySession
 
 newtype BskyHandle = BskyHandle Text
   deriving newtype (Eq, Show, IsString, ToJSON, FromJSON)
+
+instance ToHttpApiData BskyHandle where
+  toUrlPiece (BskyHandle handle) = handle
 
 data BskyType (bskyType :: Symbol) = BskyType
 
@@ -78,6 +81,9 @@ instance (KnownSymbol bskyType) => FromJSON (BskyType bskyType) where
     if txt == Text.pack (symbolVal (Proxy :: Proxy bskyType))
       then pure BskyType
       else fail ("unexpected Bsky type " <> Text.unpack txt)
+
+instance (KnownSymbol bskyType) => ToHttpApiData (BskyType bskyType) where
+  toUrlPiece _ = Text.pack $ symbolVal (Proxy :: Proxy bskyType)
 
 data BskyRecord record = BskyRecord
   { repo :: BskyHandle,
@@ -109,6 +115,7 @@ instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) 
       <*> o .: "record"
 
 type instance Lexicon BskyPost = "app.bsky.feed.post"
+
 type instance Key BskyPost = Maybe TID
 
 data BskyPost = BskyPost
@@ -122,6 +129,42 @@ data Record = Record
     cid :: Text
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+-- | Response from com.atproto.repo.listRecords
+data ListRecordsResponse record = ListRecordsResponse
+  { cursor :: Maybe Text,
+    records :: [RecordWithMetadata record]
+  }
+  deriving stock (Generic)
+
+deriving instance (Show record) => Show (ListRecordsResponse record)
+
+deriving instance (Eq record) => Eq (ListRecordsResponse record)
+
+instance (FromJSON record) => FromJSON (ListRecordsResponse record) where
+  parseJSON = withObject "ListRecordsResponse" $ \o ->
+    ListRecordsResponse
+      <$> o .: "cursor"
+      <*> o .: "records"
+
+-- | A record with its metadata (uri, cid, value)
+data RecordWithMetadata record = RecordWithMetadata
+  { uri :: Text,
+    cid :: Text,
+    value :: record
+  }
+  deriving stock (Generic)
+
+deriving instance (Show record) => Show (RecordWithMetadata record)
+
+deriving instance (Eq record) => Eq (RecordWithMetadata record)
+
+instance (FromJSON record) => FromJSON (RecordWithMetadata record) where
+  parseJSON = withObject "RecordWithMetadata" $ \o ->
+    RecordWithMetadata
+      <$> o .: "uri"
+      <*> o .: "cid"
+      <*> o .: "value"
 
 newtype BearerToken = BearerToken SerializedToken
   deriving (Eq, Show)
@@ -146,6 +189,16 @@ type CreateRecord record =
     :> ReqBody '[JSON] record
     :> Post '[JSON] Record
 
+type ListRecords record =
+  "xrpc"
+    :> "com.atproto.repo.listRecords"
+    :> QueryParam' '[Required, Strict] "repo" BskyHandle
+    :> QueryParam' '[Required, Strict] "collection" (BskyType (Lexicon record))
+    :> QueryParam "limit" Int
+    :> QueryParam "cursor" Text
+    :> QueryParam "reverse" Bool
+    :> Get '[JSON] (ListRecordsResponse record)
+
 type BskyLoginAPI = Login :<|> Refresh
 
 bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
@@ -154,6 +207,17 @@ bskyLogin :<|> bskyRefresh = clientIn (Proxy @BskyLoginAPI) Proxy
 
 bskyCreateRecord :: forall record. (MimeRender JSON record) => record -> ClientMonad BskyClientConfig Record
 bskyCreateRecord = clientIn (Proxy @(CreateRecord record)) Proxy
+
+bskyListRecords ::
+  forall record.
+  (FromJSON record, KnownSymbol (Lexicon record)) =>
+  BskyHandle ->
+  BskyType (Lexicon record) ->
+  Maybe Int ->
+  Maybe Text ->
+  Maybe Bool ->
+  ClientMonad BskyClientConfig (ListRecordsResponse record)
+bskyListRecords = clientIn (Proxy @(ListRecords record)) Proxy
 
 data BskyLog
   = PostCreated {content :: !Text, session :: !BskySession}
@@ -206,15 +270,18 @@ data BskyNet m = BskyNet
   { doCreateRecord :: forall record. (MimeRender JSON record) => BskyClientConfig -> record -> m Record,
     doLogin :: BskyClientConfig -> BskyLogin -> m BskySession,
     doRefresh :: BskyClientConfig -> m BskySession,
+    doListRecords :: forall record. (FromJSON record, KnownSymbol (Lexicon record)) => BskyClientConfig -> BskyHandle -> BskyType (Lexicon record) -> Maybe Int -> Maybe Text -> Maybe Bool -> m (ListRecordsResponse record),
     currentTime :: UTCTime -> m UTCTime
   }
 
 defaultBskyNet :: BskyNet IO
-defaultBskyNet = BskyNet {doCreateRecord, doLogin, doRefresh, currentTime}
+defaultBskyNet = BskyNet {doCreateRecord, doLogin, doRefresh, doListRecords, currentTime}
   where
     doCreateRecord config = send config . bskyCreateRecord
     doLogin config = send config . bskyLogin
     doRefresh config = send config bskyRefresh
+    doListRecords config repo collection limit cursor isReverse =
+      send config $ bskyListRecords repo collection limit cursor isReverse
     currentTime = const $ liftIO getCurrentTime
 
 -- | An Event handler that transforms `FlowNote` into `BskyPost`s.
