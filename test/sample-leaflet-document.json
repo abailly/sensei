@@ -1,0 +1,406 @@
+{
+  "uri": "at://did:plc:f5bi3qiwfdxnlbvb44oudmrv/pub.leaflet.document/3m7xgsjurhk2g",
+  "cid": "bafyreic6ojok7nqf4ayvlp24gdo7duq3xxs73yiyvnybtxvvdrrvhbnts4",
+  "value": {
+    "tags": [
+      "weekly planet"
+    ],
+    "$type": "pub.leaflet.document",
+    "pages": [
+      {
+        "id": "019abb76-31f0-7888-986c-4d8be7f41877",
+        "$type": "pub.leaflet.pages.linearDocument",
+        "blocks": [
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "The world is undergoing a transformation whose outlines we are only beginning to discern. For five centuries, the West has imagined itself as both the author and subject of history, as the arbiter of what constitutes progress and modernity. That story has outlived its usefulness. China's rise-or more precisely, China's arrival - represents not merely the emergence of another great power, but a fundamental challenge to assumptions long embedded in Western thought about development, governance, and civilizational achievement itself."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.image",
+              "image": {
+                "$type": "blob",
+                "ref": {
+                  "$link": "bafkreifwi4h2dxyxacamr6ir3qlvm4zgftsw2iwrmk7h4vj2acluklfgee"
+                },
+                "mimeType": "image/png",
+                "size": 7789332
+              },
+              "aspectRatio": {
+                "width": 2528,
+                "height": 1696
+              }
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Economic historian Adam Tooze has called China \"the master key to understanding modernity\" and \"the biggest laboratory of organized modernizations there has ever been or ever will be.\" The numbers alone are staggering: since the early 1980s, China has lifted nearly 800 million people out of extreme poverty, accounting for roughly three-quarters of the global reduction in poverty during that period. Life expectancy has risen from 33 in 1960 to 78 in 2023, essentially matching the United States. Per capita income has climbed from a few hundred dollars at the start of reform to over $13,000 today. Whatever one thinks of China's political system, these are the hallmarks not of a failing state, but of a society whose people are flourishing as never before."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.header",
+              "level": 1,
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 19,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "$type": "pub.leaflet.richtext.facet#bold"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "The Great Reckoning"
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 147,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "uri": "https://www.theideasletter.org/essay/the-great-reckoning/",
+                      "$type": "pub.leaflet.richtext.facet#link"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "Kaiser Kuo, host of the Sinica Podcast and professor at NYU Shanghai, argues that what the West faces is fundamentally perceptual and psychological. We have witnessed China's transformation without absorbing what it means. The familiar frameworks—middle-income traps, authoritarian brittleness, inevitable convergence with liberal norms—offer cognitive comfort even as they fail to explain observable reality. It was once axiomatic that a dynamic market economy required liberal democracy; China has showcased an authoritarian capitalism that works anyway. It was assumed that genuine innovation required political freedom; then Chinese firms and labs began producing world-class results while operating within a very different information ecosystem."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "The intellectual historian Joseph Levenson argued that China's modern quest was to find a path that could deliver wealth and power in a way both authentically Chinese and objectively effective. That historical chapter may now be closing. China appears to have found that path. The system powering its success is an intricate alloy of Confucianism, Leninism, technocratic authoritarianism, state capitalism, and market mechanisms. If Levenson's framework is correct, we are witnessing not merely China's rise but its graduation from the central quest that defined its modern history."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "This forces a reckoning that falls especially hard on the United States, where assumptions about exceptionalism are most exposed and most fiercely denied. The denial, deflection, and anxious overreaction so often seen in Western discourse are symptoms of that dislocation. There's always a \"but\" when it comes to recognizing China's accomplishments, a reflex to enumerate failings, to pull back just when the scale of transformation becomes clear. Yet waiting for China's collapse is not a strategy; it's a coping mechanism."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.header",
+              "level": 1,
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 31,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "$type": "pub.leaflet.richtext.facet#bold"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "Xi Jinping's Counterreformation"
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 37,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "uri": "https://www.foreignaffairs.com/china/against-china-xi-jinping-jonathan-czin?s=ESPZZ005O4&utm_medium=promo_email&utm_source=post&utm_campaign=PROM_ND25%20Post%20Release_102925_China%20Against%20China&utm_content=20251029&utm_term=N",
+                      "$type": "pub.leaflet.richtext.facet#link"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "Thirteen years into Xi Jinping's rule, Western observers remain confused about how to assess his leadership. To some, Xi is the second coming of Mao; to others, his grip on power seems perpetually tenuous. Jonathan Czin of the Brookings Institution argues that Xi's most illiberal reforms are better understood as attempts to cure the pathologies of China's own success. Rather than continuing the liberalizing reforms of his predecessors, Xi has identified critical weaknesses in China's development—corruption, economic dependence on foreign countries, vulnerabilities created by decades of opening—and embarked on a counterreformation to strengthen China's resilience."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Xi's \"dual circulation\" strategy aims to reduce reliance on foreign economies by emphasizing domestic markets while maintaining international trade. This approach has helped China withstand external shocks, including the trade war with the United States, bolstering Beijing's confidence and challenging the assumption that openness and debate are essential for effective governance. While the U.S. struggles with policy inconsistency and political turmoil, China's opaque but adaptive system has demonstrated an ability to learn from mistakes and course-correct."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.header",
+              "level": 1,
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 42,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "$type": "pub.leaflet.richtext.facet#bold"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "Divergent Paths in Artificial Intelligence"
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 101,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "uri": "https://www.chinatalk.media/p/embodied-ai-with-chinese-characteristics",
+                      "$type": "pub.leaflet.richtext.facet#link"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "The metaphor of a \"race\" between the United States and China in artificial intelligence is misleading. It suggests a clear finish line and defined boundaries, which do not exist. Instead, both nations are pursuing distinctly different strategies that reflect their unique strengths. The United States has placed a massive bet on deep learning, embracing the conviction that compute power is the key driver of AI progress. This approach focuses on large language models, cloud infrastructure, and sophisticated software systems."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "China, by contrast, pursues what it calls \"embodied AI\"—systems that interact with the physical world through sensors and actuators. The central government has elevated embodied intelligence to a national priority. Cities like Zhongguancun and Wuhan are pioneering projects that embed AI algorithms in real environments, enabling machines to learn through physical engagement. This approach is evident in autonomous vehicles, where China's \"vehicle-road-cloud integration\" model equips intersections with smart devices that communicate with cars, enabling safety and traffic management at scale."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 66,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "uri": "https://www.hyperdimensional.co/p/the-bitter-lessons?r=1isek&utm_medium=ios&triedRedirect=true",
+                      "$type": "pub.leaflet.richtext.facet#link"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "This infrastructural focus reflects a long-standing Chinese belief in technology as a tool for governance and social coordination. The concept traces back to cybernetics as embraced by Chinese scientists in the 1980s, when the country turned from Cultural Revolution ideology toward science and technology. Today, this legacy manifests in \"city brain\" platforms—smart city systems that gather real-time data from AI-enabled cameras, traffic sensors, and municipal records to optimize urban operations. China operates the world's largest stock of industrial robots, accounting for over 50% of the global total."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Interestingly, the fever for artificial general intelligence that grips Silicon Valley hasn't spread through Chinese AI communities in the same way. Chinese entrepreneurs draw on a different intellectual canon—a blend of Western business classics like Peter Thiel's Zero to One with the \"Red Canon\" of political texts including Mao's selected works and Xi Jinping's writings on governance. These provide tactical guidance on organizational mobilization and survival in fiercely competitive markets. Complementing this is the \"Grey Canon\" of classical Chinese philosophy—Confucius, Laozi, Han Feizi—which shapes how entrepreneurs navigate power structures. This produces a distinctly different approach, less focused on metaphysical speculation about superintelligence and more grounded in practical applications aligned with national strategic goals."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.header",
+              "level": 1,
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 31,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "$type": "pub.leaflet.richtext.facet#bold"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "The Renewable Energy Superpower"
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 68,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "uri": "https://www.economist.com/special-report/2025/11/03/the-worlds-renewable-energy-superpower",
+                      "$type": "pub.leaflet.richtext.facet#link"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "China is rapidly emerging as the world's renewable energy superpower. The country is on track to achieve 3,600 gigawatts of wind and solar capacity by 2035, more than doubling its current 1,700 gigawatts. This scale of deployment is unmatched globally. China supplies 60-80% of the world's solar panels, wind turbines, and lithium batteries. The green technology sector has become a major pillar of China's economy, accounting for 10% of GDP and 26% of GDP growth, surpassing traditional industries like property."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "China now accounts for more than half of the world's installed solar and wind capacity combined. Roughly three-quarters of all renewable energy projects currently underway worldwide are either in China or being driven by Chinese contractors. Despite still being the world's largest emitter of greenhouse gases, China's emissions appear to have peaked or are close to peaking, ahead of earlier targets. The country that was supposed to be the problem has become essential to the solution, not through moral transformation but through sheer manufacturing and deployment capacity."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Climate change illuminates something essential about shifting political legitimacy in the 21st century. If legitimacy once rested primarily on procedures and forms—constitutions, elections, parliaments—it now rests increasingly on performance. What could matter more than the ability to safeguard the habitability of the planet? Systems will be judged not by the elegance of their theories but by their ability to meet existential challenges. While Americans quarrel endlessly over pipelines and transmission lines, China wires continent-spanning grids."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.header",
+              "level": 1,
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 25,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "$type": "pub.leaflet.richtext.facet#bold"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "Strategic Interdependence"
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 177,
+                    "byteStart": 95
+                  },
+                  "features": [
+                    {
+                      "uri": "https://www.ft.com/content/25ab5e71-6ae2-495b-bf06-6fd2f1cbb18a",
+                      "$type": "pub.leaflet.richtext.facet#link"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "The economic relationship between the U.S. and China has undergone fundamental transformation. Companies can no longer rely solely on cost efficiency and just-in-time production. Businesses are adopting strategies focused on resilience and diversification. China's share of U.S. imports has declined from 22% in 2017 to 13.4% in 2024. Markets like Vietnam and Mexico have grown in importance. Foreign direct investment into China has plummeted by over 90% in recent years, while Chinese investment in the U.S. has sharply declined, redirecting capital toward Southeast Asia, the Middle East, and Latin America."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Yet this is not a simple story of decoupling. China has demonstrated it can withstand economic pressure and respond in kind. Its response to technological containment—accelerating domestic innovation in semiconductors, AI, and other strategic sectors—reveals a system with remarkable adaptive capacity. Performance legitimacy now encompasses multiple dimensions: the ability to deliver prosperity and stability, to build at scale, to innovate under pressure, to absorb economic coercion without buckling."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.header",
+              "level": 1,
+              "facets": [
+                {
+                  "index": {
+                    "byteEnd": 27,
+                    "byteStart": 0
+                  },
+                  "features": [
+                    {
+                      "$type": "pub.leaflet.richtext.facet#bold"
+                    }
+                  ]
+                }
+              ],
+              "plaintext": "Multiple Paths to Modernity"
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Consider what China's trajectory means for countries across the Global South that were told for decades there was only one path to prosperity: privatization, deregulation, and democratic governance. China offers proof that another model can work: state-led development, long-term planning, massive infrastructure investment, and selective integration with global markets, all while maintaining political autonomy. Whether one admires this model or not, its success cannot be denied, and its implications ripple far beyond East Asia."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "The real challenge is not to anchor oneself too firmly to any present arrangement, but to cultivate intellectual flexibility. The Great Reckoning may be about China right now, but in the larger arc of history, it is about far more: about a world no longer revolving around familiar centers, about the need to find steadiness without the comfort of inherited myths, about recognizing that the stories some of us told ourselves about modernity may have been too narrow, too self-serving, too small for the world we're actually living in."
+            }
+          },
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Coming to terms with China doesn't require abandoning one's own values or surrendering one's aspirations. But it does require holding them more lightly, arguing for them more persuasively, and demonstrating their worth through performance rather than proclamation. The choice, for the West, is not between resistance and surrender, but between thoughtful adaptation and stubborn denial—between strengthening institutions through honest self-examination or watching them weaken through willful blindness to new realities. The world has fundamentally changed. The question is whether we will meet this moment with the rigorous clarity it demands."
+            }
+          }
+        ]
+      }
+    ],
+    "title": "The Weekly Planet #17: The China Shock, Part 1",
+    "author": "did:plc:f5bi3qiwfdxnlbvb44oudmrv",
+    "postRef": {
+      "cid": "bafyreiay3hwwoqwhavy3o44q5uax33azxcf627ubyz63ztwrsvar3tmt5q",
+      "uri": "at://did:plc:f5bi3qiwfdxnlbvb44oudmrv/app.bsky.feed.post/3m7xgssefts2g",
+      "commit": {
+        "cid": "bafyreihua7mmmxvujnmxb6ytlxlfblcbeviv3sgrylpvk7eg34jgoqw5ce",
+        "rev": "3m7xgssgtkq2e"
+      },
+      "validationStatus": "valid"
+    },
+    "description": "",
+    "publication": "at://did:plc:f5bi3qiwfdxnlbvb44oudmrv/pub.leaflet.publication/3lwgwusi37s25",
+    "publishedAt": "2025-12-14T15:31:41.806Z"
+  }
+}
