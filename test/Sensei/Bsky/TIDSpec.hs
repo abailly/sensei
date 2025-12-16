@@ -3,13 +3,8 @@
 module Sensei.Bsky.TIDSpec where
 
 import qualified Data.Text as Text
-import Sensei.Bsky.TID
-  ( TID (TID),
-    base32SortableAlphabet,
-    mkTid,
-    tidFromText,
-    tidToText,
-  )
+import Sensei.Bsky.TID (mkTid, tidFromText, tidToText)
+import Sensei.Generators ()
 import Test.Hspec
   ( Spec,
     describe,
@@ -19,7 +14,7 @@ import Test.Hspec
     shouldSatisfy,
   )
 import Test.Hspec.QuickCheck (prop)
-import Test.QuickCheck (Arbitrary (..), elements, vectorOf, (===))
+import Test.QuickCheck ((===))
 
 spec :: Spec
 spec = do
@@ -56,8 +51,3 @@ spec = do
     it "accepts TID with valid characters" $ do
       let validTid = "2222222222222" -- The zero value
       tidFromText validTid `shouldSatisfy` (/= Nothing)
-
-instance Arbitrary TID where
-  arbitrary = do
-    chars <- vectorOf 13 (elements $ Text.unpack base32SortableAlphabet)
-    return $ TID (Text.pack chars)

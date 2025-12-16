@@ -11,6 +11,9 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use fewer imports" #-}
 
 module Sensei.BskySpec (spec) where
 
@@ -37,7 +40,19 @@ import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultPr
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Record (..), bskyEventHandler, decodeAuthToken, record, text)
+import Sensei.Bsky
+  ( BskyAuth (..),
+    BskyNet (..),
+    BskyPost,
+    BskyRecord,
+    BskySession (..),
+    ListRecordsResponse (..),
+    Record (..),
+    bskyEventHandler,
+    decodeAuthToken,
+    record,
+    text,
+  )
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
@@ -219,7 +234,8 @@ newBskyMockNet = do
           { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login),
             doCreateRecord = \_ p -> modifyIORef' createPostCalls (mimeRender (Proxy @JSON) p :) >> pure (Record "foo" "bar"),
             doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession,
-            currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t
+            currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t,
+            doListRecords = \_ _ _ _ _ _ -> pure (ListRecordsResponse Nothing [])
           }
   pure $ BskyMockNet {..}
 

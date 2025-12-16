@@ -19,23 +19,41 @@ import Sensei.API
 import Sensei.Backend (Backend (..))
 import Sensei.Bsky (BskyAuth (..))
 import Sensei.Bsky.Core (BskyBackend (BskyBackend), BskyLogin (..))
+import Sensei.Bsky.Leaflet
+  ( BackgroundImage (..),
+    Blob (..),
+    Block (..),
+    BlockVariant (..),
+    ByteSlice (..),
+    Document (..),
+    Facet (..),
+    Feature (..),
+    LinearDocument (..),
+    Page (..),
+    RichText (..),
+    StrongRef (..),
+    TextAlignment (..),
+    Theme (..),
+  )
+import qualified Sensei.Bsky.Leaflet as Leaflet
+import Sensei.Bsky.TID (TID (..), base32SortableAlphabet)
 import Sensei.ColorSpec ()
 import Sensei.DB
-import Test.QuickCheck (
-  Arbitrary (..),
-  Gen,
-  choose,
-  elements,
-  frequency,
-  getASCIIString,
-  getPositive,
-  getPrintableString,
-  listOf,
-  oneof,
-  resize,
-  suchThat,
-  vectorOf,
- )
+import Test.QuickCheck
+  ( Arbitrary (..),
+    Gen,
+    choose,
+    elements,
+    frequency,
+    getASCIIString,
+    getPositive,
+    getPrintableString,
+    listOf,
+    oneof,
+    resize,
+    suchThat,
+    vectorOf,
+  )
 import Prelude hiding (exp)
 
 -- * Orphan Instances
@@ -50,8 +68,8 @@ genTimeZone :: Gen TZLabel
 genTimeZone =
   toEnum
     <$> choose
-      ( fromEnum (minBound @TZLabel)
-      , fromEnum (maxBound @TZLabel)
+      ( fromEnum (minBound @TZLabel),
+        fromEnum (maxBound @TZLabel)
       )
 
 genPassword :: Gen (Encoded Base64, Encoded Base64)
@@ -81,18 +99,18 @@ instance Arbitrary UserProfile where
   arbitrary = generateUserProfile
 
   shrink u@(UserProfile _ _ _ _ fs cs ps _ _ bks) =
-    ((\f -> u{userFlowTypes = f}) <$> shrink fs)
-      <> ((\c -> u{userCommands = c}) <$> shrink cs)
-      <> ((\p -> u{userProjects = p}) <$> shrink ps)
-      <> ((\b -> u{backends = b}) <$> shrink bks)
+    ((\f -> u {userFlowTypes = f}) <$> shrink fs)
+      <> ((\c -> u {userCommands = c}) <$> shrink cs)
+      <> ((\p -> u {userProjects = p}) <$> shrink ps)
+      <> ((\b -> u {backends = b}) <$> shrink bks)
 
 instance Arbitrary FlowType where
   arbitrary =
     frequency
-      [ (4, elements defaultFlowTypes)
-      , (3, pure Note)
-      , (1, pure End)
-      , (2, pure Other)
+      [ (4, elements defaultFlowTypes),
+        (3, pure Note),
+        (1, pure End),
+        (2, pure Other)
       ]
 
 instance Arbitrary ProjectName where
@@ -103,11 +121,11 @@ instance Arbitrary ProjectName where
 -- as hell
 instance Arbitrary Regex where
   arbitrary = Regex . pack . concat <$> reFragments
-   where
-    reFragments :: Gen [String]
-    reFragments = vectorOf 3 reFragment
+    where
+      reFragments :: Gen [String]
+      reFragments = vectorOf 3 reFragment
 
-    reFragment = oneof [pure ".*", listOf (elements ['a' .. 'z'])]
+      reFragment = oneof [pure ".*", listOf (elements ['a' .. 'z'])]
 
 genNatural :: Gen Natural
 genNatural = fromInteger . getPositive <$> arbitrary
@@ -167,8 +185,8 @@ instance Arbitrary Natural where
 instance Arbitrary Pagination where
   arbitrary =
     frequency
-      [ (10, Page <$> genNatural <*> genNatural)
-      , (1, pure NoPagination)
+      [ (10, Page <$> genNatural <*> genNatural),
+        (1, pure NoPagination)
       ]
 
   shrink (Page n s) = Page <$> shrink n <*> shrink s
@@ -177,8 +195,8 @@ instance Arbitrary Pagination where
 instance Arbitrary Reference where
   arbitrary =
     frequency
-      [ (3, pure Latest)
-      , (1, Pos <$> genNatural)
+      [ (3, pure Latest),
+        (1, Pos <$> genNatural)
       ]
 
   shrink Latest = []
@@ -212,30 +230,30 @@ instance Arbitrary SimpleString where
 
 genLogin :: Gen BskyLogin
 genLogin = BskyLogin <$> genIdentifier <*> genPwd
- where
-  genIdentifier = pack . getSimpleString <$> arbitrary
-  genPwd = pack . getSimpleString <$> arbitrary
+  where
+    genIdentifier = pack . getSimpleString <$> arbitrary
+    genPwd = pack . getSimpleString <$> arbitrary
 
 genURI :: Gen URI
 genURI = do
   uriScheme <- genURIScheme
   uriAuthority <- genURIAuthority
   uriPath <- genURIPath
-  pure URI{uriQuery = "", uriFragment = "", ..}
- where
-  genURIScheme = elements ["http:", "https:"]
+  pure URI {uriQuery = "", uriFragment = "", ..}
+  where
+    genURIScheme = elements ["http:", "https:"]
 
-  genURIAuthority = do
-    uriRegName <- genURIRegName
-    uriPort <- genURIPort
-    pure $ Just URIAuth{uriUserInfo = "", ..}
+    genURIAuthority = do
+      uriRegName <- genURIRegName
+      uriPort <- genURIPort
+      pure $ Just URIAuth {uriUserInfo = "", ..}
 
-  genURIPath = do
-    numSegments <- choose (1, 10)
-    ("/" <>) . List.intercalate "/" <$> vectorOf numSegments (getSimpleString <$> arbitrary)
+    genURIPath = do
+      numSegments <- choose (1, 10)
+      ("/" <>) . List.intercalate "/" <$> vectorOf numSegments (getSimpleString <$> arbitrary)
 
-  genURIPort =
-    maybe "" show <$> frequency [(9, pure Nothing), (1, Just <$> choose (1 :: Int, 65535))]
+    genURIPort =
+      maybe "" show <$> frequency [(9, pure Nothing), (1, Just <$> choose (1 :: Int, 65535))]
 
 genURIRegName :: Gen String
 genURIRegName = do
@@ -249,4 +267,103 @@ instance Arbitrary BskyAuth where
     iat <- choose (1732500000, 1732600000)
     let exp = iat + 6200
     aud <- ("did:web:" <>) . Text.pack <$> genURIRegName
-    pure $ BskyAuth{..}
+    pure $ BskyAuth {..}
+
+-- * Leaflet Arbitrary Instances
+
+-- | Generate a simple Text value for testing
+genSimpleText :: Gen Text
+genSimpleText = resize 100 (pack . getPrintableString <$> arbitrary)
+
+-- | Generate a longer Text value for document content
+genLongText :: Gen Text
+genLongText = resize 500 (pack . getPrintableString <$> arbitrary)
+
+instance Arbitrary ByteSlice where
+  arbitrary = do
+    start <- choose (0, 100)
+    end <- choose (start + 1, start + 50)
+    pure $ ByteSlice start end
+
+instance Arbitrary Feature where
+  arbitrary =
+    oneof
+      [ Link <$> genSimpleText,
+        DidMention <$> (("did:plc:" <>) <$> genSimpleText),
+        AtMention <$> (("at://" <>) <$> genSimpleText),
+        pure Code,
+        pure Highlight,
+        pure Underline,
+        pure Strikethrough,
+        Id <$> frequency [(1, pure Nothing), (1, Just <$> genSimpleText)],
+        pure Bold,
+        pure Italic
+      ]
+
+instance Arbitrary Facet where
+  arbitrary = Facet <$> arbitrary <*> resize 3 (listOf arbitrary)
+
+instance Arbitrary RichText where
+  arbitrary = RichText <$> genLongText <*> arbitrary
+
+instance Arbitrary TextAlignment where
+  arbitrary = elements [TextAlignLeft, TextAlignCenter, TextAlignRight, TextAlignJustify]
+
+instance Arbitrary BlockVariant where
+  -- Only support TextBlock for now
+  arbitrary = TextBlock <$> arbitrary
+
+instance Arbitrary Block where
+  arbitrary = Block <$> arbitrary <*> arbitrary
+
+instance Arbitrary LinearDocument where
+  arbitrary = LinearDocument <$> arbitrary <*> resize 10 (listOf arbitrary)
+
+instance Arbitrary Page where
+  arbitrary =
+    frequency
+      [ (9, Linear <$> arbitrary),
+        (1, pure Canvas)
+      ]
+
+instance Arbitrary StrongRef where
+  arbitrary = StrongRef <$> genSimpleText <*> genSimpleText
+
+instance Arbitrary Leaflet.Color where
+  arbitrary = Leaflet.Color <$> choose (0, 255) <*> choose (0, 255) <*> choose (0, 255) <*> arbitrary
+
+instance Arbitrary Blob where
+  arbitrary = Blob <$> elements ["image/png", "image/jpeg", "image/gif"] <*> choose (1, 1000000) <*> genSimpleText
+
+instance Arbitrary BackgroundImage where
+  arbitrary = BackgroundImage <$> arbitrary
+
+instance Arbitrary Theme where
+  arbitrary =
+    Theme
+      <$> arbitrary -- backgroundColor
+      <*> arbitrary -- backgroundImage
+      <*> arbitrary -- primary
+      <*> arbitrary -- pageBackground
+      <*> arbitrary -- showPageBackground
+      <*> arbitrary -- accentBackground
+      <*> arbitrary -- accentText
+
+instance Arbitrary Document where
+  arbitrary =
+    Document
+      <$> genSimpleText -- title
+      <*> frequency [(1, pure Nothing), (1, Just <$> genSimpleText)] -- description
+      <*> (("did:plc:" <>) <$> genSimpleText) -- author
+      <*> resize 5 (listOf arbitrary) -- pages
+      <*> frequency [(1, pure Nothing), (1, Just <$> listOf genSimpleText)] -- tags
+      <*> frequency [(1, pure Nothing), (1, Just <$> genSimpleText)] -- publishedAt
+      <*> arbitrary -- postRef
+      <*> frequency [(1, pure Nothing), (1, Just <$> genSimpleText)] -- publication
+      <*> arbitrary -- theme
+
+-- | Arbitrary instance for QuickCheck testing
+instance Arbitrary TID where
+  arbitrary = do
+    chars <- vectorOf 13 (elements $ Text.unpack base32SortableAlphabet)
+    return $ TID (Text.pack chars)

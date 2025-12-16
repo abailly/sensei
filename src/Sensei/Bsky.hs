@@ -4,7 +4,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -17,13 +16,17 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
-module Sensei.Bsky where
+module Sensei.Bsky
+  ( module Sensei.Bsky,
+    module Sensei.Bsky.Core,
+  )
+where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
 import Control.Lens ((&), (?~), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
-import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, withText, (.:), (.=))
+import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', withObject, (.:))
 import Data.Aeson.Types (FromJSON (..))
 import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
@@ -39,7 +42,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import GHC.Generics (Generic)
-import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
 import Sensei.Backend.Class (BackendHandler (..))
@@ -58,61 +61,6 @@ data BskySession = BskySession
     refreshJwt :: SerializedToken
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
-
-newtype BskyHandle = BskyHandle Text
-  deriving newtype (Eq, Show, IsString, ToJSON, FromJSON)
-
-instance ToHttpApiData BskyHandle where
-  toUrlPiece (BskyHandle handle) = handle
-
-data BskyType (bskyType :: Symbol) = BskyType
-
-instance (KnownSymbol bskyType) => Show (BskyType bskyType) where
-  show _ = symbolVal (Proxy :: Proxy bskyType)
-
-instance Eq (BskyType bskyType) where
-  _ == _ = True
-
-instance (KnownSymbol bskyType) => ToJSON (BskyType bskyType) where
-  toJSON _ = toJSON $ symbolVal (Proxy :: Proxy bskyType)
-
-instance (KnownSymbol bskyType) => FromJSON (BskyType bskyType) where
-  parseJSON = withText "Bsky type" $ \txt ->
-    if txt == Text.pack (symbolVal (Proxy :: Proxy bskyType))
-      then pure BskyType
-      else fail ("unexpected Bsky type " <> Text.unpack txt)
-
-instance (KnownSymbol bskyType) => ToHttpApiData (BskyType bskyType) where
-  toUrlPiece _ = Text.pack $ symbolVal (Proxy :: Proxy bskyType)
-
-data BskyRecord record = BskyRecord
-  { repo :: BskyHandle,
-    collection :: BskyType (Lexicon record),
-    key :: Key record,
-    record :: record
-  }
-  deriving stock (Generic)
-
-deriving instance (Show record, KnownSymbol (Lexicon record), Show (Key record)) => Show (BskyRecord record)
-
-deriving instance (Eq record, Eq (Key record)) => Eq (BskyRecord record)
-
-instance (ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) => ToJSON (BskyRecord record) where
-  toJSON (BskyRecord repo coll key rec) =
-    object
-      [ "repo" .= repo,
-        "collection" .= coll,
-        "key" .= key,
-        "record" .= rec
-      ]
-
-instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) => FromJSON (BskyRecord record) where
-  parseJSON = withObject "BskyRecord" $ \o ->
-    BskyRecord
-      <$> o .: "repo"
-      <*> o .: "collection"
-      <*> o .: "key"
-      <*> o .: "record"
 
 type instance Lexicon BskyPost = "app.bsky.feed.post"
 
@@ -270,7 +218,16 @@ data BskyNet m = BskyNet
   { doCreateRecord :: forall record. (MimeRender JSON record) => BskyClientConfig -> record -> m Record,
     doLogin :: BskyClientConfig -> BskyLogin -> m BskySession,
     doRefresh :: BskyClientConfig -> m BskySession,
-    doListRecords :: forall record. (FromJSON record, KnownSymbol (Lexicon record)) => BskyClientConfig -> BskyHandle -> BskyType (Lexicon record) -> Maybe Int -> Maybe Text -> Maybe Bool -> m (ListRecordsResponse record),
+    doListRecords ::
+      forall record.
+      (FromJSON record, KnownSymbol (Lexicon record)) =>
+      BskyClientConfig ->
+      BskyHandle ->
+      BskyType (Lexicon record) ->
+      Maybe Int ->
+      Maybe Text ->
+      Maybe Bool ->
+      m (ListRecordsResponse record),
     currentTime :: UTCTime -> m UTCTime
   }
 

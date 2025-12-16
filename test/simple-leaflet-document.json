@@ -1,0 +1,29 @@
+{
+  "uri": "at://did:plc:s5wwr2ccjuqricdxiyiuspfv/pub.leaflet.document/3m7zltkk7pc2k",
+  "cid": "bafyreidy55clvis5byc2h7o2tlqzhtevwau64kbi2465mrfbsy4ltgn72q",
+  "value": {
+    "tags": [],
+    "$type": "pub.leaflet.document",
+    "pages": [
+      {
+        "id": "019b21e7-ca86-7228-9645-8bf0e82b44fa",
+        "$type": "pub.leaflet.pages.linearDocument",
+        "blocks": [
+          {
+            "$type": "pub.leaflet.pages.linearDocument#block",
+            "block": {
+              "$type": "pub.leaflet.blocks.text",
+              "facets": [],
+              "plaintext": "Something"
+            }
+          }
+        ]
+      }
+    ],
+    "title": "Test",
+    "author": "did:plc:s5wwr2ccjuqricdxiyiuspfv",
+    "description": "This is a test",
+    "publication": "at://did:plc:s5wwr2ccjuqricdxiyiuspfv/pub.leaflet.publication/3m7zleg5tyc2b",
+    "publishedAt": "2025-12-15T12:07:04.248Z"
+  }
+}

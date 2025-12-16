@@ -101,6 +101,7 @@ library
     , parsec
     , prettyprinter
     , process
+    , QuickCheck
     , random
     , regex-tdfa
     , safe-exceptions
@@ -153,6 +154,7 @@ test-suite sensei-test
   other-modules:
     Sensei.BskySpec
     Sensei.Bsky.TIDSpec
+    Sensei.Bsky.LeafletSpec
     Sensei.Builder
     Sensei.ClientSpec
     Sensei.CLISpec
