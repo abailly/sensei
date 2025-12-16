@@ -1,13 +1,14 @@
-
 module Sensei.Bsky.Leaflet where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withObject, (.:), (.:?), (.=))
 import qualified Data.Aeson.KeyMap as KeyMap
 import Data.Aeson.Types (Parser)
+import Data.Functor ((<&>))
+import Data.Maybe (fromMaybe)
 import Data.String (IsString (fromString))
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
-import Sensei.Bsky.Core (Key, Lexicon, BskyType (BskyType))
+import Sensei.Bsky.Core (BskyType (BskyType), Key, Lexicon)
 import Sensei.Bsky.TID (TID, mkTid)
 
 type PublicationLexicon = "pub.leaflet.publication"
@@ -207,22 +208,11 @@ mkSimpleDocument text = do
         blocks =
           [ Block
               { alignment = Nothing,
-                block = TextBlock RichText {plaintext = text, facets = Just []}
+                block = TextBlock RichText {plaintext = text, facets = []}
               }
           ]
       }
 
--- | Create a LinearDocument from markdown text
-mkMarkdownDocument :: Text -> IO (Either ParseError LinearDocument)
-mkMarkdownDocument text = do
-  tid <- mkTid
-  case parseMarkdown text of
-    Left err -> pure $ Left err
-    Right markdown -> pure $ Right $
-      LinearDocument
-        { id = Just tid,
-          blocks = map markdownBlockToBlock markdown
-        }
 type instance Lexicon Block = "pub.leaflet.pages.linearDocument#block"
 
 -- | Block in a linear document
@@ -279,6 +269,9 @@ data BlockVariant
 
 instance ToJSON BlockVariant where
   toJSON (TextBlock rt) = toJSON rt
+  toJSON (HeaderBlock hdr) = toJSON hdr
+  toJSON (CodeBlock code) = toJSON code
+  toJSON (UnorderedListBlock list) = toJSON list
   -- For now, other block types are not implemented
   toJSON _ = object ["$type" .= ("pub.leaflet.blocks.unknown" :: Text)]
 
@@ -288,7 +281,9 @@ instance FromJSON BlockVariant where
     case typ of
       "pub.leaflet.blocks.text" -> TextBlock <$> parseJSON (Object v)
       "pub.leaflet.blocks.image" -> pure $ ImageBlock Image -- TODO
-      "pub.leaflet.blocks.header" -> pure $ HeaderBlock Header -- TODO
+      "pub.leaflet.blocks.header" -> HeaderBlock <$> parseJSON (Object v)
+      "pub.leaflet.blocks.code" -> CodeBlock <$> parseJSON (Object v)
+      "pub.leaflet.blocks.unorderedList" -> UnorderedListBlock <$> parseJSON (Object v)
       -- For now, only text blocks are supported
       _ -> fail $ "Unsupported block type: " ++ show typ
 
@@ -335,8 +330,8 @@ data Iframe = Iframe
 data RichText = RichText
   { -- | Required: Plain text content
     plaintext :: Text,
-    -- | Optional: Array of formatting facets
-    facets :: Maybe [Facet]
+    -- | Array of formatting facets
+    facets :: [Facet]
   }
   deriving stock (Eq, Show, Generic)
 
@@ -344,16 +339,16 @@ instance ToJSON RichText where
   toJSON (RichText {plaintext = pt, facets = fs}) =
     object $
       [ "$type" .= BskyType @(Lexicon RichText),
-        "plaintext" .= pt
+        "plaintext" .= pt,
+        "facets" .= fs
       ]
-        <> optionalField "facets" fs
 
 instance FromJSON RichText where
   parseJSON = withObject "RichText" $ \v -> do
     _ <- v .: "$type" :: Parser Text
     RichText
       <$> v .: "plaintext"
-      <*> v .:? "facets"
+      <*> (v .:? "facets" <&> fromMaybe [])
 
 -- | Blockquote block
 -- Lexicon: [pub.leaflet.blocks.blockquote](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/blockquote.json)
@@ -363,9 +358,24 @@ data Blockquote = Blockquote
 
 -- | Header block
 -- Lexicon: [pub.leaflet.blocks.header](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/header.json)
-data Header = Header
+data Header = Header {plaintext :: Text, level :: Int, facets :: [Facet]}
   deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+
+instance ToJSON Header where
+  toJSON Header {plaintext, level, facets} =
+    object
+      [ "$type" .= BskyType @(Lexicon Header),
+        "plaintext" .= plaintext,
+        "level" .= level,
+        "facets" .= facets
+      ]
+
+instance FromJSON Header where
+  parseJSON = withObject "Header" $ \v -> do
+    Header
+      <$> v .: "plaintext"
+      <*> v .: "level"
+      <*> v .: "facets"
 
 -- | Image block
 -- Lexicon: [pub.leaflet.blocks.image](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/image.json)
@@ -375,9 +385,20 @@ data Image = Image
 
 -- | Unordered list block
 -- Lexicon: [pub.leaflet.blocks.unorderedList](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/unorderedList.json)
-data UnorderedList = UnorderedList
+data UnorderedList = UnorderedList {children :: [BlockVariant]}
   deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+
+instance ToJSON UnorderedList where
+  toJSON UnorderedList {children} =
+    object
+      [ "$type" .= BskyType @(Lexicon UnorderedList),
+        "children" .= children
+      ]
+
+instance FromJSON UnorderedList where
+  parseJSON = withObject "UnorderedList" $ \v -> do
+    UnorderedList
+      <$> v .: "children"
 
 -- | Website block
 -- Lexicon: [pub.leaflet.blocks.website](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/website.json)
@@ -393,9 +414,24 @@ data Math = Math
 
 -- | Code block
 -- Lexicon: [pub.leaflet.blocks.code](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/code.json)
-data CodeBlock' = CodeBlock'
+data CodeBlock' = CodeBlock' {plaintext :: Text, language :: Maybe Text, syntaxHighlightingTheme :: Maybe Text}
   deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+
+instance ToJSON CodeBlock' where
+  toJSON CodeBlock' {plaintext, language, syntaxHighlightingTheme} =
+    object $
+      [ "$type" .= BskyType @(Lexicon CodeBlock'),
+        "plaintext" .= plaintext
+      ]
+        <> optionalField "language" language
+        <> optionalField "syntaxHighlightingTheme" syntaxHighlightingTheme
+
+instance FromJSON CodeBlock' where
+  parseJSON = withObject "CodeBlock'" $ \v -> do
+    CodeBlock'
+      <$> v .: "plaintext"
+      <*> v .:? "language"
+      <*> v .:? "syntaxHighlightingTheme"
 
 -- | Horizontal rule block
 -- Lexicon: [pub.leaflet.blocks.horizontalRule](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/horizontalRule.json)

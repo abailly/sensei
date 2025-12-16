@@ -51,6 +51,7 @@ library
     Sensei.Bsky
     Sensei.Bsky.Core
     Sensei.Bsky.Leaflet
+    Sensei.Bsky.Leaflet.Markdown
     Sensei.Bsky.TID
     Sensei.CLI
     Sensei.Client
@@ -60,7 +61,6 @@ library
     Sensei.DB.SQLite
     Sensei.Graph
     Sensei.Group
-    Sensei.Markdown
     Sensei.IO
     Sensei.Server
     Sensei.Time
@@ -81,8 +81,6 @@ library
     Sensei.FlowType
     Sensei.FlowView
     Sensei.Goal
-    Sensei.Markdown.Markdown
-    Sensei.Markdown.Parser
     Sensei.Project
     Sensei.Server.Auth
     Sensei.Server.Config
@@ -195,7 +193,6 @@ test-suite sensei-test
     Sensei.GoalAPISpec
     Sensei.GraphSpec
     Sensei.LogSpec
-    Sensei.MarkdownSpec
     Sensei.ProjectSpec
     Sensei.Server.AuthSpec
     Sensei.Server.LinksSpec
