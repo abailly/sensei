@@ -103,7 +103,13 @@ type Refresh =
 type CreateRecord record =
   "xrpc"
     :> "com.atproto.repo.createRecord"
-    :> ReqBody '[JSON] record
+    :> ReqBody '[JSON] (BskyRecord record)
+    :> Post '[JSON] Record
+
+type PutRecord record =
+  "xrpc"
+    :> "com.atproto.repo.putRecord"
+    :> ReqBody '[JSON] (BskyRecord record)
     :> Post '[JSON] Record
 
 type ListRecords record =
@@ -122,8 +128,19 @@ bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
 bskyRefresh :: ClientMonad BskyClientConfig BskySession
 bskyLogin :<|> bskyRefresh = clientIn (Proxy @BskyLoginAPI) Proxy
 
-bskyCreateRecord :: forall record. (MimeRender JSON record) => record -> ClientMonad BskyClientConfig Record
+bskyCreateRecord ::
+  forall record.
+  (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+  BskyRecord record ->
+  ClientMonad BskyClientConfig Record
 bskyCreateRecord = clientIn (Proxy @(CreateRecord record)) Proxy
+
+bskyPutRecord ::
+  forall record.
+  (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+  BskyRecord record ->
+  ClientMonad BskyClientConfig Record
+bskyPutRecord = clientIn (Proxy @(PutRecord record)) Proxy
 
 bskyListRecords ::
   forall record.
@@ -184,7 +201,18 @@ decodeAuthToken (SerializedToken bytes) =
 
 -- | Low-level handle to send requests to PDS with some configuration.
 data BskyNet m = BskyNet
-  { doCreateRecord :: forall record. (MimeRender JSON record) => BskyClientConfig -> record -> m Record,
+  { doCreateRecord ::
+      forall record.
+      (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+      BskyClientConfig ->
+      BskyRecord record ->
+      m Record,
+    doPutRecord ::
+      forall record.
+      (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+      BskyClientConfig ->
+      BskyRecord record ->
+      m Record,
     doLogin :: BskyClientConfig -> BskyLogin -> m BskySession,
     doRefresh :: BskyClientConfig -> m BskySession,
     doListRecords ::
@@ -201,9 +229,10 @@ data BskyNet m = BskyNet
   }
 
 defaultBskyNet :: BskyNet IO
-defaultBskyNet = BskyNet {doCreateRecord, doLogin, doRefresh, doListRecords, currentTime}
+defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doLogin, doRefresh, doListRecords, currentTime}
   where
     doCreateRecord config = send config . bskyCreateRecord
+    doPutRecord config = send config . bskyPutRecord
     doLogin config = send config . bskyLogin
     doRefresh config = send config bskyRefresh
     doListRecords config repo collection limit cursor isReverse =

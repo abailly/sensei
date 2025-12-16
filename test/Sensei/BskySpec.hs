@@ -225,6 +225,7 @@ newBskyMockNet = do
         BskyNet
           { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login),
             doCreateRecord = \_ p -> modifyIORef' createPostCalls (mimeRender (Proxy @JSON) p :) >> pure (Record "foo" "bar"),
+            doPutRecord = undefined,
             doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession,
             currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t,
             doListRecords = \_ _ _ _ _ _ -> pure (ListRecordsResponse Nothing [])
