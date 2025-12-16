@@ -69,7 +69,7 @@ instance (KnownSymbol bskyType) => ToHttpApiData (BskyType bskyType) where
 data BskyRecord record = BskyRecord
   { repo :: BskyHandle,
     collection :: BskyType (Lexicon record),
-    key :: Key record,
+    rkey :: Key record,
     record :: record
   }
   deriving stock (Generic)
@@ -83,7 +83,7 @@ instance (ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) => T
     object
       [ "repo" .= repo,
         "collection" .= coll,
-        "key" .= key,
+        "rkey" .= key,
         "record" .= rec
       ]
 
@@ -92,7 +92,7 @@ instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) 
     BskyRecord
       <$> o .: "repo"
       <*> o .: "collection"
-      <*> o .: "key"
+      <*> o .: "rkey"
       <*> o .: "record"
 
 

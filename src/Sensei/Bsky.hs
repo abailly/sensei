@@ -264,7 +264,7 @@ bskyEventHandler logger BskyNet {doCreateRecord, doLogin, doRefresh, currentTime
                     },
                 -- TODO: test me!
                 repo,
-                key = Nothing,
+                rkey = Nothing,
                 collection = BskyType
               }
 
