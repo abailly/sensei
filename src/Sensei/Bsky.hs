@@ -4,6 +4,8 @@
 module Sensei.Bsky
   ( module Sensei.Bsky,
     module Sensei.Bsky.Core,
+    module Sensei.Bsky.Leaflet,
+    module Sensei.Bsky.TID,
   )
 where
 
@@ -32,7 +34,8 @@ import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
-import Sensei.Bsky.TID (TID)
+import Sensei.Bsky.Leaflet
+import Sensei.Bsky.TID
 import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config, send)
 import Sensei.Event (Event (..))
 import Sensei.Flow (noteContent, noteTimestamp)

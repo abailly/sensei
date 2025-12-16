@@ -28,7 +28,7 @@ import Network.URI.Extra (uriFromString)
 import Preface.Codec
 import Sensei.API
 import Sensei.Backend (Backend (..))
-import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
+import Sensei.Bsky (BskyBackend (..), BskyLogin (..))
 import Sensei.TestHelper
 
 postEvent :: [Event] -> WaiSession (Maybe (Encoded Hex)) SResponse

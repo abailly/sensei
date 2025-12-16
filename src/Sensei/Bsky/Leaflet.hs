@@ -260,7 +260,7 @@ data BlockVariant
   | MathBlock Math -- pub.leaflet.blocks.math
   | CodeBlock CodeBlock' -- pub.leaflet.blocks.code
   | HorizontalRuleBlock HorizontalRule -- pub.leaflet.blocks.horizontalRule
-  | BskyPostBlock BskyPost -- pub.leaflet.blocks.bskyPost
+  | BskyPostBlock BskyPost' -- pub.leaflet.blocks.bskyPost
   | PageBlock PageBlock' -- pub.leaflet.blocks.page
   | PollBlock Poll -- pub.leaflet.blocks.poll
   | ButtonBlock Button -- pub.leaflet.blocks.button
@@ -302,7 +302,7 @@ type instance Lexicon CodeBlock' = "pub.leaflet.blocks.code"
 
 type instance Lexicon HorizontalRule = "pub.leaflet.blocks.horizontalRule"
 
-type instance Lexicon BskyPost = "pub.leaflet.blocks.bskyPost"
+type instance Lexicon BskyPost' = "pub.leaflet.blocks.bskyPost"
 
 type instance Lexicon PageBlock' = "pub.leaflet.blocks.page"
 
@@ -394,7 +394,7 @@ data HorizontalRule = HorizontalRule
 
 -- | Bluesky post block
 -- Lexicon: [pub.leaflet.blocks.bskyPost](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/bskyPost.json)
-data BskyPost = BskyPost
+data BskyPost' = BskyPost'
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 

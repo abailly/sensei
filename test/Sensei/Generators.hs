@@ -15,13 +15,14 @@ import Network.URI.Extra (URI (..), URIAuth (..))
 import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
 import Sensei.Backend (Backend (..))
-import Sensei.Bsky (BskyAuth (..))
-import Sensei.Bsky.Core (BskyBackend (BskyBackend), BskyLogin (..))
-import Sensei.Bsky.Leaflet
+import Sensei.Bsky
   ( BackgroundImage (..),
     Blob (..),
     Block (..),
     BlockVariant (..),
+    BskyAuth (..),
+    BskyBackend (BskyBackend),
+    BskyLogin (..),
     ByteSlice (..),
     Document (..),
     Facet (..),
@@ -30,11 +31,11 @@ import Sensei.Bsky.Leaflet
     Page (..),
     RichText (..),
     StrongRef (..),
+    TID (..),
     TextAlignment (..),
     Theme (..),
+    base32SortableAlphabet,
   )
-import qualified Sensei.Bsky.Leaflet as Leaflet
-import Sensei.Bsky.TID (TID (..), base32SortableAlphabet)
 import Sensei.ColorSpec ()
 import Sensei.DB
 import Test.QuickCheck
@@ -53,6 +54,7 @@ import Test.QuickCheck
     vectorOf,
   )
 import Prelude hiding (exp)
+import qualified Sensei.Bsky as Bsky
 
 -- * Orphan Instances
 
@@ -327,8 +329,8 @@ instance Arbitrary Page where
 instance Arbitrary StrongRef where
   arbitrary = StrongRef <$> genSimpleText <*> genSimpleText
 
-instance Arbitrary Leaflet.Color where
-  arbitrary = Leaflet.Color <$> choose (0, 255) <*> choose (0, 255) <*> choose (0, 255) <*> arbitrary
+instance Arbitrary Bsky.Color where
+  arbitrary = Bsky.Color <$> choose (0, 255) <*> choose (0, 255) <*> choose (0, 255) <*> arbitrary
 
 instance Arbitrary Blob where
   arbitrary = Blob <$> elements ["image/png", "image/jpeg", "image/gif"] <*> choose (1, 1000000) <*> genSimpleText
