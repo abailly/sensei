@@ -1,5 +1,8 @@
+{-# LANGUAGE TupleSections #-}
+
 module Sensei.Bsky.Leaflet where
 
+import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withObject, (.:), (.:?), (.=))
 import qualified Data.Aeson.KeyMap as KeyMap
 import Data.Aeson.Types (Parser)
@@ -385,7 +388,7 @@ data Image = Image
 
 -- | Unordered list block
 -- Lexicon: [pub.leaflet.blocks.unorderedList](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/unorderedList.json)
-data UnorderedList = UnorderedList {children :: [BlockVariant]}
+data UnorderedList = UnorderedList {children :: [ListItem]}
   deriving stock (Eq, Show, Generic)
 
 instance ToJSON UnorderedList where
@@ -399,6 +402,34 @@ instance FromJSON UnorderedList where
   parseJSON = withObject "UnorderedList" $ \v -> do
     UnorderedList
       <$> v .: "children"
+
+data ListItem
+  = TextListItem RichText [ListItem]
+  | ImageListItem Image [ListItem]
+  | HeaderListItem Header [ListItem]
+  deriving stock (Eq, Show, Generic)
+
+mkListItem :: BlockVariant -> Maybe ListItem
+mkListItem = \case
+  TextBlock rt -> Just $ TextListItem rt []
+  ImageBlock img -> Just $ ImageListItem img []
+  HeaderBlock hdr -> Just $ HeaderListItem hdr []
+  _ -> Nothing
+
+
+instance ToJSON ListItem where
+  toJSON (TextListItem rt children) = object ["content" .= toJSON rt, "children" .= children]
+  toJSON (HeaderListItem hdr children) = object ["content" .= toJSON hdr, "children" .= children]
+  toJSON (ImageListItem img children) = object ["content" .= toJSON img, "children" .= children]
+
+instance FromJSON ListItem where
+  parseJSON = withObject "ListItem" $ \v -> do
+    contentVal <- v .: "content"
+    children :: [ListItem] <- v .:? "children" <&> fromMaybe []
+    p <- TextListItem <$> parseJSON contentVal
+      <|> HeaderListItem <$> parseJSON contentVal
+      <|> ImageListItem <$> parseJSON contentVal
+    pure $ p children
 
 -- | Website block
 -- Lexicon: [pub.leaflet.blocks.website](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/website.json)

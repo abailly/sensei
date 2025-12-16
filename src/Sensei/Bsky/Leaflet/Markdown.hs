@@ -30,9 +30,10 @@ import Sensei.Bsky.Leaflet
     Header (..),
     LinearDocument (..),
     RichText (..),
-    UnorderedList (..),
+    UnorderedList (..), mkListItem,
   )
 import Sensei.Bsky.TID (mkTid)
+import Data.Maybe (mapMaybe)
 
 -- | Create a LinearDocument from markdown text
 mkMarkdownDocument :: Text -> IO (Either String LinearDocument)
@@ -105,8 +106,8 @@ instance IsBlock [Inline] [BlockVariant] where
   rawBlock = undefined
   referenceLinkDefinition = undefined
   list (BulletList _) _spacing items =
-    [UnorderedListBlock $ UnorderedList {children = concat items}]
-  list (_) _spacing _items = undefined
+    [UnorderedListBlock $ UnorderedList {children = concatMap (mapMaybe mkListItem) items}]
+  list _ _spacing _items = undefined
 
 extractFacet :: Inline -> ([Facet], Text) -> ([Facet], Text)
 extractFacet = \case
