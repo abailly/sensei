@@ -32,8 +32,7 @@ import System.Random (randomRIO)
 -- TIDs are 64-bit values encoded as 13-character base32-sortable strings.
 newtype TID = TID {unTID :: Text}
   deriving stock (Eq, Ord, Show, Generic)
-  deriving newtype (IsString)
-  deriving anyclass (ToJSON, FromJSON)
+  deriving newtype (IsString, ToJSON, FromJSON)
 
 -- | Create a TID from a timestamp and a clock identifier.
 -- The TID format is:
