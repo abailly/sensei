@@ -1,11 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- | `RunClient` instance suitable for use with WAI hspec wrapper
@@ -107,8 +101,8 @@ toClientResponse SResponse{..} =
 
 -- These standalone instances are needed to ensure we can throw/catch
 -- exceptions within tests
-deriving instance MonadThrow (WaiSession a)
-deriving instance MonadCatch (WaiSession a)
+deriving newtype instance MonadThrow (WaiSession a)
+deriving newtype instance MonadCatch (WaiSession a)
 
 instance RunClient (WaiSession (Maybe (Encoded Hex))) where
   runRequestAcceptStatus _ req = do

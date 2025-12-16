@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
 
 module Sensei.DurationSpec where
 

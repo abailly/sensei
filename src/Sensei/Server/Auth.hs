@@ -1,38 +1,31 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies #-}
 
-module Sensei.Server.Auth (
-  AuthenticationToken (..),
-  RegistrationToken (..),
-  Credentials (..),
-  UserRegistration (..),
-  SerializedToken (..),
-  Login,
-  TokenID (..),
-  Bytes (..),
-  makeNewKey,
-  readOrMakeKey,
-  createKeys,
-  createToken,
-  makeToken,
-  getKey,
-  getPublicKey,
-  encrypt,
-  module Crypto.JOSE.JWK,
-  decodeCompact,
-  Error (..),
-  SignedJWT,
-  module SAS,
-  encryptWithSalt,
-) where
+module Sensei.Server.Auth
+  ( AuthenticationToken (..),
+    RegistrationToken (..),
+    Credentials (..),
+    UserRegistration (..),
+    SerializedToken (..),
+    Login,
+    TokenID (..),
+    Bytes (..),
+    makeNewKey,
+    readOrMakeKey,
+    createKeys,
+    createToken,
+    makeToken,
+    getKey,
+    getPublicKey,
+    encrypt,
+    module Crypto.JOSE.JWK,
+    decodeCompact,
+    Error (..),
+    SignedJWT,
+    module SAS,
+    encryptWithSalt,
+  )
+where
 
 import Control.Lens ((^.))
 import Control.Monad (unless)
@@ -41,18 +34,18 @@ import Crypto.JOSE.Error (Error (..))
 import Crypto.JOSE.JWK
 import Crypto.JWT (SignedJWT)
 import Crypto.KDF.BCrypt (bcrypt)
-import Data.Aeson (
-  FromJSON (parseJSON),
-  KeyValue ((.=)),
-  ToJSON (toJSON),
-  Value (String),
-  eitherDecode,
-  encode,
-  object,
-  withObject,
-  withText,
-  (.:),
- )
+import Data.Aeson
+  ( FromJSON (parseJSON),
+    KeyValue ((.=)),
+    ToJSON (toJSON),
+    Value (String),
+    eitherDecode,
+    encode,
+    object,
+    withObject,
+    withText,
+    (.:),
+  )
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -64,56 +57,56 @@ import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
 import GHC.TypeLits (KnownNat, Nat, natVal)
 import Preface.Codec (Base64, Encoded (..), Hex, toBase64)
-import Servant (
-  BasicAuthData (..),
-  IsSecure (..),
-  MimeRender (..),
-  OctetStream,
- )
-import Servant.Auth.Server as SAS (
-  AreAuths,
-  Auth,
-  AuthCheck (..),
-  AuthResult (..),
-  BasicAuth,
-  BasicAuthCfg,
-  BasicAuthData (..),
-  Cookie,
-  CookieSettings (..),
-  Default (..),
-  FromBasicAuthData (..),
-  FromJWT (..),
-  IsMatch (..),
-  IsPasswordCorrect (..),
-  IsSecure (..),
-  JWT,
-  JWTSettings (..),
-  SameSite (..),
-  SetCookie,
-  ThrowAll (..),
-  ToJWT (..),
-  XsrfCookieSettings (..),
-  acceptLogin,
-  clearSession,
-  defaultCookieSettings,
-  defaultJWTSettings,
-  defaultXsrfCookieSettings,
-  fromSecret,
-  generateKey,
-  generateSecret,
-  jwtAuthCheck,
-  makeCookie,
-  makeCookieBS,
-  makeCsrfCookie,
-  makeJWT,
-  makeSessionCookie,
-  makeSessionCookieBS,
-  makeXsrfCookie,
-  readKey,
-  verifyJWT,
-  writeKey,
-  wwwAuthenticatedErr,
- )
+import Servant
+  ( BasicAuthData (..),
+    IsSecure (..),
+    MimeRender (..),
+    OctetStream,
+  )
+import Servant.Auth.Server as SAS
+  ( AreAuths,
+    Auth,
+    AuthCheck (..),
+    AuthResult (..),
+    BasicAuth,
+    BasicAuthCfg,
+    BasicAuthData (..),
+    Cookie,
+    CookieSettings (..),
+    Default (..),
+    FromBasicAuthData (..),
+    FromJWT (..),
+    IsMatch (..),
+    IsPasswordCorrect (..),
+    IsSecure (..),
+    JWT,
+    JWTSettings (..),
+    SameSite (..),
+    SetCookie,
+    ThrowAll (..),
+    ToJWT (..),
+    XsrfCookieSettings (..),
+    acceptLogin,
+    clearSession,
+    defaultCookieSettings,
+    defaultJWTSettings,
+    defaultXsrfCookieSettings,
+    fromSecret,
+    generateKey,
+    generateSecret,
+    jwtAuthCheck,
+    makeCookie,
+    makeCookieBS,
+    makeCsrfCookie,
+    makeJWT,
+    makeSessionCookie,
+    makeSessionCookieBS,
+    makeXsrfCookie,
+    readKey,
+    verifyJWT,
+    writeKey,
+    wwwAuthenticatedErr,
+  )
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 
@@ -157,9 +150,10 @@ import System.FilePath ((</>))
 -- jti JWT ID
 
 newtype Bytes (size :: Nat) = Bytes {unBytes :: Encoded Hex}
-  deriving (Eq, Show, ToJSON, FromJSON)
+  deriving stock (Eq, Show)
+  deriving newtype (ToJSON, FromJSON)
 
-instance KnownNat size => IsString (Bytes size) where
+instance (KnownNat size) => IsString (Bytes size) where
   fromString s =
     let e@(Encoded bs) = fromString s
         len = natVal (Proxy @size)
@@ -169,12 +163,13 @@ instance KnownNat size => IsString (Bytes size) where
 
 -- | A token ID
 newtype TokenID = TokenID {unTokenID :: Bytes 16}
-  deriving (Eq, Show, ToJSON, FromJSON, IsString)
+  deriving stock (Eq, Show)
+  deriving newtype (ToJSON, FromJSON, IsString)
 
 -- | A token issued for authenticated users
 data AuthenticationToken = AuthToken
-  { auID :: Encoded Hex
-  , auOrgID :: Int
+  { auID :: Encoded Hex,
+    auOrgID :: Int
   }
   deriving (Eq, Show, Generic)
 
@@ -188,9 +183,9 @@ instance FromJWT AuthenticationToken
 
 -- | A token issued to allow users to register
 data RegistrationToken = RegToken
-  { regID :: Int
-  -- ^ The ID of the user who generated this token
-  , tokID :: TokenID
+  { -- | The ID of the user who generated this token
+    regID :: Int,
+    tokID :: TokenID
   }
   deriving (Eq, Show, Generic)
 
@@ -205,8 +200,8 @@ instance FromJWT RegistrationToken
 type Login = ByteString
 
 data Credentials = Credentials
-  { credLogin :: Text
-  , credPassword :: Text
+  { credLogin :: Text,
+    credPassword :: Text
   }
   deriving (Eq, Show, Generic)
 
@@ -215,18 +210,18 @@ instance ToJSON Credentials
 instance FromJSON Credentials
 
 data UserRegistration = UserRegistration
-  { regLogin :: Text
-  , regPassword :: Text
-  , regToken :: SerializedToken
+  { regLogin :: Text,
+    regPassword :: Text,
+    regToken :: SerializedToken
   }
   deriving (Eq, Show, Generic)
 
 instance ToJSON UserRegistration where
-  toJSON UserRegistration{..} =
+  toJSON UserRegistration {..} =
     object
-      [ "login" .= regLogin
-      , "password" .= regPassword
-      , "token" .= regToken
+      [ "login" .= regLogin,
+        "password" .= regPassword,
+        "token" .= regToken
       ]
 
 instance FromJSON UserRegistration where
@@ -262,7 +257,7 @@ createToken directory = do
   key <- getKey (directory </> "sensei.jwk")
   makeToken (defaultJWTSettings key) (AuthToken "" 1)
 
-makeToken :: ToJWT a => JWTSettings -> a -> IO SerializedToken
+makeToken :: (ToJWT a) => JWTSettings -> a -> IO SerializedToken
 makeToken settings authId =
   makeJWT authId settings Nothing >>= \case
     Left err -> error $ "Failed to create token :" <> show err
@@ -273,10 +268,10 @@ getPublicKey directory = do
   key <- getKey (directory </> "sensei.jwk")
   maybe (error $ "Fail to get public key from private key in " <> directory) pure $ key ^. asPublicKey
 
-encrypt :: HasCallStack => ByteString -> ByteString -> ByteString
+encrypt :: (HasCallStack) => ByteString -> ByteString -> ByteString
 encrypt = bcrypt cost
 
-encryptWithSalt :: HasCallStack => ByteString -> Text -> (Encoded Base64, Encoded Base64)
+encryptWithSalt :: (HasCallStack) => ByteString -> Text -> (Encoded Base64, Encoded Base64)
 encryptWithSalt salt clearText =
   (toBase64 salt, toBase64 $ encrypt salt $ encodeUtf8 clearText)
 
@@ -284,7 +279,8 @@ cost :: Int
 cost = 10
 
 newtype SerializedToken = SerializedToken {unToken :: ByteString}
-  deriving (Eq, Show, IsString)
+  deriving stock (Eq, Show)
+  deriving newtype (IsString)
 
 instance ToJSON SerializedToken where
   toJSON (SerializedToken bs) = String $ decodeUtf8 bs

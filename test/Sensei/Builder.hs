@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 -- | Specific help functions and types to help build and manipulate
 --   Sensei's types and API

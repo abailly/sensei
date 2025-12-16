@@ -1,8 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
 
 -- | A "database" stored as a simple flat-file containing one line of JSON-formatted data per record.
 module Sensei.DB.File (
@@ -39,7 +34,7 @@ data FileDBPaths = FileDBPaths
 {-# DEPRECATED FileDB "This backend is deprecated in favor of Sensei.DB.SQLite" #-}
 
 newtype FileDB a = FileDB {unFileDB :: ReaderT FileDBPaths IO a}
-  deriving (Functor, Applicative, Monad, Exc.MonadThrow, Exc.MonadCatch, MonadIO)
+  deriving newtype (Functor, Applicative, Monad, Exc.MonadThrow, Exc.MonadCatch, MonadIO)
 
 runDB :: FilePath -> FilePath -> FileDB a -> IO a
 runDB storage config =

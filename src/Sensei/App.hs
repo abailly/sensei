@@ -1,15 +1,6 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Sensei.App where
 
@@ -137,7 +128,8 @@ sensei output = do
     serverConfig
     ( \logger -> do
         handler <- bskyEventHandler logger defaultBskyNet
-        let dbRunner = runDB output configDir logger
+        let dbRunner :: forall x . SQLiteDB x -> IO x
+            dbRunner = runDB output configDir logger
             backends = Backend.insert handler Backend.empty
 
         void $ initDB rootUser rootPassword dbRunner

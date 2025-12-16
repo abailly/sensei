@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 module Sensei.Server.Links (nextPageLink, previousPageLink, nextDayLink, previousDayLink, periodLinks, module Link) where
 

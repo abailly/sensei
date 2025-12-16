@@ -1,9 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Sensei.TestHelper (
@@ -147,13 +142,14 @@ withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
 withTempDir =
   bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
-buildApp :: (MonadIO db, MonadError ServerError db, DB db, HasCallStack) => AppBuilder db -> ActionWith (Maybe (Encoded Hex), Application) -> IO ()
+buildApp :: forall db . (MonadIO db, MonadError ServerError db, DB db, HasCallStack) => AppBuilder db -> ActionWith (Maybe (Encoded Hex), Application) -> IO ()
 buildApp AppBuilder{..} act =
   withTempFile $ \file -> do
     unless withStorage $ removePathForcibly file
     withTempDir $ \config -> do
       signal <- newEmptyMVar
-      let dbRun = dbRunner file config fakeLogger
+      let dbRun :: forall x . db x -> IO x
+          dbRun = dbRunner file config fakeLogger
       userId <- initDB rootUser rootPassword dbRun
       application <- senseiApp Nothing signal sampleKey (runApp dbRun fakeLogger) backends
       when withFailingStorage $ removePathForcibly file

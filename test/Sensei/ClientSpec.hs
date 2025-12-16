@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wwarn #-}
 
 module Sensei.ClientSpec where
@@ -23,7 +21,7 @@ import Servant.Client.Core.RunClient (RunClient (..))
 import Test.Hspec
 
 newtype TestClient a = TestClient {testClient :: Writer [Request] a}
-  deriving (Functor, Applicative, Monad, MonadWriter [Request])
+  deriving newtype (Functor, Applicative, Monad, MonadWriter [Request])
 
 instance RunClient TestClient where
   runRequestAcceptStatus _st req = tell [req] >> pure response

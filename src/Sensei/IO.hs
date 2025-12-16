@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 
 module Sensei.IO where
 

@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 -- | Swagger-based documentation for `booking` API
 module Sensei.Server.OpenApi (senseiSwagger) where
