@@ -212,6 +212,17 @@ mkSimpleDocument text = do
           ]
       }
 
+-- | Create a LinearDocument from markdown text
+mkMarkdownDocument :: Text -> IO (Either ParseError LinearDocument)
+mkMarkdownDocument text = do
+  tid <- mkTid
+  case parseMarkdown text of
+    Left err -> pure $ Left err
+    Right markdown -> pure $ Right $
+      LinearDocument
+        { id = Just tid,
+          blocks = map markdownBlockToBlock markdown
+        }
 type instance Lexicon Block = "pub.leaflet.pages.linearDocument#block"
 
 -- | Block in a linear document

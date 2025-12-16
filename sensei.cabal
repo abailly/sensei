@@ -106,6 +106,7 @@ library
     , bytestring
     , case-insensitive
     , colour
+    , commonmark
     , containers
     , cryptonite
     , directory
