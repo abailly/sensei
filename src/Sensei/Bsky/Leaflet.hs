@@ -285,6 +285,8 @@ instance FromJSON BlockVariant where
     typ <- v .: "$type" :: Parser Text
     case typ of
       "pub.leaflet.blocks.text" -> TextBlock <$> parseJSON (Object v)
+      "pub.leaflet.blocks.image" -> pure $ ImageBlock Image -- TODO
+      "pub.leaflet.blocks.header" -> pure $ HeaderBlock Header -- TODO
       -- For now, only text blocks are supported
       _ -> fail $ "Unsupported block type: " ++ show typ
 

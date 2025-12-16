@@ -105,3 +105,23 @@ instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) 
       <*> o .: "collection"
       <*> o .: "key"
       <*> o .: "record"
+
+
+-- | A record with its metadata (uri, cid, value)
+data RecordWithMetadata record = RecordWithMetadata
+  { uri :: Text,
+    cid :: Text,
+    value :: record
+  }
+  deriving stock (Generic)
+
+deriving instance (Show record) => Show (RecordWithMetadata record)
+
+deriving instance (Eq record) => Eq (RecordWithMetadata record)
+
+instance (FromJSON record) => FromJSON (RecordWithMetadata record) where
+  parseJSON = withObject "RecordWithMetadata" $ \o ->
+    RecordWithMetadata
+      <$> o .: "uri"
+      <*> o .: "cid"
+      <*> o .: "value"

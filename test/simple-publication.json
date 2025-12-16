@@ -1,0 +1,14 @@
+{
+  "uri": "at://did:plc:s5wwr2ccjuqricdxiyiuspfv/pub.leaflet.publication/3m7zleg5tyc2b",
+  "cid": "bafyreihwj6donpqcnffzswr3zblrm6rvp5li4guaotzsqmdehf3cu5tmaa",
+  "value": {
+    "name": "Arnaud's Blog",
+    "$type": "pub.leaflet.publication",
+    "base_path": "pankzsoft.leaflet.pub",
+    "description": "A blog about anything and everything, mostly programming and reading",
+    "preferences": {
+      "showComments": true,
+      "showInDiscover": true
+    }
+  }
+}
