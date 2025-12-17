@@ -182,6 +182,7 @@ test-suite sensei-test
   other-modules:
     Sensei.ArticleSpec
     Sensei.BskySpec
+    Sensei.Bsky.ServerSpec
     Sensei.Bsky.TIDSpec
     Sensei.Bsky.LeafletSpec
     Sensei.Builder
@@ -240,6 +241,7 @@ test-suite sensei-test
     , safe-exceptions
     , sensei
     , servant
+    , servant-auth-server
     , servant-client-core
     , servant-server
     , servant-server-base
