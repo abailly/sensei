@@ -70,6 +70,7 @@ library
 
   other-modules:
     Paths_sensei
+    Sensei.Article
     Sensei.CLI.Options
     Sensei.CLI.Terminal
     Sensei.Client.Monad
@@ -177,6 +178,7 @@ test-suite sensei-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   other-modules:
+    Sensei.ArticleSpec
     Sensei.BskySpec
     Sensei.Bsky.TIDSpec
     Sensei.Bsky.LeafletSpec

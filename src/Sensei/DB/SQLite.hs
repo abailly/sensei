@@ -249,6 +249,7 @@ typeOf EventTrace{} = "__TRACE__"
 typeOf (EventFlow Flow{_flowType}) = toText _flowType
 typeOf EventNote{} = "Note"
 typeOf EventGoal{} = "Goal"
+typeOf EventArticle{} = "Article"
 
 instance FromRow EventView where
     fromRow = do

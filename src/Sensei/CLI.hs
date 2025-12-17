@@ -10,6 +10,7 @@ module Sensei.CLI (
   AuthOptions (..),
   CommandOptions (..),
   GoalOptions (..),
+  ArticleOptions (..),
   runOptionsParser,
   parseSenseiOptions,
 
@@ -44,6 +45,7 @@ import Sensei.API (
   UserName (UserName),
  )
 import Sensei.CLI.Options (
+  ArticleOptions (..),
   AuthOptions (..),
   CommandOptions (..),
   GoalOptions (..),
@@ -193,6 +195,10 @@ ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
     >>= display
 ep config (GoalOptions GetGraph) userName _ _ =
   send config (getGoalsC userName) >>= display
+ep _config (ArticleOptions (PublishArticle _filePath)) _userName _timestamp _currentDir = do
+  -- Placeholder implementation: Article publishing will be implemented later
+  hPutStrLn stderr "Article publishing not yet implemented"
+  exitWith (ExitFailure 1)
 
 println :: BS.ByteString -> IO ()
 println bs =

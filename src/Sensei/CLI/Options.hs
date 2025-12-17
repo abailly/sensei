@@ -78,6 +78,7 @@ data Options
   | AuthOptions AuthOptions
   | CommandOptions CommandOptions
   | GoalOptions GoalOptions
+  | ArticleOptions ArticleOptions
   deriving (Show, Eq)
 
 data QueryOptions
@@ -120,6 +121,9 @@ data CommandOptions = Command {exe :: String, args :: [String]}
 data GoalOptions = GetGraph | UpdateGraph Op
   deriving (Show, Eq)
 
+data ArticleOptions = PublishArticle {articleFile :: FilePath}
+  deriving (Show, Eq)
+
 runOptionsParser ::
   Maybe [FlowType] -> [String] -> Either Text Options
 runOptionsParser flows arguments =
@@ -160,6 +164,7 @@ commandsParser flows =
               )
           )
         <> command "goal" (info goalOptions (progDesc "Define and manipulate goals graph"))
+        <> command "article" (info articleOptions (progDesc "Publish articles to Bluesky"))
     )
 
 authOptions :: Parser Options
@@ -221,6 +226,9 @@ commandOptions = CommandOptions <$> commandParser
 
 goalOptions :: Parser Options
 goalOptions = GoalOptions <$> goalParser
+
+articleOptions :: Parser Options
+articleOptions = ArticleOptions <$> articleParser
 
 {-# NOINLINE today #-}
 today :: Day
@@ -498,6 +506,16 @@ goalParser =
             <> help "Link 2 goals"
         )
       <*> strArgument (help "Target")
+
+articleParser :: Parser ArticleOptions
+articleParser =
+  PublishArticle
+    <$> strOption
+      ( long "publish"
+          <> short 'a'
+          <> metavar "FILE"
+          <> help "Publish article from given file to Bluesky"
+      )
 
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options

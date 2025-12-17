@@ -11,6 +11,8 @@ module Sensei.Event (
     isTrace,
     isGoal,
     getGoal,
+    isArticle,
+    getArticle,
     filterNotes,
     parseEventFromv4,
     parseNoteFromv4,
@@ -27,6 +29,7 @@ import Data.Text (Text)
 import Data.Time
 import GHC.Generics
 import Numeric.Natural
+import Sensei.Article
 import Sensei.Flow
 import Sensei.Goal
 import Sensei.Version (currentVersion)
@@ -37,6 +40,7 @@ data Event
     | EventTrace Trace
     | EventNote NoteFlow
     | EventGoal GoalOp
+    | EventArticle ArticleOp
     deriving (Eq, Show, Generic)
 
 instance FromJSON Event where
@@ -52,6 +56,7 @@ instance FromJSON Event where
                         "Goal" -> EventGoal <$> parseJSON (Object obj)
                         "Trace" -> EventTrace <$> parseJSON (Object obj)
                         "Flow" -> EventFlow <$> parseJSON (Object obj)
+                        "Article" -> EventArticle <$> parseJSON (Object obj)
                         o -> fail ("cannot parse Event with tag " <> o)
 
 parseEventFromv4 :: Object -> Parser Event
@@ -117,6 +122,12 @@ instance ToJSON Event where
                 K.insert (fromText "tag") "Goal" $
                     K.insert (fromText "version") (toJSON currentVersion) obj
           other -> error $ "EventGoal serialised to something that's not an object: " <> show other
+    toJSON (EventArticle a) =
+        case toJSON a of
+          Object obj ->  Object $
+                K.insert (fromText "tag") "Article" $
+                    K.insert (fromText "version") (toJSON currentVersion) obj
+          other -> error $ "EventArticle serialised to something that's not an object: " <> show other
 
 eventTimestamp ::
     Event -> UTCTime
@@ -124,6 +135,7 @@ eventTimestamp (EventFlow f) = _flowTimestamp f
 eventTimestamp (EventTrace t) = _traceTimestamp t
 eventTimestamp (EventNote n) = _noteTimestamp n
 eventTimestamp (EventGoal g) = _goalTimestamp g
+eventTimestamp (EventArticle a) = _articleTimestamp a
 
 eventUser ::
     Event -> Text
@@ -131,18 +143,21 @@ eventUser (EventFlow f) = _flowUser f
 eventUser (EventTrace t) = _traceUser t
 eventUser (EventNote n) = _noteUser n
 eventUser (EventGoal g) = _goalUser g
+eventUser (EventArticle a) = _articleUser a
 
 setUser :: Text -> Event -> Event
 setUser u (EventFlow f) = EventFlow $ f{_flowUser = u}
 setUser u (EventTrace t) = EventTrace $ t{_traceUser = u}
 setUser u (EventNote n) = EventNote $ n{_noteUser = u}
 setUser u (EventGoal g) = EventGoal $ g{_goalUser = u}
+setUser u (EventArticle a) = EventArticle $ a{_articleUser = u}
 
 user' :: Lens' Event Text
 user' fu (EventFlow f@Flow{_flowUser}) = (\u -> EventFlow (set flowUser u f)) <$> fu _flowUser
 user' fu (EventTrace t@Trace{_traceUser}) = (\u -> EventTrace (set traceUser u t)) <$> fu _traceUser
 user' fu (EventNote n@NoteFlow{_noteUser}) = (\u -> EventNote (set noteUser u n)) <$> fu _noteUser
 user' fu (EventGoal n@GoalOp{_goalUser}) = (\u -> EventGoal (set goalUser u n)) <$> fu _goalUser
+user' fu (EventArticle a@ArticleOp{_articleUser}) = (\u -> EventArticle (set articleUser u a)) <$> fu _articleUser
 
 isTrace :: Event -> Bool
 isTrace EventTrace{} = True
@@ -155,6 +170,14 @@ isGoal _ = False
 getGoal :: Event -> Maybe GoalOp
 getGoal (EventGoal g) = Just g
 getGoal _ = Nothing
+
+isArticle :: Event -> Bool
+isArticle EventArticle{} = True
+isArticle _ = False
+
+getArticle :: Event -> Maybe ArticleOp
+getArticle (EventArticle a) = Just a
+getArticle _ = Nothing
 
 -- | Project a stream of 'Event' into a stream of 'NoteFlow'
 filterNotes :: [Event] -> [NoteFlow]

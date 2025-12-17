@@ -202,9 +202,15 @@ instance Arbitrary Reference where
   shrink Latest = []
   shrink (Pos p) = Pos <$> shrink p
 
+generateArticle :: UTCTime -> Integer -> Gen Event
+generateArticle baseTime k = do
+  let st = shiftTime baseTime k
+  dir <- generateDir
+  pure $ EventArticle $ ArticleOp Publish "arnaud" st dir
+
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =
-  oneof [generateTrace baseTime off, generateFlow baseTime off]
+  oneof [generateTrace baseTime off, generateFlow baseTime off, generateArticle baseTime off]
 
 shrinkEvent :: Event -> [Event]
 shrinkEvent (EventTrace t@(Trace _ _ _ _ args _ _)) =

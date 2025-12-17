@@ -9,6 +9,7 @@ module Sensei.API (
   GetCurrentTime,
   Protected,
   senseiAPI,
+  module Sensei.Article,
   module Sensei.Color,
   module Sensei.Duration,
   module Sensei.Event,
@@ -30,6 +31,7 @@ module Sensei.API (
 import Data.Text (Text)
 import Data.Time
 import Preface.Codec (Encoded, Hex)
+import Sensei.Article
 import Sensei.Color
 import Sensei.Duration
 import Sensei.Event

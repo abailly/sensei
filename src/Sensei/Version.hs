@@ -45,7 +45,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 --  impacts their serialized representation. Of course, deserialisation
 --  functions should be provided in order to migrate data from previous versions.
 currentVersion :: Natural
-currentVersion = 11
+currentVersion = 12
 
 -- | Definition for versions used in some context
 --  We distinguish the versions of various parts of the system: The executable

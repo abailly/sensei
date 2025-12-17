@@ -18,6 +18,7 @@ import Sensei.API (
   shift,
  )
 import Sensei.CLI (
+  ArticleOptions (PublishArticle),
   AuthOptions (
     CreateKeys,
     EncryptPassword,
@@ -30,6 +31,7 @@ import Sensei.CLI (
   NotesOptions (NotesQuery),
   NotesQuery (QuerySearch),
   Options (
+    ArticleOptions,
     AuthOptions,
     CommandOptions,
     GoalOptions,
@@ -150,3 +152,12 @@ spec = describe "Command-Line Interface" $ do
       it "parses 'goal -r foo' as remove option" $ do
         runOptionsParser Nothing ["goal", "-r", "foo"]
           `shouldBe` Right (GoalOptions $ UpdateGraph $ remove "foo")
+
+    describe "Article Options" $ do
+      it "parses 'article --publish article.md' as publish article option with long form" $ do
+        runOptionsParser Nothing ["article", "--publish", "article.md"]
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md")
+
+      it "parses 'article -a article.md' as publish article option with short form" $ do
+        runOptionsParser Nothing ["article", "-a", "article.md"]
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md")
