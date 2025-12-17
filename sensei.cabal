@@ -108,7 +108,7 @@ library
     , commonmark
     , commonmark-extensions
     , containers
-    , cryptonite
+    , crypton
     , directory
     , exceptions
     , file-embed
