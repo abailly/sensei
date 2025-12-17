@@ -13,7 +13,7 @@ import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVa
 import Control.Lens ((&), (?~), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
-import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', withObject, (.:))
+import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.=), (.:))
 import Data.Aeson.Types (FromJSON (..))
 import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
@@ -82,6 +82,13 @@ instance (FromJSON record) => FromJSON (ListRecordsResponse record) where
     ListRecordsResponse
       <$> o .: "cursor"
       <*> o .: "records"
+
+instance (ToJSON record) => ToJSON (ListRecordsResponse record) where
+  toJSON (ListRecordsResponse cursor recs) =
+    object
+      [ "cursor" .= cursor,
+        "records" .= recs
+      ]
 
 newtype BearerToken = BearerToken SerializedToken
   deriving (Eq, Show)

@@ -113,6 +113,7 @@ library
     , exceptions
     , file-embed
     , filepath
+    , http-api-data
     , http-client
     , http-client-tls
     , http-link-header
@@ -180,6 +181,7 @@ test-suite sensei-test
   other-modules:
     Sensei.ArticleSpec
     Sensei.BskySpec
+    Sensei.Bsky.Server
     Sensei.Bsky.TIDSpec
     Sensei.Bsky.LeafletSpec
     Sensei.Builder
@@ -225,6 +227,7 @@ test-suite sensei-test
     , hspec
     , hspec-golden-aeson
     , hspec-wai
+    , http-api-data
     , http-link-header
     , http-media
     , http-types

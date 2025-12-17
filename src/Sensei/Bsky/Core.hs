@@ -46,6 +46,9 @@ newtype BskyHandle = BskyHandle Text
 instance ToHttpApiData BskyHandle where
   toUrlPiece (BskyHandle handle) = handle
 
+instance FromHttpApiData BskyHandle where
+  parseQueryParam = Right . BskyHandle
+
 data BskyType (bskyType :: Symbol) = BskyType
 
 instance (KnownSymbol bskyType) => Show (BskyType bskyType) where
@@ -65,6 +68,12 @@ instance (KnownSymbol bskyType) => FromJSON (BskyType bskyType) where
 
 instance (KnownSymbol bskyType) => ToHttpApiData (BskyType bskyType) where
   toUrlPiece _ = Text.pack $ symbolVal (Proxy :: Proxy bskyType)
+
+instance (KnownSymbol bskyType) => FromHttpApiData (BskyType bskyType) where
+  parseQueryParam txt =
+    if txt == Text.pack (symbolVal (Proxy :: Proxy bskyType))
+      then Right BskyType
+      else Left $ "Expected " <> Text.pack (symbolVal (Proxy :: Proxy bskyType)) <> " but got " <> txt
 
 data BskyRecord record = BskyRecord
   { repo :: BskyHandle,
@@ -114,3 +123,11 @@ instance (FromJSON record) => FromJSON (RecordWithMetadata record) where
       <$> o .: "uri"
       <*> o .: "cid"
       <*> o .: "value"
+
+instance (ToJSON record) => ToJSON (RecordWithMetadata record) where
+  toJSON (RecordWithMetadata uri' cid' value') =
+    object
+      [ "uri" .= uri',
+        "cid" .= cid',
+        "value" .= value'
+      ]
