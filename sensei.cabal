@@ -105,6 +105,7 @@ library
     , case-insensitive
     , colour
     , commonmark
+    , commonmark-extensions
     , containers
     , cryptonite
     , directory

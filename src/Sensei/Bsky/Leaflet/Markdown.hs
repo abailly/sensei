@@ -34,6 +34,8 @@ import Sensei.Bsky.Leaflet
   )
 import Sensei.Bsky.TID (mkTid)
 import Data.Maybe (mapMaybe)
+import Commonmark.Extensions (mathSpec, HasMath)
+import Commonmark.Extensions.Math (HasMath(..))
 
 -- | Create a LinearDocument from markdown text
 mkMarkdownDocument :: Text -> IO (Either String LinearDocument)
@@ -53,8 +55,14 @@ parseMarkdown :: Text -> Either String [Block]
 parseMarkdown txt =
   bimap show (fmap (`Block` Nothing)) $
     runIdentity $
-      parseCommonmarkWith defaultSyntaxSpec (tokenize "" txt)
+      parseCommonmarkWith (mathSpec <> defaultSyntaxSpec) (tokenize "" txt)
 
+-- FIXME: Need to create a data type that encompasses both Inline and
+-- Blocks, then provide a mapping to leaflet's blocks and facets. This
+-- data type should be quite similat to `Html a` from the commonmark
+-- library, basically a tree structure along with Monoid and
+-- commonmark specific instances to handle IsInline and IsBlock
+-- typeclasses instances.
 data Inline = Plain Text | Decorated Feature (Maybe SourceRange)
   deriving (Eq, Show)
 
@@ -81,6 +89,10 @@ instance IsInline [Inline] where
   image = undefined
   code txt = [Plain txt, Decorated Code Nothing]
   rawInline = undefined
+
+instance HasMath [Inline] where
+  inlineMath txt = [Plain txt]  -- TODO , Decorated Math Nothing]
+  displayMath txt = [Plain txt] -- TODO , Decorated DisplayMath Nothing]
 
 instance Rangeable [BlockVariant] where
   ranged _ x = x
