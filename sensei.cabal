@@ -52,6 +52,7 @@ library
     Sensei.Bsky.Core
     Sensei.Bsky.Leaflet
     Sensei.Bsky.Leaflet.Markdown
+    Sensei.Bsky.Server
     Sensei.Bsky.TID
     Sensei.CLI
     Sensei.Client
@@ -181,7 +182,6 @@ test-suite sensei-test
   other-modules:
     Sensei.ArticleSpec
     Sensei.BskySpec
-    Sensei.Bsky.Server
     Sensei.Bsky.TIDSpec
     Sensei.Bsky.LeafletSpec
     Sensei.Builder
@@ -227,7 +227,6 @@ test-suite sensei-test
     , hspec
     , hspec-golden-aeson
     , hspec-wai
-    , http-api-data
     , http-link-header
     , http-media
     , http-types
