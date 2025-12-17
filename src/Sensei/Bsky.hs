@@ -239,6 +239,57 @@ defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doLogin, doRefresh, doLis
       send config $ bskyListRecords repo collection limit cursor isReverse
     currentTime = const $ liftIO getCurrentTime
 
+-- | Authenticate with Bluesky and obtain a valid session.
+--
+-- This function handles three cases:
+-- 1. No existing session: login with credentials
+-- 2. Valid session: return it as-is
+-- 3. Expired session: refresh the token
+ensureAuthenticated ::
+  forall m.
+  (MonadIO m) =>
+  LoggerEnv ->
+  BskyNet m ->
+  TVar (Map.Map Text BskySession) ->
+  BskyBackend ->
+  BskyLogin ->
+  m BskySession
+ensureAuthenticated logger BskyNet {doLogin, doRefresh, currentTime} sessionMap backend credentials = do
+  maybeSession <- Map.lookup (identifier credentials) <$> liftIO (readTVarIO sessionMap)
+  case maybeSession of
+    Just session@BskySession {accessJwt, refreshJwt} ->
+      case decodeAuthToken accessJwt of
+        Right auth -> do
+          let expires = fromIntegral $ exp auth
+              issued = posixSecondsToUTCTime $ fromIntegral $ iat auth
+          now <- utcTimeToPOSIXSeconds <$> currentTime issued
+          if now < expires
+            then pure session
+            else refreshSession session refreshJwt
+        Left _err -> do
+          logInfo logger $ FailedToDecodeToken accessJwt
+          loginNew
+    Nothing -> loginNew
+  where
+    refreshSession session refreshJwt = do
+      newSession <- withLog logger TokenRefreshed {refreshJwt} $ do
+        doRefresh (BskyClientConfig backend (Just session {accessJwt = refreshJwt}))
+      liftIO $
+        atomically $
+          modifyTVar' sessionMap $
+            \sessions -> Map.insert (identifier credentials) newSession sessions
+      pure newSession
+
+    loginNew = do
+      session <-
+        withLog logger UserAuthenticated {user = identifier credentials} $
+          doLogin (BskyClientConfig backend Nothing) credentials
+      liftIO $
+        atomically $
+          modifyTVar' sessionMap $
+            \sessions -> Map.insert (identifier credentials) session sessions
+      pure session
+
 -- | An Event handler that transforms `FlowNote` into `BskyPost`s.
 --
 -- This requires a function to hander `ClientMonad`'s requests.
@@ -248,7 +299,7 @@ bskyEventHandler ::
   LoggerEnv ->
   BskyNet m ->
   m (BackendHandler BskyBackend m)
-bskyEventHandler logger BskyNet {doCreateRecord, doLogin, doRefresh, currentTime} = do
+bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
   sessionMap <- liftIO $ newTVarIO mempty
   pure $ BackendHandler {handleEvent = handleEvent sessionMap}
   where
@@ -273,35 +324,8 @@ bskyEventHandler logger BskyNet {doCreateRecord, doLogin, doRefresh, currentTime
       EventNote note | "#bsky" `isInfixOf` (note ^. noteContent) -> do
         let credentials = login backend
             repo = BskyHandle $ identifier credentials
-        maybeSession <- Map.lookup (identifier credentials) <$> liftIO (readTVarIO sessionMap)
-        case maybeSession of
-          Just session@BskySession {accessJwt, refreshJwt} ->
-            case decodeAuthToken accessJwt of
-              Right auth -> do
-                let expires = fromIntegral $ exp auth
-                    issued = posixSecondsToUTCTime $ fromIntegral $ iat auth
-                now <- utcTimeToPOSIXSeconds <$> currentTime issued
-                if now < expires
-                  then postWith backend session repo note
-                  else do
-                    newSession <- withLog logger TokenRefreshed {refreshJwt} $ do
-                      doRefresh (BskyClientConfig backend (Just session {accessJwt = refreshJwt}))
-                    liftIO $
-                      atomically $
-                        modifyTVar' sessionMap $
-                          \sessions -> Map.insert (identifier credentials) newSession sessions
-                    postWith backend newSession repo note
-              Left _err ->
-                logInfo logger $ FailedToDecodeToken accessJwt
-          Nothing -> do
-            session <-
-              withLog logger UserAuthenticated {user = identifier credentials} $
-                doLogin (BskyClientConfig backend Nothing) credentials
-            liftIO $
-              atomically $
-                modifyTVar' sessionMap $
-                  \sessions -> Map.insert (identifier credentials) session sessions
-            postWith backend session repo note
+        session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
+        postWith backend session repo note
       _ -> pure ()
 
 removeTag :: Text -> Text
