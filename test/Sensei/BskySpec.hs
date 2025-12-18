@@ -23,12 +23,12 @@ import Data.Data (Proxy (..))
 import Data.Either (isLeft)
 import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
-import Data.Text (Text, pack)
+import Data.Text (Text, isInfixOf, pack)
 import Data.Time (UTCTime (..), addUTCTime)
 import GHC.IO (unsafePerformIO)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv, fakeLogger)
-import Sensei.API (Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
+import Sensei.API (ArticleOp (..), ArticleOperation (..), Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
@@ -42,6 +42,7 @@ import Sensei.Bsky
     Record (..),
     bskyEventHandler,
     decodeAuthToken,
+    publishArticle,
     record,
     text,
   )
@@ -54,7 +55,7 @@ import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBac
 import Servant (JSON, mimeRender)
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldReturn)
+import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn)
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
@@ -156,6 +157,31 @@ spec = do
         handleEvent bskyBackend (EventNote aBskyNote)
 
         bskyMockNet `calledCreatePost` ((\p -> text p == "some note ") :: BskyPost -> Bool)
+
+  describe "publishArticle function" $ do
+    let session = BskySession defaultToken defaultToken
+
+    it "publishes article with title metadata successfully" $ do
+      result <- publishArticle successfulDoPublish bskyBackend session articleWithTitle
+      case result of
+        Right Record {uri, cid} -> do
+          uri `shouldBe` "test-uri"
+          cid `shouldBe` "test-cid"
+        Left err -> fail $ "Expected Right but got Left: " <> err
+
+    it "publishes article without metadata with empty title" $ do
+      result <- publishArticle successfulDoPublish bskyBackend session articleWithoutMetadata
+      case result of
+        Right Record {uri, cid} -> do
+          uri `shouldBe` "test-uri"
+          cid `shouldBe` "test-cid"
+        Left _ -> fail "Expected Right but got Left"
+
+    it "returns Left when doPublish throws exception" $ do
+      result <- publishArticle failingDoPublish bskyBackend session articleWithTitle
+      case result of
+        Left err -> err `shouldContain` "Failed to publish article:"
+        Right _ -> fail "Expected Left but got Right"
 
 calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet BskyPost -> match -> IO ()
 calledCreatePost net matcher = do
@@ -299,3 +325,48 @@ defaultToken =
           iat = 1732518838,
           exp = 1732526038
         }
+
+-- Test data for publishArticle tests
+articleWithTitle :: ArticleOp
+articleWithTitle =
+  ArticleOp
+    { _articleOperation = Publish,
+      _articleUser = "testuser",
+      _articleTimestamp = UTCTime aDay 0,
+      _articleDir = "/test/dir",
+      _article =
+        "---\n\
+        \title: Test Article\n\
+        \description: A test description\n\
+        \---\n\
+        \\n\
+        \# Introduction\n\
+        \\n\
+        \This is a test article.\n"
+    }
+
+articleWithoutMetadata :: ArticleOp
+articleWithoutMetadata =
+  ArticleOp
+    { _articleOperation = Publish,
+      _articleUser = "testuser",
+      _articleTimestamp = UTCTime aDay 0,
+      _articleDir = "/test/dir",
+      _article =
+        "# Introduction\n\
+        \\n\
+        \This is a test article without metadata.\n"
+    }
+
+-- Mock doPublish implementations
+successfulDoPublish :: (MonadIO m) => a -> b -> m Record
+successfulDoPublish _ _ = pure $ Record "test-uri" "test-cid"
+
+failingDoPublish :: (MonadIO m, MonadThrow m) => a -> b -> m Record
+failingDoPublish _ _ = throwM $ TestDBError "Simulated publish failure"
+
+shouldContain :: String -> String -> IO ()
+shouldContain actual expected =
+  if pack expected `isInfixOf` pack actual
+    then pure ()
+    else fail $ "Expected string to contain '" <> expected <> "' but got: " <> actual

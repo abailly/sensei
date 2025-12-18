@@ -10,6 +10,7 @@ module Sensei.Bsky
 where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
+import Control.Exception.Safe (MonadCatch, catch, SomeException)
 import Control.Lens ((&), (?~), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
@@ -28,13 +29,16 @@ import qualified Data.Text as Text
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
+import Data.Time.Format (formatTime, defaultTimeLocale, iso8601DateFormat)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
 import Sensei.Backend.Class (BackendHandler (..))
+import Sensei.Article (ArticleOp, article)
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
+import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
 import Sensei.Bsky.TID
 import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config, send)
 import Sensei.Event (Event (..))
@@ -165,6 +169,9 @@ data BskyLog
   | UserAuthenticated {user :: !Text}
   | TokenRefreshed {refreshJwt :: !SerializedToken}
   | FailedToDecodeToken {token :: !SerializedToken}
+  | ArticlePublished {title :: !Text, uri :: !Text, cid :: !Text}
+  | ArticlePublishFailed {title :: !Text, error :: !Text}
+  | MarkdownParseError {error :: !Text}
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 -- Sample refresh token
@@ -297,12 +304,77 @@ ensureAuthenticated logger BskyNet {doLogin, doRefresh, currentTime} sessionMap 
             \sessions -> Map.insert (identifier credentials) session sessions
       pure session
 
+-- | Publish an article to Bluesky PDS as a Leaflet document.
+--
+-- This function extracts metadata from the article, converts markdown to a LinearDocument,
+-- builds a Document structure, and publishes it using the provided doPublish function.
+--
+-- Returns Either an error message (Left) or the created Record (Right).
+publishArticle ::
+  forall m.
+  (MonadIO m, MonadCatch m) =>
+  -- | Function to publish the record (typically doCreateRecord)
+  (BskyClientConfig -> BskyRecord Document -> m Record) ->
+  -- | Backend configuration
+  BskyBackend ->
+  -- | Authenticated session
+  BskySession ->
+  -- | Article to publish
+  ArticleOp ->
+  m (Either String Record)
+publishArticle doPublish backend session articleOp = do
+  let articleContent = articleOp ^. article
+      (metadata, body) = extractMetadata articleContent
+      lookupMeta key = lookup key metadata
+      docTitle = maybe "" Prelude.id (lookupMeta "title")
+
+  -- Convert markdown to LinearDocument
+  linearDocResult <- liftIO $ mkMarkdownDocument body
+
+  case linearDocResult of
+    Left err -> pure $ Left $ "Failed to parse markdown: " <> err
+    Right linearDoc -> do
+      -- Generate new TID for the document
+      docTid <- liftIO mkTid
+
+      -- Get current time and format as ISO8601
+      now <- liftIO getCurrentTime
+      let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) now
+
+      -- Extract userDID and publicationId from backend
+      let DID authorDID = userDID backend
+          AtURI pubId = publicationId backend
+
+      -- Build the Document
+      let doc = Document
+            { title = docTitle
+            , description = lookupMeta "description"
+            , author = authorDID
+            , pages = [Linear linearDoc]
+            , tags = Nothing
+            , publishedAt = Just iso8601Time
+            , postRef = Nothing
+            , publication = Just pubId
+            , theme = Nothing
+            }
+
+      -- Try to create and submit the record
+      (Right <$> doPublish (BskyClientConfig {backend, bskySession = Just session})
+          BskyRecord
+            { record = doc
+            , repo = BskyHandle authorDID
+            , rkey = docTid
+            , collection = BskyType
+            })
+        `catch` \(e :: SomeException) ->
+          pure $ Left $ "Failed to publish article: " <> show e
+
 -- | An Event handler that transforms `FlowNote` into `BskyPost`s.
 --
 -- This requires a function to hander `ClientMonad`'s requests.
 bskyEventHandler ::
   forall m.
-  (MonadIO m) =>
+  (MonadIO m, MonadCatch m) =>
   LoggerEnv ->
   BskyNet m ->
   m (BackendHandler BskyBackend m)
@@ -333,6 +405,24 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
             repo = BskyHandle $ identifier credentials
         session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
         postWith backend session repo note
+      EventArticle articleOp -> do
+        let credentials = login backend
+            (metadata, _) = extractMetadata (articleOp ^. article)
+            docTitle = maybe "" Prelude.id (lookup "title" metadata)
+        session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
+        result <- publishArticle doCreateRecord backend session articleOp
+        case result of
+          Left err ->
+            logInfo logger $ ArticlePublishFailed
+              { title = docTitle
+              , error = Text.pack err
+              }
+          Right Record{uri = resultUri, cid = resultCid} ->
+            logInfo logger $ ArticlePublished
+              { title = docTitle
+              , uri = resultUri
+              , cid = resultCid
+              }
       _ -> pure ()
 
 removeTag :: Text -> Text
