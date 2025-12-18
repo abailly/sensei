@@ -167,6 +167,20 @@ addUniqueConstraintToUsers =
     ]
     ""
 
+createArticles :: Migration
+createArticles =
+  Migration
+    "createArticlesTable"
+    [ mconcat
+        [ "create table if not exists articles ",
+          "( hash text primary key",
+          ", timestamp text not null",
+          ", content blob not null",
+          ");"
+        ]
+    ]
+    "drop table articles;"
+
 runMigration ::
   Connection -> MigrationResult -> Migration -> IO MigrationResult
 runMigration _ f@MigrationFailed {} _ = pure f -- shortcut execution when failing

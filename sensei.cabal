@@ -122,6 +122,7 @@ library
     , insert-ordered-containers
     , jose
     , lens
+    , memory
     , mtl
     , optparse-applicative
     , parsec
