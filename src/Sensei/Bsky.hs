@@ -10,7 +10,7 @@ module Sensei.Bsky
 where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
-import Control.Exception.Safe (MonadCatch, catch, SomeException)
+import Control.Exception.Safe (MonadCatch, SomeException, catch)
 import Control.Lens ((&), (?~), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
@@ -26,16 +26,16 @@ import Data.Maybe (fromJust)
 import Data.String (IsString (fromString))
 import Data.Text (Text, isInfixOf, unpack)
 import qualified Data.Text as Text
-import Data.Text.Encoding (decodeUtf8)
+import Preface.Utils (decodeUtf8')
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
-import Data.Time.Format (formatTime, defaultTimeLocale, iso8601DateFormat)
+import Data.Time.Format (defaultTimeLocale, formatTime, iso8601DateFormat)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
-import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Article (ArticleOp, article)
+import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
 import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
@@ -98,7 +98,7 @@ newtype BearerToken = BearerToken SerializedToken
   deriving (Eq, Show)
 
 instance ToHttpApiData BearerToken where
-  toUrlPiece (BearerToken (SerializedToken bytes)) = "Bearer " <> decodeUtf8 bytes
+  toUrlPiece (BearerToken (SerializedToken bytes)) = "Bearer " <> decodeUtf8' bytes
 
 type Login =
   "xrpc"
@@ -253,6 +253,11 @@ defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doLogin, doRefresh, doLis
       send config $ bskyListRecords repo collection limit cursor isReverse
     currentTime = const $ liftIO getCurrentTime
 
+type Sessions = TVar (Map.Map Text BskySession)
+
+emptySessions :: Map.Map Text BskySession
+emptySessions = mempty
+
 -- | Authenticate with Bluesky and obtain a valid session.
 --
 -- This function handles three cases:
@@ -264,7 +269,7 @@ ensureAuthenticated ::
   (MonadIO m) =>
   LoggerEnv ->
   BskyNet m ->
-  TVar (Map.Map Text BskySession) ->
+  Sessions ->
   BskyBackend ->
   BskyLogin ->
   m BskySession
@@ -346,26 +351,30 @@ publishArticle doPublish backend session articleOp = do
           AtURI pubId = publicationId backend
 
       -- Build the Document
-      let doc = Document
-            { title = docTitle
-            , description = lookupMeta "description"
-            , author = authorDID
-            , pages = [Linear linearDoc]
-            , tags = Nothing
-            , publishedAt = Just iso8601Time
-            , postRef = Nothing
-            , publication = Just pubId
-            , theme = Nothing
-            }
+      let doc =
+            Document
+              { title = docTitle,
+                description = lookupMeta "description",
+                author = authorDID,
+                pages = [Linear linearDoc],
+                tags = Nothing,
+                publishedAt = Just iso8601Time,
+                postRef = Nothing,
+                publication = Just pubId,
+                theme = Nothing
+              }
 
       -- Try to create and submit the record
-      (Right <$> doPublish (BskyClientConfig {backend, bskySession = Just session})
-          BskyRecord
-            { record = doc
-            , repo = BskyHandle authorDID
-            , rkey = docTid
-            , collection = BskyType
-            })
+      ( Right
+          <$> doPublish
+            (BskyClientConfig {backend, bskySession = Just session})
+            BskyRecord
+              { record = doc,
+                repo = BskyHandle authorDID,
+                rkey = docTid,
+                collection = BskyType
+              }
+        )
         `catch` \(e :: SomeException) ->
           pure $ Left $ "Failed to publish article: " <> show e
 
@@ -379,7 +388,7 @@ bskyEventHandler ::
   BskyNet m ->
   m (BackendHandler BskyBackend m)
 bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
-  sessionMap <- liftIO $ newTVarIO mempty
+  sessionMap <- liftIO $ newTVarIO emptySessions
   pure $ BackendHandler {handleEvent = handleEvent sessionMap}
   where
     postWith backend session repo note =
@@ -398,7 +407,7 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
                 collection = BskyType
               }
 
-    handleEvent :: TVar (Map.Map Text BskySession) -> BskyBackend -> Event -> m ()
+    handleEvent :: Sessions -> BskyBackend -> Event -> m ()
     handleEvent sessionMap backend = \case
       EventNote note | "#bsky" `isInfixOf` (note ^. noteContent) -> do
         let credentials = login backend
@@ -413,16 +422,18 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
         result <- publishArticle doCreateRecord backend session articleOp
         case result of
           Left err ->
-            logInfo logger $ ArticlePublishFailed
-              { title = docTitle
-              , error = Text.pack err
-              }
-          Right Record{uri = resultUri, cid = resultCid} ->
-            logInfo logger $ ArticlePublished
-              { title = docTitle
-              , uri = resultUri
-              , cid = resultCid
-              }
+            logInfo logger $
+              ArticlePublishFailed
+                { title = docTitle,
+                  error = Text.pack err
+                }
+          Right Record {uri = resultUri, cid = resultCid} ->
+            logInfo logger $
+              ArticlePublished
+                { title = docTitle,
+                  uri = resultUri,
+                  cid = resultCid
+                }
       _ -> pure ()
 
 removeTag :: Text -> Text

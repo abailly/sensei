@@ -5,8 +5,11 @@ module Sensei.DB.SQLiteSpec where
 
 import Control.Exception.Safe (throwIO)
 import Control.Monad.Reader
+import qualified Data.ByteString
 import Data.Functor (void)
 import Data.List (isInfixOf, isPrefixOf)
+import qualified Data.Text
+import qualified Data.Text.Encoding
 import qualified Database.SQLite.Simple as SQLite
 import Preface.Log
 import Preface.Utils (toText)
@@ -168,6 +171,41 @@ spec = describe "SQLite DB" $ do
                            noteTags = []
                          }
                      ]
+
+      it "stores article content in separate table and replaces with hash in event log" $ \tempdb -> do
+        let articleTime = UTCTime (toEnum 50000) 2000
+            articleContent = "# Test Article\n\nThis is a test article with some content."
+            articleOp =
+              ArticleOp
+                { _articleOperation = Publish,
+                  _articleUser = "arnaud",
+                  _articleTimestamp = articleTime,
+                  _articleDir = "articles",
+                  _article = articleContent
+                }
+
+        runDB tempdb "." fakeLogger $ do
+          initLogStorage
+          writeEvent (EventArticle articleOp)
+
+        -- Verify the event log contains the hash, not the content
+        eventLogRows <- SQLite.withConnection tempdb $ \cnx ->
+          SQLite.query_ cnx "select flow_data from event_log where flow_type = 'Article';" :: IO [[Data.Text.Text]]
+
+        let eventData = head (head eventLogRows)
+        (not $ articleContent `Data.Text.isInfixOf` eventData) `shouldBe` True
+        ("\"article\":" `Data.Text.isInfixOf` eventData) `shouldBe` True
+
+        -- Verify the articles table contains the content
+        articleRows <- SQLite.withConnection tempdb $ \cnx ->
+          SQLite.query_ cnx "select hash, content from articles;" :: IO [(Data.Text.Text, Data.ByteString.ByteString)]
+
+        length articleRows `shouldBe` 1
+        let (hash, storedContentBytes) = head articleRows
+            storedContent = Data.Text.Encoding.decodeUtf8 storedContentBytes
+        storedContent `shouldBe` articleContent
+        -- Verify the hash is hex-encoded (only contains hex chars)
+        Data.Text.all (\c -> c `elem` ("0123456789abcdef" :: String)) hash `shouldBe` True
 
   around withTempFile $
     describe "Migrations" $ do

@@ -7,7 +7,7 @@ import Control.Monad (void)
 import qualified Data.ByteString as BS
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Text.Encoding (decodeUtf8)
+import Preface.Utils (decodeUtf8')
 import System.Console.ANSI
 import System.Directory (removeFile)
 import System.Environment
@@ -39,7 +39,7 @@ captureInEditor (words -> (exe : args)) = do
           std_err = Inherit
         }
   void $ waitForProcess h
-  decodeUtf8 <$> BS.readFile editFile <* removeFile editFile
+  decodeUtf8' <$> BS.readFile editFile <* removeFile editFile
 captureInEditor editor =
   error $ "Expected an executable and some arguments, got :'" <> editor <> "'"
 

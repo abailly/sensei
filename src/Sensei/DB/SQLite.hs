@@ -479,21 +479,21 @@ updateNotesIndex rid (EventNote NoteFlow {..}) cnx logger =
 updateNotesIndex _ _ _ _ = pure ()
 
 -- | Compute SHA256 hash of article content
-computeArticleHash :: Text -> Text
+computeArticleHash :: Text -> Encoded Hex
 computeArticleHash content =
-  Text.decodeUtf8 $ convert $ hashWith SHA256 $ Text.encodeUtf8 content
+  toHex $ convert $ hashWith SHA256 $ Text.encodeUtf8 content
 
 -- | Store article content in articles table
 storeArticleContent ::
   Connection ->
   LoggerEnv ->
-  Text ->
+  Encoded Hex ->
   UTCTime ->
   Text ->
   IO ()
 storeArticleContent cnx logger h timestamp content = do
   let q = "insert or ignore into articles (hash, timestamp, content) values (?, ?, ?)"
-  execute cnx logger q (h, timestamp, Text.encodeUtf8 content)
+  execute cnx logger q (toText h, timestamp, Text.encodeUtf8 content)
 
 -- | Retrieve article content by hash
 -- retrieveArticleContent ::
@@ -520,7 +520,7 @@ writeEventSQL e = do
         | not (T.null content) -> do
             let h = computeArticleHash content
             storeArticleContent cnx logger h timestamp content
-            pure $ EventArticle articleOp {_article = h}
+            pure $ EventArticle articleOp {_article = toText h}
       _ -> pure e
     rid <- insert cnx logger e'
     updateNotesIndex rid e' cnx logger

@@ -20,6 +20,7 @@ module Preface.Log
     logInfo,
     logError,
     withLog,
+    stdoutLogger,
   )
 where
 
@@ -49,13 +50,54 @@ data LoggerEnv = LoggerEnv
     logInfo :: forall a m. (MonadIO m, ToJSON a) => a -> m (),
     logError :: forall a m. (MonadIO m, ToJSON a) => a -> m (),
     withLog :: forall a b m. (MonadIO m, ToJSON a) => a -> m b -> m b,
-    stopLogger :: forall m. MonadIO m => m ()
+    stopLogger :: forall m. (MonadIO m) => m ()
   }
 
 type Logger = TBQueue BS.ByteString
 
 fakeLogger :: LoggerEnv
 fakeLogger = LoggerEnv Nothing "foo" (const $ pure ()) (const $ pure ()) (\_ -> id) (pure ())
+
+-- | A simple logger that writes JSON logs to stdout.
+stdoutLogger :: LoggerEnv
+stdoutLogger =
+  LoggerEnv
+    { logger = Nothing,
+      loggerId = "stdout",
+      logInfo = \a -> liftIO $ BS.putStr (LBS.toStrict (encode a) <> "\n"),
+      logError = \a -> liftIO $ BS.putStr (LBS.toStrict (encode a) <> "\n"),
+      withLog = \a act -> do
+        startTime <- liftIO getCurrentTime
+        liftIO $
+          BS.putStr
+            ( LBS.toStrict
+                ( encode $
+                    object
+                      [ "timestamp" .= startTime,
+                        "starting" .= a
+                      ]
+                )
+                <> "\n"
+            )
+
+        b <- act
+        endTime <- liftIO getCurrentTime
+        liftIO $
+          BS.putStr
+            ( LBS.toStrict
+                ( encode $
+                    object
+                      [ "timestamp" .= endTime,
+                        "duration" .= (diffUTCTime endTime startTime * 1000),
+                        "ending" .= a
+                      ]
+                )
+                <> "\n"
+            )
+
+        pure b,
+      stopLogger = pure ()
+    }
 
 -- | Bracket-style logger creation.
 -- Takes a logger name and an action to run passing it the 'LoggerEnv' needed
