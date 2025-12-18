@@ -124,7 +124,7 @@ data Document = Document
 instance ToJSON Document where
   toJSON (Document {title, description, author, pages, tags, publishedAt, postRef, publication, theme}) =
     object $
-      [ "$type" .= ("pub.leaflet.document" :: Text),
+      [ "$type" .= BskyType @(Lexicon Document),
         "title" .= title,
         "author" .= author,
         "pages" .= pages

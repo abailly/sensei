@@ -20,6 +20,7 @@ import Control.Monad.Identity (runIdentity)
 import Data.Bifunctor (Bifunctor (..), bimap)
 import Data.List (singleton)
 import Data.Text (Text)
+import qualified Data.Text as Text
 import Sensei.Bsky.Leaflet
   ( Block (Block),
     BlockVariant (..),
@@ -36,6 +37,35 @@ import Sensei.Bsky.TID (mkTid)
 import Data.Maybe (mapMaybe)
 import Commonmark.Extensions (mathSpec, HasMath)
 import Commonmark.Extensions.Math (HasMath(..))
+
+-- | Extract YAML frontmatter metadata from markdown text.
+-- Metadata is delimited by "---" at the start and end, with key-value pairs in between.
+-- Returns the metadata as a list of (key, value) pairs and the remaining markdown text.
+extractMetadata :: Text -> ([(Text, Text)], Text)
+extractMetadata text
+  | Text.isPrefixOf "---" text =
+      let textLines = Text.lines text
+       in case textLines of
+            (_firstDelim : rest) ->
+              let (metadataLines, afterMetadata) = break (== "---") rest
+               in case afterMetadata of
+                    (_secondDelim : remaining) ->
+                      let metadata = parseMetadataLines metadataLines
+                          remainingText = Text.unlines remaining
+                       in (metadata, remainingText)
+                    _ -> ([], text) -- No closing delimiter, treat as regular text
+            _ -> ([], text)
+  | otherwise = ([], text) -- No frontmatter
+  where
+    parseMetadataLines :: [Text] -> [(Text, Text)]
+    parseMetadataLines = mapMaybe parseLine
+
+    parseLine :: Text -> Maybe (Text, Text)
+    parseLine line =
+      case Text.breakOn ":" line of
+        (key, value) | not (Text.null value) ->
+          Just (Text.strip key, Text.strip (Text.drop 1 value))
+        _ -> Nothing
 
 -- | Create a LinearDocument from markdown text
 mkMarkdownDocument :: Text -> IO (Either String LinearDocument)

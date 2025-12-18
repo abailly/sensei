@@ -10,8 +10,9 @@ import Sensei.Bsky
   ( RecordWithMetadata (cid, value),
   )
 import Sensei.Bsky.Leaflet (Document, publication, Publication, blocks)
-import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument)
+import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument, extractMetadata)
 import Sensei.Generators ()
+import qualified Data.Text as Text
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
 import Test.Hspec (Spec, it, shouldBe, shouldSatisfy)
 
@@ -37,3 +38,35 @@ spec = do
     result `shouldSatisfy` \case
       Right doc -> not (null (blocks doc))
       Left _ -> False
+
+  it "extracts YAML frontmatter metadata from markdown" $ do
+    let markdown =
+          Text.unlines
+            [ "---",
+              "title: Test Article",
+              "author: John Doe",
+              "date: 2024-01-15",
+              "---",
+              "",
+              "# Heading",
+              "",
+              "Content here."
+            ]
+        (metadata, remaining) = extractMetadata markdown
+
+    metadata `shouldBe` [("title", "Test Article"), ("author", "John Doe"), ("date", "2024-01-15")]
+    Text.strip remaining `shouldBe` Text.strip (Text.unlines ["# Heading", "", "Content here."])
+
+  it "handles markdown without frontmatter" $ do
+    let markdown = Text.unlines ["# Heading", "", "Content here."]
+        (metadata, remaining) = extractMetadata markdown
+
+    metadata `shouldBe` []
+    remaining `shouldBe` markdown
+
+  it "handles markdown with malformed frontmatter" $ do
+    let markdown = Text.unlines ["---", "title: Test", "Content without closing delimiter"]
+        (metadata, remaining) = extractMetadata markdown
+
+    metadata `shouldBe` []
+    remaining `shouldBe` markdown
