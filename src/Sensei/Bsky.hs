@@ -56,7 +56,7 @@ data BskySession = BskySession
 
 type instance Lexicon BskyPost = "app.bsky.feed.post"
 
-type instance Key BskyPost = Maybe TID
+type instance Key BskyPost = TID
 
 data BskyPost = BskyPost
   { text :: Text,
@@ -391,7 +391,8 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
   sessionMap <- liftIO $ newTVarIO emptySessions
   pure $ BackendHandler {handleEvent = handleEvent sessionMap}
   where
-    postWith backend session repo note =
+    postWith backend session repo note = do
+      postTid <- liftIO mkTid
       withLog logger PostCreated {content = note ^. noteContent, session} $
         void $
           doCreateRecord (BskyClientConfig {backend, bskySession = Just session}) $
@@ -403,7 +404,7 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
                     },
                 -- TODO: test me!
                 repo,
-                rkey = Nothing,
+                rkey = postTid,
                 collection = BskyType
               }
 
