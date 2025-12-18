@@ -2,6 +2,9 @@
 module Sensei.CLISpec where
 
 import Data.Either (isLeft)
+import Data.Time (UTCTime (UTCTime))
+import Data.Time.Calendar (fromGregorian)
+import Data.Time.Clock (secondsToDiffTime)
 
 import Sensei.API (
   FlowType (FlowType, Note),
@@ -156,8 +159,27 @@ spec = describe "Command-Line Interface" $ do
     describe "Article Options" $ do
       it "parses 'article --publish article.md' as publish article option with long form" $ do
         runOptionsParser Nothing ["article", "--publish", "article.md"]
-          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md")
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md" Nothing)
 
       it "parses 'article -a article.md' as publish article option with short form" $ do
         runOptionsParser Nothing ["article", "-a", "article.md"]
-          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md")
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md" Nothing)
+
+      it "parses 'article -a article.md' without date argument as publish with no custom date" $ do
+        runOptionsParser Nothing ["article", "-a", "article.md"]
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md" Nothing)
+
+      it "parses 'article -a article.md --date 2025-12-18' as publish with date (midnight UTC)" $ do
+        let expectedDate = Just $ UTCTime (fromGregorian 2025 12 18) 0
+        runOptionsParser Nothing ["article", "-a", "article.md", "--date", "2025-12-18"]
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md" expectedDate)
+
+      it "parses 'article -a article.md -d 2025-12-18T15:30:00Z' as publish with date and time" $ do
+        let expectedDateTime = Just $ UTCTime (fromGregorian 2025 12 18) (secondsToDiffTime (15 * 3600 + 30 * 60))
+        runOptionsParser Nothing ["article", "-a", "article.md", "-d", "2025-12-18T15:30:00Z"]
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md" expectedDateTime)
+
+      it "parses 'article -a article.md --date 2025-12-18T23:59:59Z' as publish with full timestamp" $ do
+        let expectedDateTime = Just $ UTCTime (fromGregorian 2025 12 18) (secondsToDiffTime (23 * 3600 + 59 * 60 + 59))
+        runOptionsParser Nothing ["article", "-a", "article.md", "--date", "2025-12-18T23:59:59Z"]
+          `shouldBe` Right (ArticleOptions $ PublishArticle "article.md" expectedDateTime)

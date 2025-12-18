@@ -34,7 +34,7 @@ import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
-import Sensei.Article (ArticleOp, article)
+import Sensei.Article (ArticleOp, article, articleTimestamp)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
@@ -342,9 +342,9 @@ publishArticle doPublish backend session articleOp = do
       -- Generate new TID for the document
       docTid <- liftIO mkTid
 
-      -- Get current time and format as ISO8601
-      now <- liftIO getCurrentTime
-      let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) now
+      -- Use ArticleOp timestamp and format as ISO8601
+      let articleTime = articleOp ^. articleTimestamp
+          iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) articleTime
 
       -- Extract userDID and publicationId from backend
       let DID authorDID = userDID backend

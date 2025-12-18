@@ -8,9 +8,11 @@ import qualified Data.Text as Text
 import Data.Time (
   Day,
   LocalTime (localDay),
+  UTCTime (UTCTime),
   ZonedTime (zonedTimeToLocalTime),
   getZonedTime,
  )
+import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import Data.Time.Format.ISO8601 (iso8601ParseM)
 import Options.Applicative (
   Alternative (many, (<|>)),
@@ -33,6 +35,7 @@ import Options.Applicative (
   long,
   maybeReader,
   metavar,
+  optional,
   option,
   progDesc,
   short,
@@ -121,7 +124,10 @@ data CommandOptions = Command {exe :: String, args :: [String]}
 data GoalOptions = GetGraph | UpdateGraph Op
   deriving (Show, Eq)
 
-data ArticleOptions = PublishArticle {articleFile :: FilePath}
+data ArticleOptions = PublishArticle
+  { articleFile :: FilePath,
+    articleDate :: Maybe UTCTime
+  }
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -507,6 +513,13 @@ goalParser =
         )
       <*> strArgument (help "Target")
 
+parseDateOrDateTime :: String -> Maybe UTCTime
+parseDateOrDateTime s =
+  -- Try date-only format first (YYYY-MM-DD) and convert to midnight UTC
+  (parseTimeM True defaultTimeLocale "%Y-%m-%d" s >>= \day -> Just $ UTCTime day 0)
+    <|> -- Fall back to full ISO8601 format
+      iso8601ParseM s
+
 articleParser :: Parser ArticleOptions
 articleParser =
   PublishArticle
@@ -515,6 +528,15 @@ articleParser =
           <> short 'a'
           <> metavar "FILE"
           <> help "Publish article from given file to Bluesky"
+      )
+    <*> optional
+      ( option
+          (maybeReader parseDateOrDateTime)
+          ( long "date"
+              <> short 'd'
+              <> metavar "ISO8601_DATE"
+              <> help "Publication date (ISO8601 format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)"
+          )
       )
 
 parseSenseiOptions ::

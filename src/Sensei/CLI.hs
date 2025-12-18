@@ -24,6 +24,7 @@ import Data.Aeson.Encode.Pretty (encodePretty)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
@@ -196,9 +197,10 @@ ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
     >>= display
 ep config (GoalOptions GetGraph) userName _ _ =
   send config (getGoalsC userName) >>= display
-ep config (ArticleOptions (PublishArticle filePath)) userName timestamp currentDir = do
+ep config (ArticleOptions (PublishArticle filePath customDate)) userName timestamp currentDir = do
   article <- Text.readFile filePath
-  send config $ postEventC (UserName userName) [EventArticle $ ArticleOp Publish userName timestamp currentDir article]
+  let articleTimestamp = fromMaybe timestamp customDate
+  send config $ postEventC (UserName userName) [EventArticle $ ArticleOp Publish userName articleTimestamp currentDir article]
 
 println :: BS.ByteString -> IO ()
 println bs =
