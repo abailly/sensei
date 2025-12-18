@@ -94,3 +94,37 @@ spec = do
                            ]
             other -> error $ "Expected a single rich text block, got: " <> show other
         other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly assign facet for inline emphasis annotations" $ do
+      let markdown = "In the beginning, there was Dungeons & Dragons, the ancestor of all modern *Role Playing Games*."
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "In the beginning, there was Dungeons & Dragons, the ancestor of all modern Role Playing Games."
+              facets
+                `shouldBe` [Facet {index = ByteSlice 75 93, features = [Italic]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly assign facet for link annotation" $ do
+      let markdown = "This post was triggered by a [tweet from Alberto Brandolini](https://twitter.com/ziobrando/status/737619202538758145) on  [The rise and fall of the Dungeon Master](https://medium.com/@ziobrando/the-rise-and-fall-of-the-dungeon-master-c2d511eed12f#.erkso3y88)"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "This post was triggered by a tweet from Alberto Brandolini on  The rise and fall of the Dungeon Master"
+              facets
+                `shouldBe` [ Facet
+                               { index = ByteSlice 29 58,
+                                 features = [Link "https://twitter.com/ziobrando/status/737619202538758145"]
+                               },
+                             Facet
+                               { index = ByteSlice 63 102,
+                                 features = [Link "https://medium.com/@ziobrando/the-rise-and-fall-of-the-dungeon-master-c2d511eed12f#.erkso3y88"]
+                               }
+                           ]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other

@@ -117,7 +117,7 @@ instance IsInline [Inline] where
   escapedChar = undefined
   emph inl = inl <> [Decorated Italic Nothing]
   strong inl = inl <> [Decorated Bold Nothing]
-  link uri title _ = [Plain title, Decorated (Link uri) Nothing]
+  link uri title inl = inl <> [Plain title, Decorated (Link uri) Nothing]
   image = undefined
   code txt = [Plain txt, Decorated Code Nothing]
   rawInline = undefined
@@ -168,6 +168,8 @@ extractFacet = \case
       where
         offset' = case f of
           Code -> 2
+          Italic -> 2
+          Link uri -> 4 + Text.length uri
           _ -> 0
         index = maybe (ByteSlice 0 0) toByteSlice rge
         toByteSlice (SourceRange ((beg, end) : _)) =
