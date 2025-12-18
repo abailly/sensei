@@ -18,7 +18,7 @@ instance Arbitrary ArticleOp where
     user <- elements ["alice", "bob", "charlie"]
     let timestamp = UTCTime aDay 0
     let dir = "/some/directory"
-    pure $ ArticleOp op user timestamp dir
+    pure $ ArticleOp op user timestamp dir "" -- TODO
 
 spec :: Spec
 spec = describe "Article" $ do
@@ -39,6 +39,7 @@ spec = describe "Article" $ do
             , _articleUser = "testuser"
             , _articleTimestamp = UTCTime aDay 0
             , _articleDir = "/test/dir"
+            , _article = ""
             }
       let encoded = LBS.unpack $ encode op
       ("articleOperation" `isInfixOf` encoded &&

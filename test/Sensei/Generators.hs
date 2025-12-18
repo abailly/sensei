@@ -16,7 +16,8 @@ import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
 import Sensei.Backend (Backend (..))
 import Sensei.Bsky
-  ( BackgroundImage (..),
+  ( AtURI (..),
+    BackgroundImage (..),
     Blob (..),
     Block (..),
     BlockVariant (..),
@@ -24,6 +25,7 @@ import Sensei.Bsky
     BskyBackend (BskyBackend),
     BskyLogin (..),
     ByteSlice (..),
+    DID (..),
     Document (..),
     Facet (..),
     Feature (..),
@@ -36,6 +38,7 @@ import Sensei.Bsky
     Theme (..),
     base32SortableAlphabet,
   )
+import qualified Sensei.Bsky as Bsky
 import Sensei.ColorSpec ()
 import Sensei.DB
 import Test.QuickCheck
@@ -54,7 +57,6 @@ import Test.QuickCheck
     vectorOf,
   )
 import Prelude hiding (exp)
-import qualified Sensei.Bsky as Bsky
 
 -- * Orphan Instances
 
@@ -206,7 +208,7 @@ generateArticle :: UTCTime -> Integer -> Gen Event
 generateArticle baseTime k = do
   let st = shiftTime baseTime k
   dir <- generateDir
-  pure $ EventArticle $ ArticleOp Publish "arnaud" st dir
+  pure $ EventArticle $ ArticleOp Publish "arnaud" st dir "" -- TODO
 
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =
@@ -222,7 +224,7 @@ instance Arbitrary Backend where
 
 instance Arbitrary BskyBackend where
   arbitrary =
-    BskyBackend <$> genLogin <*> genURI
+    BskyBackend <$> genLogin <*> genURI <*> arbitrary <*> genAtURI
 
 newtype SimpleString = SimpleString {getSimpleString :: String}
   deriving (Eq, Show)
@@ -373,3 +375,16 @@ instance Arbitrary TID where
   arbitrary = do
     chars <- vectorOf 13 (elements $ Text.unpack base32SortableAlphabet)
     return $ TID (Text.pack chars)
+
+instance Arbitrary DID where
+  arbitrary = do
+    -- Generate 24 random base32 characters (matching the format)
+    chars <- vectorOf 24 (elements "abcdefghijklmnopqrstuvwxyz234567")
+    pure $ DID $ "did:plc:" <> Text.pack chars
+
+genAtURI :: Gen AtURI
+genAtURI = do
+  DID did <- arbitrary
+  lexicon <- pack <$> genURIRegName
+  TID tid <- arbitrary
+  pure $ AtURI $ "at://" <> did <> "/" <> lexicon <> "/" <> tid

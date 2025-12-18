@@ -40,10 +40,11 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 
 -- | Current version of data storage format.
 --
---  This version /must/ be incremented on each change to the structure of `Event` and
---  other stored data structures which
---  impacts their serialized representation. Of course, deserialisation
---  functions should be provided in order to migrate data from previous versions.
+--  This version /must/ be incremented on each change to the structure
+--  of `Event` and other stored data structures which impacts their
+--  serialized representation. Of course, deserialisation functions
+--  should be provided in order to migrate data from previous
+--  versions.
 currentVersion :: Natural
 currentVersion = 12
 
@@ -97,8 +98,6 @@ instance
   -- of the underlying sub-`api`
   type ServerT (CheckVersion version :> api) m = ServerT api m
 
-  hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy :: Proxy api) pc nt s
-
   route Proxy context subserver =
     route (Proxy :: Proxy api) context $
       addCheck subserver (withRequest headerCheck)
@@ -121,12 +120,14 @@ instance
       mev = do
         hdr <- maybe (Left "Cannot find header X-API-Version") Right (lookup "x-api-version" (requestHeaders req))
         actual <- parseHeader hdr
-        let v = (symbolVal (Proxy @version))
+        let v = symbolVal (Proxy @version)
         expected <- extractVersion v $ readP_to_S parseVersion v
         checkVersion expected actual
 
       errReq :: T.Text -> DelayedIO ()
       errReq txt = delayedFailFatal $ err406{errBody = encodeUtf8 (fromStrict txt)}
+
+  hoistServerWithContext _ = hoistServerWithContext (Proxy :: Proxy api)
 
 extractVersion ::
   String -> [(Version, String)] -> Either T.Text Version

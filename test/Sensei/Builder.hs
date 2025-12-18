@@ -1,24 +1,25 @@
-
 -- | Specific help functions and types to help build and manipulate
 --   Sensei's types and API
-module Sensei.Builder (
-  postEvent,
-  postEvent_,
-  postFlow,
-  postFlow_,
-  postNote_,
-  postTrace_,
-  anOtherFlow,
-  aDay,
-  oneAM,
-  sixThirtyPM,
-  later,
-  -- reexported from time-lens
-  seconds,
-  month,
-  aBskyBackend,
-  postNote,
-) where
+module Sensei.Builder
+  ( postEvent,
+    postEvent_,
+    postFlow,
+    postFlow_,
+    postNote_,
+    postTrace_,
+    anOtherFlow,
+    aDay,
+    oneAM,
+    sixThirtyPM,
+    later,
+    -- reexported from time-lens
+    seconds,
+    month,
+    aBskyBackend,
+    aBackend,
+    postNote,
+  )
+where
 
 import Control.Lens ((%~))
 import Data.Functor (void)
@@ -64,17 +65,21 @@ oneAM = TimeOfDay 1 0 0
 sixThirtyPM :: TimeOfDay
 sixThirtyPM = TimeOfDay 18 30 0
 
-later :: Num b => b -> Lens UTCTime b -> Flow -> Flow
+later :: (Num b) => b -> Lens UTCTime b -> Flow -> Flow
 later dur unit = flowTimestamp %~ modL unit (+ dur)
 
-aBskyBackend :: Backend
+aBskyBackend :: BskyBackend
 aBskyBackend =
-  Backend $
-    BskyBackend
-      { login =
-          BskyLogin
-            { identifier = "bob.bsky.social"
-            , password = "password"
-            }
-      , pdsUrl = fromJust $ uriFromString "https://some.social"
-      }
+  BskyBackend
+    { login =
+        BskyLogin
+          { identifier = "bob.bsky.social",
+            password = "password"
+          },
+      pdsUrl = fromJust $ uriFromString "https://some.social",
+      userDID = "did:plc:test123456789012345",
+      publicationId = "at://did:plc:test123456789012345/pub.leaflet.publication/12345678"
+    }
+
+aBackend :: Backend
+aBackend = Backend aBskyBackend

@@ -46,24 +46,33 @@ import Sensei.Bsky
     Refresh,
   )
 import Sensei.Bsky.Core (BskyHandle (..), BskyLogin (..), BskyType (..), Lexicon)
-import Sensei.Server.Auth (JWTSettings, SerializedToken (..), makeToken)
+import Sensei.Server.Auth (Auth, AuthResult (..), JWT, JWTSettings, SerializedToken (..), defaultCookieSettings, makeToken, throwAll)
 import Servant
-  ( Handler,
+  ( Context (EmptyContext, (:.)),
+    Handler,
     Proxy (..),
-    serve,
+    err401,
+    errHeaders,
+    (:>),
     type (:<|>) (..),
   )
+import Servant.Server (serveWithContext)
+import Debug.Trace (trace)
 
 -- * API Definition
 
 -- | Subset of Bluesky API that Sensei uses
 type BskyTestAPI =
   ( Login
-      :<|> Refresh
-      :<|> CreateRecord BskyPost
-      :<|> PutRecord BskyPost
-      :<|> ListRecords BskyPost
+      :<|> Protected
+        :> ( Refresh
+               :<|> CreateRecord BskyPost
+               :<|> PutRecord BskyPost
+               :<|> ListRecords BskyPost
+           )
   )
+
+type Protected = Auth '[JWT] BskyAuth
 
 -- * Server State
 
@@ -119,12 +128,17 @@ bskyTestApp validCredentials userDIDs jwtAudience jwtSettings = do
 -- | Create a WAI Application for the Bsky test server with provided state
 bskyTestAppWithState :: BskyServerState -> Application
 bskyTestAppWithState state =
-  serve (Proxy @BskyTestAPI) $
+  serveWithContext (Proxy @BskyTestAPI) context $
     loginHandler state
-      :<|> refreshHandler state
-      :<|> createRecordHandler state
-      :<|> putRecordHandler state
-      :<|> listRecordsHandler state
+      :<|> validateAuth
+  where
+    context = jwtSettings state :. defaultCookieSettings :. EmptyContext
+    validateAuth (Authenticated BskyAuth {}) =
+      refreshHandler state
+        :<|> createRecordHandler state
+        :<|> putRecordHandler state
+        :<|> listRecordsHandler state
+    validateAuth result = trace (show result) $ throwAll err401 {errHeaders = [("www-authenticate", "Bearer realm=\"bsky.social\"")]}
 
 -- | Handle login requests
 loginHandler :: BskyServerState -> BskyLogin -> Handler BskySession

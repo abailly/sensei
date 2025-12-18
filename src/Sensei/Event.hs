@@ -92,8 +92,7 @@ parseNoteFromv4 =
 parseFlowFromv4 :: Value -> Parser Flow
 parseFlowFromv4 =
     withObject "Flow" $ \state -> do
-        Flow <$> pure Other
-            <*> state .: "_flowUser"
+        (Flow Other <$> (state .: "_flowUser"))
             <*> state .: "_flowStart"
             <*> state .: "_flowDir"
 

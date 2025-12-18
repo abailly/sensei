@@ -28,6 +28,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import Data.Text.ToText (toText)
+import qualified Data.Text.IO as Text
 import Data.Time (
   LocalTime,
   UTCTime,
@@ -35,14 +36,14 @@ import Data.Time (
   formatTime,
  )
 import Sensei.API (
-  Event (EventFlow, EventNote),
+  Event (EventFlow, EventNote, EventArticle),
   Flow (Flow),
   FlowType (Note),
   GoalOp (GoalOp, _goalDir, _goalOp, _goalTimestamp, _goalUser),
   NoteFlow (NoteFlow),
   NoteFormat (..),
   NoteView (NoteView),
-  UserName (UserName),
+  UserName (UserName), ArticleOp (ArticleOp), ArticleOperation (Publish),
  )
 import Sensei.CLI.Options (
   ArticleOptions (..),
@@ -195,10 +196,9 @@ ep config (GoalOptions (UpdateGraph op)) userName timestamp currentDir =
     >>= display
 ep config (GoalOptions GetGraph) userName _ _ =
   send config (getGoalsC userName) >>= display
-ep _config (ArticleOptions (PublishArticle _filePath)) _userName _timestamp _currentDir = do
-  -- Placeholder implementation: Article publishing will be implemented later
-  hPutStrLn stderr "Article publishing not yet implemented"
-  exitWith (ExitFailure 1)
+ep config (ArticleOptions (PublishArticle filePath)) userName timestamp currentDir = do
+  article <- Text.readFile filePath
+  send config $ postEventC (UserName userName) [EventArticle $ ArticleOp Publish userName timestamp currentDir article]
 
 println :: BS.ByteString -> IO ()
 println bs =
@@ -217,7 +217,7 @@ sectionized (NoteView ts note project tags) =
   tagsHeader =
     case tags of
       [] -> ""
-      t -> " [" <> (Text.intercalate ", " $ map toText t) <> "]"
+      t -> " [" <> Text.intercalate ", " (map toText t) <> "]"
 
 tblHeaders :: [Text]
 tblHeaders = ["Time | Note", "--- | ---"]

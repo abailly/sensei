@@ -8,6 +8,7 @@ module Sensei.Article (
     articleUser,
     articleTimestamp,
     articleDir,
+    article
 ) where
 
 import Control.Lens.TH (makeLenses)
@@ -35,16 +36,18 @@ data ArticleOp = ArticleOp
     , _articleUser :: Text
     , _articleTimestamp :: UTCTime
     , _articleDir :: Text
+    , _article :: Text
     }
     deriving (Eq, Show, Generic)
 
 instance ToJSON ArticleOp where
-    toJSON (ArticleOp op user ts dir) =
+    toJSON (ArticleOp op user ts dir art) =
         object
             [ "articleOperation" .= op
             , "articleUser" .= user
             , "articleTimestamp" .= ts
             , "articleDir" .= dir
+            , "article" .= art
             ]
 
 instance FromJSON ArticleOp where
@@ -54,5 +57,6 @@ instance FromJSON ArticleOp where
             <*> obj .: "articleUser"
             <*> obj .: "articleTimestamp"
             <*> obj .: "articleDir"
+            <*> obj .: "article"
 
 makeLenses ''ArticleOp

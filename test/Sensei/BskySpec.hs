@@ -70,7 +70,9 @@ spec = do
                 { identifier = "bob.bsky.social",
                   password = "password"
                 },
-            pdsUrl = fromJust $ uriFromString "https://some.social"
+            pdsUrl = fromJust $ uriFromString "https://some.social",
+            userDID = "did:plc:test123456789012345",
+            publicationId = "at://did:plc:s5wwr2ccjuqricdxiyiuspfv/pub.leaflet.publication/3m7zleg5tyc2b"
           }
       profileWithBsky =
         defaultProfile

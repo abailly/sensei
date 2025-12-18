@@ -13,7 +13,7 @@ import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVa
 import Control.Lens ((&), (?~), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
-import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.=), (.:))
+import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.:), (.=))
 import Data.Aeson.Types (FromJSON (..))
 import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
@@ -354,7 +354,9 @@ instance ClientConfig BskyClientConfig where
       { backend =
           BskyBackend
             { login = BskyLogin "" "",
-              pdsUrl = fromJust $ uriFromString "http://localhost:12345"
+              pdsUrl = fromJust $ uriFromString "http://localhost:12345",
+              userDID = "",
+              publicationId = ""
             },
         bskySession = Nothing
       }

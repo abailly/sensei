@@ -91,7 +91,7 @@ instance IsInline [Inline] where
   rawInline = undefined
 
 instance HasMath [Inline] where
-  inlineMath txt = [Plain txt]  -- TODO , Decorated Math Nothing]
+  inlineMath txt = [Plain txt, Decorated Code Nothing]  -- TODO , Decorated Math Nothing]
   displayMath txt = [Plain txt] -- TODO , Decorated DisplayMath Nothing]
 
 instance Rangeable [BlockVariant] where

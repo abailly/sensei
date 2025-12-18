@@ -29,7 +29,12 @@ instance RunClient TestClient where
   throwClientError err = error (show err)
 
 response :: Response
-response = Response status200 (fromList [("Content-type", "application/json")]) http11 (encode $ Versions senseiVersion senseiVersion currentVersion currentVersion)
+response =
+  Response
+    status200
+    (fromList [("Content-type", "application/json")])
+    http11
+    (encode $ Versions senseiVersion senseiVersion currentVersion currentVersion)
 
 spec :: Spec
 spec = describe "ClientMonad" $ do
@@ -38,21 +43,21 @@ spec = describe "ClientMonad" $ do
     let [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) aConfig)
 
     toList (requestHeaders request)
-      `shouldContain` [ (mk "Host", "1.2.3.4:1234")
-                      , (mk "Origin", "http://1.2.3.4:1234")
-                      , (mk "X-API-Version", senseiVersionLBS)
+      `shouldContain` [ (mk "Host", "1.2.3.4:1234"),
+                        (mk "Origin", "http://1.2.3.4:1234"),
+                        (mk "X-API-Version", senseiVersionLBS)
                       ]
 
   it "sets Authorization header from ClientConfig info given token is set" $ do
     token <- authTokenFor (AuthToken "" 1) sampleKey
-    let configWithAuth = aConfig{authToken = Just . SerializedToken . LBS.toStrict $ token}
+    let configWithAuth = aConfig {authToken = Just . SerializedToken . LBS.toStrict $ token}
         [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) configWithAuth)
 
     toList (requestHeaders request) `shouldContain` [(mk "Authorization", "Bearer " <> LBS.toStrict token)]
 
   it "sets X-API-Version header from ClientConfig info given it is set" $ do
     let someVersion = Version [3, 4] ["foo"]
-        configWithAuth = aConfig{apiVersion = Just someVersion}
+        configWithAuth = aConfig {apiVersion = Just someVersion}
         [request] = snd $ runWriter $ testClient (runReaderT (unClient getVersionsC) configWithAuth)
 
     toList (requestHeaders request) `shouldContain` [(mk "X-API-Version", encodeUtf8 $ Text.pack $ showVersion someVersion)]
@@ -70,7 +75,7 @@ spec = describe "ClientMonad" $ do
               <> encode serializedToken
               <> "}"
       eitherDecode jsonProfile
-        `shouldBe` Right defaultConfig{authToken = Just serializedToken}
+        `shouldBe` Right defaultConfig {authToken = Just serializedToken}
 
     it "can deserialise JSON with userName but without authToken" $ do
       let jsonProfile =
@@ -78,4 +83,4 @@ spec = describe "ClientMonad" $ do
             \ \"startServerLocally\":true, \
             \ \"configUser\":\"foo\"}"
       eitherDecode jsonProfile
-        `shouldBe` Right defaultConfig{configUser = Just "foo"}
+        `shouldBe` Right defaultConfig {configUser = Just "foo"}

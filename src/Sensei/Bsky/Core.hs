@@ -2,31 +2,57 @@
 
 module Sensei.Bsky.Core where
 
-import Data.Aeson (FromJSON, ToJSON (..), withText, (.=), withObject, (.:), object)
+import Data.Aeson (FromJSON, ToJSON (..), Value, object, withObject, withText, (.:), (.=))
+import Data.Aeson.Types (FromJSON (..), Parser)
 import Data.Kind (Type)
-import Data.Text (Text, unpack)
-import GHC.Generics (Generic)
-import GHC.TypeLits (Symbol, KnownSymbol, symbolVal)
-import Network.URI.Extra (uriFromString)
-import Servant
 import Data.String (IsString)
-import Data.Aeson.Types (FromJSON(..))
+import Data.Text (Text)
 import qualified Data.Text as Text
+import GHC.Generics (Generic)
+import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import Numeric.Natural (Natural)
+import Servant
+
+newtype DID = DID Text
+  deriving stock (Eq, Show)
+  deriving newtype (IsString, ToJSON, FromJSON)
+
+newtype AtURI = AtURI Text
+  deriving stock (Eq, Show)
+  deriving newtype (IsString, ToJSON, FromJSON)
 
 data BskyBackend = BskyBackend
   { login :: BskyLogin,
-    pdsUrl :: URI
+    pdsUrl :: URI,
+    -- | The DID for this user
+    -- TODO: define/use a proper DID type
+    -- ipld-cid has one but the library is unmaintained and has bitrotten
+    userDID :: DID,
+    -- | The leaflet.pub publication ID for this user
+    -- Seems like URI does not like `at://` scheme
+    publicationId :: AtURI
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-mkBackend :: Text -> Text -> Text -> Maybe BskyBackend
-mkBackend ident pwd url = do
-  pdsUrl <- uriFromString (unpack url)
-  pure $
-    BskyBackend
-      { login = BskyLogin {identifier = ident, password = pwd},
-        pdsUrl
-      }
+parseBskyBackendFromVersion :: Natural -> Value -> Parser BskyBackend
+parseBskyBackendFromVersion v =
+  if v < 12
+    then parseBackendV11
+    else parseBackendV12
+  where
+    parseBackendV11 = withObject "BskyBackend v11" $ \o ->
+      BskyBackend
+        <$> o .: "login"
+        <*> o .: "pdsUrl"
+        <*> pure ""
+        <*> pure ""
+
+    parseBackendV12 = withObject "BskyBackend v12" $ \o ->
+      BskyBackend
+        <$> o .: "login"
+        <*> o .: "pdsUrl"
+        <*> o .: "userDID"
+        <*> o .: "publicationId"
 
 data BskyLogin = BskyLogin
   { identifier :: Text,
@@ -103,7 +129,6 @@ instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) 
       <*> o .: "collection"
       <*> o .: "rkey"
       <*> o .: "record"
-
 
 -- | A record with its metadata (uri, cid, value)
 data RecordWithMetadata record = RecordWithMetadata
