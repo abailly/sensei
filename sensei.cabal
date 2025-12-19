@@ -193,6 +193,7 @@ test-suite sensei-test
     Sensei.DB.Model
     Sensei.DB.SQLiteSpec
     Sensei.DurationSpec
+    Sensei.EventSpec
     Sensei.FlowAPISpec
     Sensei.FlowSpec
     Sensei.FlowViewSpec
