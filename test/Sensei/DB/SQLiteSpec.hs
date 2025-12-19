@@ -176,9 +176,8 @@ spec = describe "SQLite DB" $ do
         let articleTime = UTCTime (toEnum 50000) 2000
             articleContent = "# Test Article\n\nThis is a test article with some content."
             articleOp =
-              ArticleOp
-                { _articleOperation = Publish,
-                  _articleUser = "arnaud",
+              PublishArticle
+                { _articleUser = "arnaud",
                   _articleTimestamp = articleTime,
                   _articleDir = "articles",
                   _article = articleContent

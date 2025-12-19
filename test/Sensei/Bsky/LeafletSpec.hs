@@ -21,7 +21,7 @@ import Sensei.Bsky.Leaflet (Document, Publication, publication)
 import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
 import Sensei.Generators ()
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy, pendingWith)
 
 spec :: Spec
 spec = do
@@ -124,6 +124,45 @@ spec = do
                              Facet
                                { index = ByteSlice 63 102,
                                  features = [Link "https://medium.com/@ziobrando/the-rise-and-fall-of-the-dungeon-master-c2d511eed12f#.erkso3y88"]
+                               }
+                           ]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "FIXME: assign code facet for inline math" $ do
+      let markdown = "In the beginning, there was $\\sin(x)$, the ancestor of functions."
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "In the beginning, there was \\sin(x), the ancestor of functions."
+              facets
+                `shouldBe` [Facet {index = ByteSlice 28 35, features = [Code]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly assign multiple facets" $ do
+      pendingWith "FIXME: correctly handle nested facets"
+      let markdown = "This post was triggered by a [*tweet* from `Alberto Brandolini`](https://twitter.com/ziobrando/status/737619202538758145)"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "This post was triggered by a tweet from Alberto Brandolini"
+              facets
+                `shouldBe` [ Facet
+                               { index = ByteSlice 29 34,
+                                 features = [Italic]
+                               },
+                             Facet
+                               { index = ByteSlice 40 58,
+                                 features = [Code]
+                               },
+                             Facet
+                               { index = ByteSlice 29 58,
+                                 features = [Link "https://twitter.com/ziobrando/status/737619202538758145"]
                                }
                            ]
             other -> error $ "Expected a single rich text block, got: " <> show other

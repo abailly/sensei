@@ -34,7 +34,7 @@ import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
-import Sensei.Article (ArticleOp, article, articleTimestamp)
+import Sensei.Article (Article, article, articleTimestamp)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
@@ -325,7 +325,7 @@ publishArticle ::
   -- | Authenticated session
   BskySession ->
   -- | Article to publish
-  ArticleOp ->
+  Article ->
   m (Either String Record)
 publishArticle doPublish backend session articleOp = do
   let articleContent = articleOp ^. article
@@ -342,7 +342,7 @@ publishArticle doPublish backend session articleOp = do
       -- Generate new TID for the document
       docTid <- liftIO mkTid
 
-      -- Use ArticleOp timestamp and format as ISO8601
+      -- Use Article timestamp and format as ISO8601
       let articleTime = articleOp ^. articleTimestamp
           iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) articleTime
 

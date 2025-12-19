@@ -208,7 +208,7 @@ generateArticle :: UTCTime -> Integer -> Gen Event
 generateArticle baseTime k = do
   let st = shiftTime baseTime k
   dir <- generateDir
-  pure $ EventArticle $ ArticleOp Publish "arnaud" st dir "" -- TODO
+  pure $ EventArticle $ PublishArticle "arnaud" st dir "" -- TODO
 
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =

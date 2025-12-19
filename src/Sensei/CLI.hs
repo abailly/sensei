@@ -44,8 +44,9 @@ import Sensei.API (
   NoteFlow (NoteFlow),
   NoteFormat (..),
   NoteView (NoteView),
-  UserName (UserName), ArticleOp (ArticleOp), ArticleOperation (Publish),
+  UserName (UserName),
  )
+import qualified Sensei.Article as Article
 import Sensei.CLI.Options (
   ArticleOptions (..),
   AuthOptions (..),
@@ -200,7 +201,7 @@ ep config (GoalOptions GetGraph) userName _ _ =
 ep config (ArticleOptions (PublishArticle filePath customDate)) userName timestamp currentDir = do
   article <- Text.readFile filePath
   let articleTimestamp = fromMaybe timestamp customDate
-  send config $ postEventC (UserName userName) [EventArticle $ ArticleOp Publish userName articleTimestamp currentDir article]
+  send config $ postEventC (UserName userName) [EventArticle $ Article.PublishArticle userName articleTimestamp currentDir article]
 
 println :: BS.ByteString -> IO ()
 println bs =

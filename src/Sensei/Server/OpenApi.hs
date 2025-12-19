@@ -51,7 +51,7 @@ import Sensei.API as Sensei (
   UserProfile,
   senseiAPI,
  )
-import Sensei.Article (ArticleOp, ArticleOperation)
+import Sensei.Article (Article)
 import Sensei.Backend (Backend)
 import Sensei.Server.Auth (SerializedToken)
 import Sensei.Version (Versions, senseiVersion, showVersion)
@@ -143,9 +143,7 @@ instance ToSchema Trace
 
 instance ToSchema NoteFlow
 
-instance ToSchema ArticleOp
-
-instance ToSchema ArticleOperation
+instance ToSchema Article
 
 instance ToSchema SerializedToken where
   declareNamedSchema _ =

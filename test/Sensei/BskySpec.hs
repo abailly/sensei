@@ -28,7 +28,7 @@ import Data.Time (UTCTime (..), addUTCTime)
 import GHC.IO (unsafePerformIO)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv, fakeLogger)
-import Sensei.API (ArticleOp (..), ArticleOperation (..), Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
+import Sensei.API (Article (..), Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
@@ -327,11 +327,10 @@ defaultToken =
         }
 
 -- Test data for publishArticle tests
-articleWithTitle :: ArticleOp
+articleWithTitle :: Article
 articleWithTitle =
-  ArticleOp
-    { _articleOperation = Publish,
-      _articleUser = "testuser",
+  PublishArticle
+    { _articleUser = "testuser",
       _articleTimestamp = UTCTime aDay 0,
       _articleDir = "/test/dir",
       _article =
@@ -345,11 +344,10 @@ articleWithTitle =
         \This is a test article.\n"
     }
 
-articleWithoutMetadata :: ArticleOp
+articleWithoutMetadata :: Article
 articleWithoutMetadata =
-  ArticleOp
-    { _articleOperation = Publish,
-      _articleUser = "testuser",
+  PublishArticle
+    { _articleUser = "testuser",
       _articleTimestamp = UTCTime aDay 0,
       _articleDir = "/test/dir",
       _article =

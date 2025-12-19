@@ -169,6 +169,7 @@ extractFacet = \case
         offset' = case f of
           Code -> 2
           Italic -> 2
+          Bold -> 2
           Link uri -> 4 + Text.length uri
           _ -> 0
         index = maybe (ByteSlice 0 0) toByteSlice rge

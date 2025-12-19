@@ -9,39 +9,25 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Arbitrary (..), elements)
 
-instance Arbitrary ArticleOperation where
-  arbitrary = pure Publish
-
-instance Arbitrary ArticleOp where
+instance Arbitrary Article where
   arbitrary = do
-    op <- arbitrary
     user <- elements ["alice", "bob", "charlie"]
     let timestamp = UTCTime aDay 0
     let dir = "/some/directory"
-    pure $ ArticleOp op user timestamp dir "" -- TODO
+    pure $ PublishArticle user timestamp dir "" -- TODO
 
 spec :: Spec
 spec = describe "Article" $ do
-  describe "ArticleOperation" $ do
-    it "serializes Publish to JSON" $ do
-      encode Publish `shouldBe` "\"Publish\""
+  describe "Article" $ do
+    prop "round-trips through JSON" $ \art ->
+      decode (encode art) == Just (art :: Article)
 
-    it "deserializes Publish from JSON" $ do
-      decode "\"Publish\"" `shouldBe` Just Publish
-
-  describe "ArticleOp" $ do
-    prop "round-trips through JSON" $ \articleOp ->
-      decode (encode articleOp) == Just (articleOp :: ArticleOp)
-
-    it "serializes ArticleOp to JSON with correct fields" $ do
-      let op = ArticleOp
-            { _articleOperation = Publish
-            , _articleUser = "testuser"
+    it "serializes Article to JSON with correct fields" $ do
+      let op = PublishArticle
+            { _articleUser = "testuser"
             , _articleTimestamp = UTCTime aDay 0
             , _articleDir = "/test/dir"
             , _article = ""
             }
       let encoded = LBS.unpack $ encode op
-      ("articleOperation" `isInfixOf` encoded &&
-        "Publish" `isInfixOf` encoded &&
-        "testuser" `isInfixOf` encoded) `shouldBe` True
+      ("testuser" `isInfixOf` encoded) `shouldBe` True

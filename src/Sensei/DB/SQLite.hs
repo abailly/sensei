@@ -106,8 +106,7 @@ import Preface.Codec
 import Preface.Log (LoggerEnv (..), fakeLogger)
 import Preface.Utils (decodeUtf8', toText)
 import Sensei.API as API
-  ( ArticleOp (..),
-    ArticleOperation (..),
+  ( Article (..),
     CommandView,
     Event (..),
     EventView (..),
@@ -516,7 +515,7 @@ writeEventSQL e = do
   withConnection $ \cnx -> do
     -- Handle EventArticle specially: store content and replace with hash
     e' <- case e of
-      EventArticle articleOp@ArticleOp {_articleOperation = Publish, _article = content, _articleTimestamp = timestamp}
+      EventArticle articleOp@PublishArticle {_article = content, _articleTimestamp = timestamp}
         | not (T.null content) -> do
             let h = computeArticleHash content
             storeArticleContent cnx logger h timestamp content

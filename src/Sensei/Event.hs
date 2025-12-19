@@ -40,7 +40,7 @@ data Event
     | EventTrace Trace
     | EventNote NoteFlow
     | EventGoal GoalOp
-    | EventArticle ArticleOp
+    | EventArticle Article
     deriving (Eq, Show, Generic)
 
 instance FromJSON Event where
@@ -156,7 +156,7 @@ user' fu (EventFlow f@Flow{_flowUser}) = (\u -> EventFlow (set flowUser u f)) <$
 user' fu (EventTrace t@Trace{_traceUser}) = (\u -> EventTrace (set traceUser u t)) <$> fu _traceUser
 user' fu (EventNote n@NoteFlow{_noteUser}) = (\u -> EventNote (set noteUser u n)) <$> fu _noteUser
 user' fu (EventGoal n@GoalOp{_goalUser}) = (\u -> EventGoal (set goalUser u n)) <$> fu _goalUser
-user' fu (EventArticle a@ArticleOp{_articleUser}) = (\u -> EventArticle (set articleUser u a)) <$> fu _articleUser
+user' fu (EventArticle a@PublishArticle{_articleUser}) = (\u -> EventArticle (set articleUser u a)) <$> fu _articleUser
 
 isTrace :: Event -> Bool
 isTrace EventTrace{} = True
@@ -174,7 +174,7 @@ isArticle :: Event -> Bool
 isArticle EventArticle{} = True
 isArticle _ = False
 
-getArticle :: Event -> Maybe ArticleOp
+getArticle :: Event -> Maybe Article
 getArticle (EventArticle a) = Just a
 getArticle _ = Nothing
 
