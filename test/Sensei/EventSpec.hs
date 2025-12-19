@@ -19,3 +19,7 @@ spec = do
   it "can read events version 12" $ do
     events <- eitherDecodeFileStrict "golden/Event.v12.json" :: IO (Either String [Event])
     events `shouldSatisfy` isRight
+
+  it "can read events version 13" $ do
+    events <- eitherDecodeFileStrict "golden/Event.v13.json" :: IO (Either String [Event])
+    events `shouldSatisfy` isRight

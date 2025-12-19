@@ -1,80 +1,103 @@
 {
     "samples": [
         {
-            "flowDir": "]~\u0000<GBL",
-            "flowTimestamp": "1995-10-10T08:20:00Z",
-            "flowType": "End",
-            "flowUser": "arnaud",
-            "tag": "Flow",
-            "version": 12
+            "tag": "Trace",
+            "traceArgs": [
+                "U\u0006\u000b"
+            ],
+            "traceDirectory": "_I",
+            "traceElapsed": 44,
+            "traceExitCode": 12,
+            "traceProcess": "K\u0014\u0003q\u0019\u0011\u0005UPv,.Jh.kC:`7)wRdxtM\u0017H",
+            "traceTimestamp": "1995-10-10T08:53:20Z",
+            "traceUser": "arnaud",
+            "version": 13
         },
         {
             "tag": "Trace",
             "traceArgs": [
-                "h\u001a%FqgbCQ\u001fUNlk",
-                "t @\u001c+?o =N\u0006M\u001e\u0018\u000chir\\",
-                ":oG>@\u0019R\u001d\u0000\u0003k<J;\u0004g\u001fu",
-                "+:\u0005qn\u00164>pZYS\u00046O\u001fQu7\u0019\u001fu2?\u00005uI",
-                "ZJ]\u000e-Kr\u000c\u00057FffT+'\u0004EV",
-                "x?\u0010\u001b",
-                "\n3\nI\u000c\\UH\\\"=CfVx\u0005\"Sv\\zW\u001d",
-                "36}Zp\nFZ\u000e3\u0012D{\u000ckzlqS`B%\u0006{|k",
-                "<N\tnM.\"\u0004.8T0z8\u000eIVI\u0013",
-                "IuIoO\u0012j\u001bon^y1L`@\u0017K\u001c?g1\u0007'",
-                "w[[\u0018_\u001dCd",
-                "\u0019m-K\u0003"
+                "0e6s\u001er4N_6",
+                "\u0016\r\u0008\u0000@TMs\u0018~{\u0013VdF}3ud\u0002\u0002E",
+                "\u001c\u001aU~2\u0007lVb\u000bNF\rvw\"Z_",
+                "\u00080\u0004[V;\u000f\u0010Ed|",
+                "3",
+                "D?{\u001e\u0018",
+                "\u001c(\u0010Y\tC<W",
+                "\u0019hfw9kV3",
+                "9\u001a\u00030=",
+                "\u001d^uJUnBX6(pf\u0003vnQBUku^\u0010{vYi\u0017",
+                "I\u001e?S\u0008~=0\u000cMp,8\u000eL"
             ],
-            "traceDirectory": ";\n\u0018Ph}\u000frX\u0004rj1 \u0007\u0006:gHNyS\n.nnr@u",
-            "traceElapsed": 15,
-            "traceExitCode": 19,
-            "traceProcess": ".?~Qh0R5aARN\r[r",
-            "traceTimestamp": "1995-10-10T06:23:20Z",
+            "traceDirectory": "\u000fd4z:^95+r7\u0001\u0012",
+            "traceElapsed": 72,
+            "traceExitCode": 21,
+            "traceProcess": "\u0017ziNWQ8O.\u0013.\n#\u0001\u0004\u0003B\u0004]eF",
+            "traceTimestamp": "1995-10-10T08:20:00Z",
             "traceUser": "arnaud",
-            "version": 12
+            "version": 13
         },
         {
-            "article": "",
-            "articleDir": "8\tP*@c= 3\u000bv=W\u0004\r#`dvuT \u0015\"&\u0016[%4<",
-            "articleOperation": "Publish",
-            "articleTimestamp": "1995-10-10T08:36:40Z",
+            "article": "# Q+Q𢘌*uex􅽐🩄󲱥\u0007Fi\n\n\u001e\u0007",
+            "articleDir": "^t_K-hL/e\u001d\u001f$' m!",
+            "articleTimestamp": "1995-10-10T09:26:40Z",
             "articleUser": "arnaud",
+            "operation": "PublishArticle",
             "tag": "Article",
-            "version": 12
+            "version": 13
         },
         {
             "tag": "Trace",
             "traceArgs": [
-                "#",
-                "s51U0X7s\u001b1\\N",
-                "Yo[>6y'OzN",
-                "\u0018k\u0017(6",
-                "}3pj\u001f",
-                "\u0012\u0016|\\anwb8NA\u001ak ",
-                "b7b\t\u0016*\u000e1K>GXc!q\u001bED2",
-                "\u0016\u0019%(}!>",
-                "{%2KWX\u00182\u0017>\u000b@%",
-                "\u001a\u001f0?W=\u000fH `\u0014g~\u001d:7\u001a\u000fJ[\n\u0010O",
-                "9S\u000f*1^,d\u0015Iul\ttX$\u0012*7J['\u0004n\u001dF\u001f\u0017",
-                "tz\u000506?\"\u001e<o\"\u0004I\u0000|>Sc(\u001fL\u0001\u0011\u0002,",
-                "suW\u0017\u0017(M\u0012l\u000f3W:4.,c\r05{@\u0018g\u0018*$jM*",
-                "(VUfxV~.f4\u0015b2\n\u000eFgS\u0014#Wdg"
+                "_~!L\u001b1@\"pQmnzGF}c7",
+                "o,",
+                "@CK\u0000F/n.i\u00126\u0015S",
+                "\u0006\u000f\u0014@%$\u001b_\u0000K.L\u001b\u001b*7+\nVi\u000bQF",
+                "qaWo3,L7\u0008>x4Cw<\u001az",
+                "\u001aqcwH2}\u0015%!\u0002F",
+                "g",
+                "|h`\u0000\u001eI\u001f\u0013qL",
+                "o\u001d~|lT}\u0015%YH\rlf\u001clkC",
+                "5L\u001f8\u000c3X",
+                "&u**Z,7I>\u0003\u000cxIl1  Wa"
             ],
-            "traceDirectory": "I\u0018<f)D{",
-            "traceElapsed": 70,
-            "traceExitCode": -10,
-            "traceProcess": "Ps\u0016y,\u0012\u000f_\u0005}*F j?\u0005o\u001c3Q%^i\u0017r",
-            "traceTimestamp": "1995-10-10T05:00:00Z",
+            "traceDirectory": "\u0011-\u000evuJ",
+            "traceElapsed": 5,
+            "traceExitCode": 4,
+            "traceProcess": "{\u0004@\u0011Rec3\nRZi7",
+            "traceTimestamp": "1995-10-09T20:06:40Z",
             "traceUser": "arnaud",
-            "version": 12
+            "version": 13
         },
         {
-            "flowDir": "/\\",
-            "flowTimestamp": "1995-10-10T06:23:20Z",
-            "flowType": "Other",
-            "flowUser": "arnaud",
-            "tag": "Flow",
-            "version": 12
+            "tag": "Trace",
+            "traceArgs": [
+                "(\u00037<Xgh0\n\u0015\u001d6",
+                ">K\u001f\u0012]\u000fw/\n_2\u001eT",
+                "S/!\u0006d\u0018\u001c'b/:f\u0007(|\u000emP\u001b",
+                "oN-\u000b",
+                "\u0016s\\<(\u001byW\u001a(",
+                "\u0017!1b\nU\u0016q&\tttzp|3R g!KDR\u0019z]\u0018\u0014 ",
+                ".",
+                "\u0011lsI:!\u0007\u0012\nV",
+                "",
+                ",\u0004njC]",
+                "EYvj\u0011\u0006\u0017eR+u\u0016U\u001d!WEAj~.)^\n\u000fr",
+                "\u0012\u0010!U\u0003tPj\u0006D\u000b\u00166\u001b>[@!",
+                "ec\u0006Lr(T",
+                "9\t+a(k@\u0013\u000c\u000bd1R4@;d/y~\u0017\u0008",
+                "@>\u0000U\u000c\u0006I\u0003\u001ck\u001eG'LLX\u0000Y^\\g8O0@5E\u0014*",
+                "",
+                "~&/npM\u0004\u0008\u001eS(Qh\u000c\u000b\"XO",
+                "\u000273^w>]5Kp2\u0011`/q\u000e\u001e}dT\u0015K/zU\u001f>"
+            ],
+            "traceDirectory": "je",
+            "traceElapsed": 43,
+            "traceExitCode": -21,
+            "traceProcess": "\u001cvjq([}9)J",
+            "traceTimestamp": "1995-10-10T04:43:20Z",
+            "traceUser": "arnaud",
+            "version": 13
         }
     ],
-    "seed": -79772400
+    "seed": 1914706973
 }

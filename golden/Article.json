@@ -1,0 +1,41 @@
+{
+    "samples": [
+        {
+            "article": "# |Z\u0012@\u001cZ\u0013ER\u0016\u001f>#B6Ỡ\u0005(2\"\n\n$\u000eL\u000fx㉴󻌷y%#~W𢽍\u001c\u001az#󿊃\u000e\u000bn\u001b􅱣Nw\u0010%",
+            "articleDir": "",
+            "articleTimestamp": "1995-10-10T06:40:00Z",
+            "articleUser": "arnaud",
+            "operation": "PublishArticle"
+        },
+        {
+            "article": "# ?k6இa:e\u0010\u0005𡓭tE@􃁱\"\u0018.􄴻\n\n\u0007\u0011!𣽁󰅃iO\u0018A􏴦nh",
+            "articleDir": "2t\u00154\u00103\t/P2%]C|\nA9Kr1",
+            "articleRkey": "*aygc\u001a􉼓\t\u0018:\u0001}!",
+            "articleTimestamp": "1995-10-10T09:26:40Z",
+            "articleUser": "arnaud",
+            "operation": "UpdateArticle"
+        },
+        {
+            "article": "# {EZU掴\n\n\u000f􅷾iWbX𘋻{Cl쎕󷁼󼤯Mf󶾌o𨲇􎛸皭",
+            "articleDir": "1!BG8\u001d<M$#B:d\u001aF3\u0010",
+            "articleTimestamp": "1995-10-10T06:40:00Z",
+            "articleUser": "arnaud",
+            "operation": "PublishArticle"
+        },
+        {
+            "article": "# p\n\n\u000c􁄂𦗣𣵸:𘱀u󾮯8􁃳\u0014Ls\u0017EH\u0000'VA{ ",
+            "articleDir": "1",
+            "articleTimestamp": "1995-10-10T10:33:20Z",
+            "articleUser": "arnaud",
+            "operation": "PublishArticle"
+        },
+        {
+            "articleDir": ":>42\u000f+\u001e\u0000|j]5",
+            "articleRkey": "",
+            "articleTimestamp": "1995-10-10T05:00:00Z",
+            "articleUser": "arnaud",
+            "operation": "DeleteArticle"
+        }
+    ],
+    "seed": 344680025
+}
