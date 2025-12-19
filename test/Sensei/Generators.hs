@@ -204,15 +204,34 @@ instance Arbitrary Reference where
   shrink Latest = []
   shrink (Pos p) = Pos <$> shrink p
 
-generateArticle :: UTCTime -> Integer -> Gen Event
+generateArticle :: UTCTime -> Integer -> Gen Article
 generateArticle baseTime k = do
   let st = shiftTime baseTime k
   dir <- generateDir
-  pure $ EventArticle $ PublishArticle "arnaud" st dir "" -- TODO
+  -- Generate article content (markdown)
+  title <- pack <$> arbitrary
+  content <- pack <$> arbitrary
+  let articleContent = "# " <> title <> "\n\n" <> content
+  -- Generate all three types of Article constructors
+  frequency
+    [ (5, pure $ PublishArticle "arnaud" st dir articleContent),
+      ( 3,
+        do
+          -- For UpdateArticle, generate a TID-like string
+          tidStr <- pack . take 13 <$> arbitrary
+          pure $ UpdateArticle "arnaud" st dir tidStr articleContent
+      ),
+      ( 2,
+        do
+          -- For DeleteArticle, generate a TID-like string
+          tidStr <- pack . take 13 <$> arbitrary
+          pure $ DeleteArticle "arnaud" st dir tidStr
+      )
+    ]
 
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =
-  oneof [generateTrace baseTime off, generateFlow baseTime off, generateArticle baseTime off]
+  oneof [generateTrace baseTime off, generateFlow baseTime off, EventArticle <$> generateArticle baseTime off]
 
 shrinkEvent :: Event -> [Event]
 shrinkEvent (EventTrace t@(Trace _ _ _ _ args _ _)) =

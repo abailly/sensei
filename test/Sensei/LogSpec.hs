@@ -1,13 +1,12 @@
-
 module Sensei.LogSpec where
 
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time
 import Network.HTTP.Link
 import Network.URI.Extra (URI)
-import Sensei.API (EventView (EventView))
+import Sensei.API (Event (EventArticle), EventView (EventView))
 import Sensei.Builder
-import Sensei.Generators (generateEvent)
+import Sensei.Generators (generateArticle, generateEvent)
 import Sensei.TestHelper
 import Test.Hspec
 import Test.Hspec.Wai
@@ -17,7 +16,16 @@ spec :: Spec
 spec = withApp app $
   describe "Log API" $ do
     it "GET /api/log/<user> returns all events in timestamp order" $ do
-      events <- liftIO $ generate (mapM (generateEvent (UTCTime (toEnum 50000) 0)) [1 :: Integer .. 70])
+      events <- liftIO $ generate (mapM (generateEvent (UTCTime (toEnum 50000) 0)) [1 :: Integer .. 10])
+      postEvent_ events
+
+      let eventViews = zipWith EventView [1 ..] events
+
+      getJSON "/api/log/arnaud"
+        `shouldRespondJSONBody` eventViews
+
+    it "GET /api/log/<user> returns article events in timestamp order" $ do
+      events <- fmap EventArticle <$> liftIO (generate (mapM (generateArticle (UTCTime (toEnum 50000) 0)) [1 :: Integer .. 10]))
       postEvent_ events
 
       let eventViews = zipWith EventView [1 ..] events

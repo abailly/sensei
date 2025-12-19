@@ -495,17 +495,39 @@ storeArticleContent cnx logger h timestamp content = do
   execute cnx logger q (toText h, timestamp, Text.encodeUtf8 content)
 
 -- | Retrieve article content by hash
--- retrieveArticleContent ::
---     Connection ->
---     LoggerEnv ->
---     Text ->
---     IO (Maybe Text)
--- retrieveArticleContent cnx logger hash = do
---     let q = "select content from articles where hash = ?"
---     results :: [[BS.ByteString]] <- query cnx logger q (Only hash)
---     pure $ case results of
---         [[content]] -> Just (Text.decodeUtf8 content)
---         _ -> Nothing
+retrieveArticleContent ::
+  Connection ->
+  LoggerEnv ->
+  Text ->
+  IO (Maybe Text)
+retrieveArticleContent cnx logger hashText = do
+  let q = "select content from articles where hash = ?"
+  results <- query cnx logger q (Only hashText) :: IO [[BS.ByteString]]
+  pure $ case results of
+    [[content]] -> Just (Text.decodeUtf8 content)
+    _ -> Nothing
+
+-- | Restore article content from hash in an EventView
+restoreArticleContent ::
+  Connection ->
+  LoggerEnv ->
+  EventView ->
+  IO EventView
+restoreArticleContent cnx logger ev@EventView {event = EventArticle article} = do
+  case article of
+    PublishArticle {_article = hashText} | T.length hashText == 64 -> do
+      maybeContent <- retrieveArticleContent cnx logger hashText
+      case maybeContent of
+        Just content -> pure $ ev {event = EventArticle article {_article = content}}
+        Nothing -> pure ev
+    UpdateArticle {_article = hashText} | T.length hashText == 64 -> do
+      maybeContent <- retrieveArticleContent cnx logger hashText
+      case maybeContent of
+        Just content -> pure $ ev {event = EventArticle article {_article = content}}
+        Nothing -> pure ev
+    _ -> pure ev
+restoreArticleContent _ _ ev = pure ev
+
 writeEventSQL ::
   (HasCallStack) =>
   Event ->
@@ -515,7 +537,12 @@ writeEventSQL e = do
   withConnection $ \cnx -> do
     -- Handle EventArticle specially: store content and replace with hash
     e' <- case e of
-      EventArticle articleOp@PublishArticle {_article = content, _articleTimestamp = timestamp}
+      EventArticle articleOp@(PublishArticle {_article = content, _articleTimestamp = timestamp})
+        | not (T.null content) -> do
+            let h = computeArticleHash content
+            storeArticleContent cnx logger h timestamp content
+            pure $ EventArticle articleOp {_article = toText h}
+      EventArticle articleOp@(UpdateArticle {_article = content, _articleTimestamp = timestamp})
         | not (T.null content) -> do
             let h = computeArticleHash content
             storeArticleContent cnx logger h timestamp content
@@ -568,7 +595,7 @@ readFlowSQL UserProfile {userName} ref = do
     let q = "select id, timestamp, version, flow_type, flow_data from event_log where flow_type != '__TRACE__' and user = ? order by timestamp desc limit 1 offset ?"
     res <- query cnx logger q (userName, ref)
     case res of
-      [flow] -> pure $ Just flow
+      [flow] -> Just <$> restoreArticleContent cnx logger flow
       [] -> pure Nothing
       _ -> error "invalid query results"
 
@@ -584,7 +611,8 @@ readEventsSQL UserProfile {userName} Page {pageNumber, pageSize} = do
         count = "select count(*) from event_log where user = ?"
         limit = SQLInteger $ fromIntegral pageSize
         offset = SQLInteger $ fromIntegral $ (pageNumber - 1) * pageSize
-    resultEvents <- query cnx logger q (userName, limit, offset)
+    events <- query cnx logger q (userName, limit, offset)
+    resultEvents <- mapM (restoreArticleContent cnx logger) events
     [[numEvents]] <- query cnx logger count (Only userName)
     let totalEvents = fromInteger numEvents
         eventsCount = fromIntegral $ length resultEvents
@@ -596,7 +624,8 @@ readEventsSQL UserProfile {userName} NoPagination = do
   withConnection $ \cnx -> do
     let q = "select id, timestamp, version, flow_type, flow_data from event_log where user = ? order by timestamp asc"
         count = "select count(*) from event_log where user = ?"
-    resultEvents <- query cnx logger q (Only userName)
+    events <- query cnx logger q (Only userName)
+    resultEvents <- mapM (restoreArticleContent cnx logger) events
     [[numEvents]] <- query cnx logger count (Only userName)
     let totalEvents = fromInteger numEvents
         eventsCount = totalEvents

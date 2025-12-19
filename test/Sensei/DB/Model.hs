@@ -93,9 +93,9 @@ shrinkAction (SomeAction (WriteEvent e)) = SomeAction . WriteEvent <$> shrinkEve
 shrinkAction (SomeAction (ReadEvents p)) = SomeAction . ReadEvents <$> shrink p
 shrinkAction (SomeAction (ReadFlow r)) = SomeAction . ReadFlow <$> shrink r
 shrinkAction (SomeAction (ReadNotes _t)) = [] -- SomeAction . ReadNotes <$> shrink t
-shrinkAction (SomeAction (ReadViews)) = []
+shrinkAction (SomeAction ReadViews) = []
 shrinkAction (SomeAction ReadGoals) = []
-shrinkAction (SomeAction (ReadCommands)) = []
+shrinkAction (SomeAction ReadCommands) = []
 shrinkAction (SomeAction (NewUser p)) = SomeAction . NewUser <$> shrink p
 shrinkAction (SomeAction (SwitchUser _)) = []
 
@@ -164,16 +164,14 @@ interpret (ReadNotes rge) = do
   pure $ Just $ foldr (notesViewBuilder userName userTimezone userProjects) [] fs
 interpret ReadViews = do
   UserProfile{userName, userTimezone, userEndOfDay, userProjects} <- gets currentProfile
-  fs <- getEvents
-  pure $ Just $ Prelude.reverse $ foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] fs
+  Just . Prelude.reverse . foldl (flip $ flowViewBuilder userName userTimezone userEndOfDay userProjects) [] <$> getEvents
 interpret ReadGoals = do
   UserProfile{userName} <- gets currentProfile
   fs <- Seq.filter (liftA2 (&&) isGoal ((== userName) . eventUser) . event) <$> getEvents
   pure $ Just $ mapMaybe (getGoal . event) $ toList fs
 interpret ReadCommands = do
   UserProfile{userTimezone, userProjects} <- gets currentProfile
-  ts <- getEvents
-  pure $ Just $ foldr (commandViewBuilder userTimezone userProjects) [] ts
+  Just . foldr (commandViewBuilder userTimezone userProjects) [] <$> getEvents
 interpret (NewUser u) = do
   pfs <- gets profiles
   case Map.lookup (userName u) pfs of
@@ -232,13 +230,13 @@ readProfileOrDefault user = fmap (fromRight defaultProfile) (try @_ @(DBError db
 
 runActions :: DB db => Text -> Actions -> db (Seq String)
 runActions user (Actions actions) =
-  sequence $ runAction <$> actions
+  mapM runAction actions
  where
   runAction (SomeAction act) = show <$> runDB user act
 
 validateActions :: forall db. DB db => Seq SomeAction -> StateT Model db (Seq (Maybe String))
 validateActions acts = do
-  sequence $ runAndCheck <$> acts
+  mapM runAndCheck acts
 
 runAndCheck :: forall db. DB db => SomeAction -> StateT Model db (Maybe String)
 runAndCheck (SomeAction act) = do
