@@ -21,13 +21,14 @@ import qualified Data.Text as Text
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Word (Word64)
 import GHC.Generics (Generic)
+import Servant (ToHttpApiData)
 import System.Random (randomRIO)
 
 -- | Timestamp Identifier as specified by AT Protocol.
 -- TIDs are 64-bit values encoded as 13-character base32-sortable strings.
 newtype TID = TID {unTID :: Text}
   deriving stock (Eq, Ord, Show, Generic)
-  deriving newtype (IsString, ToJSON, FromJSON)
+  deriving newtype (IsString, ToJSON, FromJSON, ToHttpApiData)
 
 -- | Create a TID from a timestamp and a clock identifier.
 -- The TID format is:

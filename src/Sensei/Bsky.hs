@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
@@ -34,7 +35,7 @@ import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
-import Sensei.Article (Article, article, articleTimestamp)
+import Sensei.Article (Article (PublishArticle, UpdateArticle, DeleteArticle), article, articleTimestamp, articleRkey)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
@@ -123,6 +124,14 @@ type PutRecord record =
     :> ReqBody '[JSON] (BskyRecord record)
     :> Post '[JSON] Record
 
+type DeleteRecord record =
+  "xrpc"
+    :> "com.atproto.repo.deleteRecord"
+    :> QueryParam' '[Required, Strict] "repo" BskyHandle
+    :> QueryParam' '[Required, Strict] "collection" (BskyType (Lexicon record))
+    :> QueryParam' '[Required, Strict] "rkey" (Key record)
+    :> Delete '[JSON] ()
+
 type ListRecords record =
   "xrpc"
     :> "com.atproto.repo.listRecords"
@@ -153,6 +162,15 @@ bskyPutRecord ::
   ClientMonad BskyClientConfig Record
 bskyPutRecord = clientIn (Proxy @(PutRecord record)) Proxy
 
+bskyDeleteRecord ::
+  forall record.
+  (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record)) =>
+  BskyHandle ->
+  BskyType (Lexicon record) ->
+  Key record ->
+  ClientMonad BskyClientConfig ()
+bskyDeleteRecord = clientIn (Proxy @(DeleteRecord record)) Proxy
+
 bskyListRecords ::
   forall record.
   (FromJSON record, KnownSymbol (Lexicon record)) =>
@@ -171,6 +189,10 @@ data BskyLog
   | FailedToDecodeToken {token :: !SerializedToken}
   | ArticlePublished {title :: !Text, uri :: !Text, cid :: !Text}
   | ArticlePublishFailed {title :: !Text, error :: !Text}
+  | ArticleUpdated {title :: !Text, uri :: !Text, cid :: !Text}
+  | ArticleUpdateFailed {title :: !Text, error :: !Text}
+  | ArticleDeleted {uri :: !Text}
+  | ArticleDeleteFailed {uri :: !Text, error :: !Text}
   | MarkdownParseError {error :: !Text}
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
@@ -227,6 +249,15 @@ data BskyNet m = BskyNet
       BskyClientConfig ->
       BskyRecord record ->
       m Record,
+    doDeleteRecord ::
+      forall record.
+      (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record)) =>
+      Proxy record ->
+      BskyClientConfig ->
+      BskyHandle ->
+      BskyType (Lexicon record) ->
+      Key record ->
+      m (),
     doLogin :: BskyClientConfig -> BskyLogin -> m BskySession,
     doRefresh :: BskyClientConfig -> m BskySession,
     doListRecords ::
@@ -243,10 +274,20 @@ data BskyNet m = BskyNet
   }
 
 defaultBskyNet :: BskyNet IO
-defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doLogin, doRefresh, doListRecords, currentTime}
+defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doDeleteRecord, doLogin, doRefresh, doListRecords, currentTime}
   where
     doCreateRecord config = send config . bskyCreateRecord
     doPutRecord config = send config . bskyPutRecord
+    doDeleteRecord ::
+      forall record.
+      (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record)) =>
+      Proxy record ->
+      BskyClientConfig ->
+      BskyHandle ->
+      BskyType (Lexicon record) ->
+      Key record ->
+      IO ()
+    doDeleteRecord _ config repo collection rkey = send config $ bskyDeleteRecord @record repo collection rkey
     doLogin config = send config . bskyLogin
     doRefresh config = send config bskyRefresh
     doListRecords config repo collection limit cursor isReverse =
@@ -378,6 +419,68 @@ publishArticle doPublish backend session articleOp = do
         `catch` \(e :: SomeException) ->
           pure $ Left $ "Failed to publish article: " <> show e
 
+updateArticle ::
+  forall m.
+  (MonadIO m, MonadCatch m) =>
+  -- | Function to update the record (typically doPutRecord)
+  (BskyClientConfig -> BskyRecord Document -> m Record) ->
+  -- | Backend configuration
+  BskyBackend ->
+  -- | Authenticated session
+  BskySession ->
+  -- | TID/rkey of the article to update
+  TID ->
+  -- | Article content to update
+  Article ->
+  m (Either String Record)
+updateArticle doPut backend session articleTid articleOp = do
+  let articleContent = articleOp ^. article
+      (metadata, body) = extractMetadata articleContent
+      lookupMeta key = lookup key metadata
+      docTitle = maybe "" Prelude.id (lookupMeta "title")
+
+  -- Convert markdown to LinearDocument
+  linearDocResult <- liftIO $ mkMarkdownDocument body
+
+  case linearDocResult of
+    Left err -> pure $ Left $ "Failed to parse markdown: " <> err
+    Right linearDoc -> do
+      -- Use Article timestamp and format as ISO8601
+      let articleTime = articleOp ^. articleTimestamp
+          iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) articleTime
+
+      -- Extract userDID and publicationId from backend
+      let DID authorDID = userDID backend
+          AtURI pubId = publicationId backend
+
+      -- Build the Document
+      let doc =
+            Document
+              { title = docTitle,
+                description = lookupMeta "description",
+                author = authorDID,
+                pages = [Linear linearDoc],
+                tags = Nothing,
+                publishedAt = Just iso8601Time,
+                postRef = Nothing,
+                publication = Just pubId,
+                theme = Nothing
+              }
+
+      -- Try to update and submit the record
+      ( Right
+          <$> doPut
+            (BskyClientConfig {backend, bskySession = Just session})
+            BskyRecord
+              { record = doc,
+                repo = BskyHandle authorDID,
+                rkey = articleTid,  -- Use provided TID instead of generating new one
+                collection = BskyType
+              }
+        )
+        `catch` \(e :: SomeException) ->
+          pure $ Left $ "Failed to update article: " <> show e
+
 -- | An Event handler that transforms `FlowNote` into `BskyPost`s.
 --
 -- This requires a function to hander `ClientMonad`'s requests.
@@ -387,7 +490,7 @@ bskyEventHandler ::
   LoggerEnv ->
   BskyNet m ->
   m (BackendHandler BskyBackend m)
-bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
+bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRecord} = do
   sessionMap <- liftIO $ newTVarIO emptySessions
   pure $ BackendHandler {handleEvent = handleEvent sessionMap}
   where
@@ -415,7 +518,7 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
             repo = BskyHandle $ identifier credentials
         session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
         postWith backend session repo note
-      EventArticle articleOp -> do
+      EventArticle articleOp@(PublishArticle {}) -> do
         let credentials = login backend
             (metadata, _) = extractMetadata (articleOp ^. article)
             docTitle = maybe "" Prelude.id (lookup "title" metadata)
@@ -435,6 +538,76 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord} = do
                   uri = resultUri,
                   cid = resultCid
                 }
+      EventArticle articleOp@(UpdateArticle {}) -> do
+        let credentials = login backend
+            (metadata, _) = extractMetadata (articleOp ^. article)
+            docTitle = maybe "" Prelude.id (lookup "title" metadata)
+            rkey = articleOp ^. articleRkey
+        session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
+        -- Parse TID from text
+        let tidResult = maybe (Left $ "Invalid TID: " <> rkey) Right (tidFromText rkey)
+        case tidResult of
+          Left err ->
+            logInfo logger $
+              ArticleUpdateFailed
+                { title = docTitle,
+                  error = err
+                }
+          Right articleTid -> do
+            result <- updateArticle doPutRecord backend session articleTid articleOp
+            case result of
+              Left err ->
+                logInfo logger $
+                  ArticleUpdateFailed
+                    { title = docTitle,
+                      error = Text.pack err
+                    }
+              Right Record {uri = resultUri, cid = resultCid} ->
+                logInfo logger $
+                  ArticleUpdated
+                    { title = docTitle,
+                      uri = resultUri,
+                      cid = resultCid
+                    }
+      EventArticle articleOp@(DeleteArticle {}) -> do
+        let credentials = login backend
+            DID authorDID = userDID backend
+            rkey = articleOp ^. articleRkey
+        session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
+        -- Parse TID from text
+        let tidResult = maybe (Left $ "Invalid TID: " <> rkey) Right (tidFromText rkey)
+        case tidResult of
+          Left err ->
+            logInfo logger $
+              ArticleDeleteFailed
+                { uri = rkey,
+                  error = err
+                }
+          Right articleTid -> do
+            result <-
+              ( do
+                  doDeleteRecord
+                    (Proxy @Document)
+                    (BskyClientConfig {backend, bskySession = Just session})
+                    (BskyHandle authorDID)
+                    (BskyType @"pub.leaflet.document")
+                    articleTid
+                  pure (Right ())
+                )
+                `catch` \(e :: SomeException) ->
+                  pure $ Left $ show e
+            case result of
+              Left err ->
+                logInfo logger $
+                  ArticleDeleteFailed
+                    { uri = rkey,
+                      error = Text.pack err
+                    }
+              Right () ->
+                logInfo logger $
+                  ArticleDeleted
+                    { uri = rkey
+                    }
       _ -> pure ()
 
 removeTag :: Text -> Text

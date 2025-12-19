@@ -124,10 +124,19 @@ data CommandOptions = Command {exe :: String, args :: [String]}
 data GoalOptions = GetGraph | UpdateGraph Op
   deriving (Show, Eq)
 
-data ArticleOptions = PublishArticle
-  { articleFile :: FilePath,
-    articleDate :: Maybe UTCTime
-  }
+data ArticleOptions
+  = PublishArticle
+      { articleFile :: FilePath
+      , articleDate :: Maybe UTCTime
+      }
+  | UpdateArticle
+      { updateKey :: Text
+      , updateFile :: FilePath
+      }
+  | DeleteArticle
+      { deleteKey :: Text
+      }
+  | ListArticles
   deriving (Show, Eq)
 
 runOptionsParser ::
@@ -520,8 +529,8 @@ parseDateOrDateTime s =
     <|> -- Fall back to full ISO8601 format
       iso8601ParseM s
 
-articleParser :: Parser ArticleOptions
-articleParser =
+publishArticleParser :: Parser ArticleOptions
+publishArticleParser =
   PublishArticle
     <$> strOption
       ( long "publish"
@@ -538,6 +547,48 @@ articleParser =
               <> help "Publication date (ISO8601 format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)"
           )
       )
+
+updateArticleParser :: Parser ArticleOptions
+updateArticleParser =
+  UpdateArticle
+    <$> (Text.pack <$> strOption
+          ( long "update"
+              <> short 'u'
+              <> metavar "TID"
+              <> help "Update existing article by TID (e.g., '3jzfcijpj2z2a')"
+          ))
+    <*> strOption
+      ( long "file"
+          <> short 'f'
+          <> metavar "FILE"
+          <> help "Path to the updated article content"
+      )
+
+deleteArticleParser :: Parser ArticleOptions
+deleteArticleParser =
+  DeleteArticle
+    <$> (Text.pack <$> strOption
+          ( long "delete"
+              <> short 'D'
+              <> metavar "TID"
+              <> help "Delete article by TID (e.g., '3jzfcijpj2z2a')"
+          ))
+
+listArticlesParser :: Parser ArticleOptions
+listArticlesParser =
+  flag'
+    ListArticles
+    ( long "list"
+        <> short 'l'
+        <> help "List all published articles"
+    )
+
+articleParser :: Parser ArticleOptions
+articleParser =
+  publishArticleParser
+    <|> updateArticleParser
+    <|> deleteArticleParser
+    <|> listArticlesParser
 
 parseSenseiOptions ::
   Maybe [FlowType] -> IO Options

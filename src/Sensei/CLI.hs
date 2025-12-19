@@ -202,6 +202,16 @@ ep config (ArticleOptions (PublishArticle filePath customDate)) userName timesta
   article <- Text.readFile filePath
   let articleTimestamp = fromMaybe timestamp customDate
   send config $ postEventC (UserName userName) [EventArticle $ Article.PublishArticle userName articleTimestamp currentDir article]
+ep config (ArticleOptions (UpdateArticle rkey filePath)) userName timestamp currentDir = do
+  content <- Text.readFile filePath
+  send config $ postEventC (UserName userName) [EventArticle $ Article.UpdateArticle userName timestamp currentDir rkey content]
+ep config (ArticleOptions (DeleteArticle rkey)) userName timestamp currentDir =
+  send config $ postEventC (UserName userName) [EventArticle $ Article.DeleteArticle userName timestamp currentDir rkey]
+ep _config (ArticleOptions ListArticles) _userName _ _ = do
+  -- TODO: Query Bluesky API directly (no event)
+  -- Need to refactor to access BskyBackend configuration
+  putStrLn "ListArticles not yet implemented"
+  pure ()
 
 println :: BS.ByteString -> IO ()
 println bs =

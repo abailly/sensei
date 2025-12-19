@@ -21,7 +21,7 @@ import Sensei.API (
   shift,
  )
 import Sensei.CLI (
-  ArticleOptions (PublishArticle),
+  ArticleOptions (PublishArticle, UpdateArticle, DeleteArticle, ListArticles),
   AuthOptions (
     CreateKeys,
     EncryptPassword,
@@ -183,3 +183,35 @@ spec = describe "Command-Line Interface" $ do
         let expectedDateTime = Just $ UTCTime (fromGregorian 2025 12 18) (secondsToDiffTime (23 * 3600 + 59 * 60 + 59))
         runOptionsParser Nothing ["article", "-a", "article.md", "--date", "2025-12-18T23:59:59Z"]
           `shouldBe` Right (ArticleOptions $ PublishArticle "article.md" expectedDateTime)
+
+      it "parses 'article --update <tid> --file <file>' as update article option with long form" $ do
+        runOptionsParser Nothing ["article", "--update", "3jzfcijpj2z2a", "--file", "updated.md"]
+          `shouldBe` Right (ArticleOptions $ UpdateArticle "3jzfcijpj2z2a" "updated.md")
+
+      it "parses 'article -u <tid> -f <file>' as update article option with short form" $ do
+        runOptionsParser Nothing ["article", "-u", "abc123def456", "-f", "article.md"]
+          `shouldBe` Right (ArticleOptions $ UpdateArticle "abc123def456" "article.md")
+
+      it "parses 'article --delete <tid>' as delete article option with long form" $ do
+        runOptionsParser Nothing ["article", "--delete", "3jzfcijpj2z2a"]
+          `shouldBe` Right (ArticleOptions $ DeleteArticle "3jzfcijpj2z2a")
+
+      it "parses 'article -D <tid>' as delete article option with short form" $ do
+        runOptionsParser Nothing ["article", "-D", "xyz789abc123"]
+          `shouldBe` Right (ArticleOptions $ DeleteArticle "xyz789abc123")
+
+      it "parses 'article --list' as list articles option with long form" $ do
+        runOptionsParser Nothing ["article", "--list"]
+          `shouldBe` Right (ArticleOptions ListArticles)
+
+      it "parses 'article -l' as list articles option with short form" $ do
+        runOptionsParser Nothing ["article", "-l"]
+          `shouldBe` Right (ArticleOptions ListArticles)
+
+      it "rejects 'article --publish file.md --delete key' as mutually exclusive" $ do
+        runOptionsParser Nothing ["article", "--publish", "file.md", "--delete", "key"]
+          `shouldSatisfy` isLeft
+
+      it "rejects 'article --update key --list' as mutually exclusive" $ do
+        runOptionsParser Nothing ["article", "--update", "key", "-f", "file.md", "--list"]
+          `shouldSatisfy` isLeft

@@ -156,7 +156,7 @@ user' fu (EventFlow f@Flow{_flowUser}) = (\u -> EventFlow (set flowUser u f)) <$
 user' fu (EventTrace t@Trace{_traceUser}) = (\u -> EventTrace (set traceUser u t)) <$> fu _traceUser
 user' fu (EventNote n@NoteFlow{_noteUser}) = (\u -> EventNote (set noteUser u n)) <$> fu _noteUser
 user' fu (EventGoal n@GoalOp{_goalUser}) = (\u -> EventGoal (set goalUser u n)) <$> fu _goalUser
-user' fu (EventArticle a@PublishArticle{_articleUser}) = (\u -> EventArticle (set articleUser u a)) <$> fu _articleUser
+user' fu (EventArticle a) = (\u -> EventArticle (set articleUser u a)) <$> fu (_articleUser a)
 
 isTrace :: Event -> Bool
 isTrace EventTrace{} = True
