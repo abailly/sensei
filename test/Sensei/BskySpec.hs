@@ -195,7 +195,7 @@ class IsMatcher m where
 
 instance forall a. (FromJSON (BskyRecord a)) => IsMatcher (a -> Bool) where
   matches bposts predicate =
-    if predicate (record $ fromJust $ decode @(BskyRecord a) $ head bposts)
+    if predicate (fromJust $ record $ fromJust $ decode @(BskyRecord a) $ head bposts)
       then Right ()
       else Left $ "Posts " <> show bposts <> " do not match predicate"
 

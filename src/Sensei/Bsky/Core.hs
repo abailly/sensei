@@ -4,9 +4,10 @@
 
 module Sensei.Bsky.Core where
 
-import Data.Aeson (FromJSON, ToJSON (..), Value, object, withObject, withText, (.:), (.=))
+import Data.Aeson (FromJSON, ToJSON (..), Value, object, withObject, withText, (.:), (.:?), (.=))
 import Data.Aeson.Types (FromJSON (..), Parser)
 import Data.Kind (Type)
+import Data.Maybe (catMaybes)
 import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -107,7 +108,7 @@ data BskyRecord record = BskyRecord
   { repo :: BskyHandle,
     collection :: BskyType (Lexicon record),
     rkey :: Key record,
-    record :: record
+    record :: Maybe record
   }
   deriving stock (Generic)
 
@@ -116,13 +117,14 @@ deriving instance (Show record, KnownSymbol (Lexicon record), Show (Key record))
 deriving instance (Eq record, Eq (Key record)) => Eq (BskyRecord record)
 
 instance (ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) => ToJSON (BskyRecord record) where
-  toJSON (BskyRecord repo coll key rec) =
-    object
-      [ "repo" .= repo,
-        "collection" .= coll,
-        "rkey" .= key,
-        "record" .= rec
-      ]
+  toJSON (BskyRecord repo' coll key rec) =
+    object $
+      catMaybes
+        [ Just ("repo" .= repo'),
+          Just ("collection" .= coll),
+          Just ("rkey" .= key),
+          ("record" .=) <$> rec
+        ]
 
 instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) => FromJSON (BskyRecord record) where
   parseJSON = withObject "BskyRecord" $ \o ->
@@ -130,7 +132,7 @@ instance (FromJSON record, FromJSON (Key record), KnownSymbol (Lexicon record)) 
       <$> o .: "repo"
       <*> o .: "collection"
       <*> o .: "rkey"
-      <*> o .: "record"
+      <*> o .:? "record"
 
 -- | A record with its metadata (uri, cid, value)
 data RecordWithMetadata record = RecordWithMetadata

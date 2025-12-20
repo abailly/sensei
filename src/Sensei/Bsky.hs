@@ -394,7 +394,7 @@ publishArticle doPublish backend session articleOp = do
           <$> doPublish
             (BskyClientConfig {backend, bskySession = Just session})
             BskyRecord
-              { record = doc,
+              { record = Just doc,
                 repo = BskyHandle authorDID,
                 rkey = docTid,
                 collection = BskyType
@@ -456,7 +456,7 @@ updateArticle doPut backend session articleTid articleOp = do
           <$> doPut
             (BskyClientConfig {backend, bskySession = Just session})
             BskyRecord
-              { record = doc,
+              { record = Just doc,
                 repo = BskyHandle authorDID,
                 rkey = articleTid, -- Use provided TID instead of generating new one
                 collection = BskyType
@@ -485,10 +485,11 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
           doCreateRecord (BskyClientConfig {backend, bskySession = Just session}) $
             BskyRecord
               { record =
-                  BskyPost
-                    { text = removeTag (note ^. noteContent),
-                      createdAt = note ^. noteTimestamp
-                    },
+                  Just
+                    BskyPost
+                      { text = removeTag (note ^. noteContent),
+                        createdAt = note ^. noteTimestamp
+                      },
                 -- TODO: test me!
                 repo,
                 rkey = postTid,
@@ -573,7 +574,7 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
                     { repo = BskyHandle authorDID,
                       collection = BskyType,
                       rkey = articleTid,
-                      record = undefined -- FIXME
+                      record = Nothing
                     }
                 config = BskyClientConfig {backend, bskySession = Just session}
             result <-
