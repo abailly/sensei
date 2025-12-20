@@ -65,6 +65,10 @@ $  ep -U
 }
 ```
 
+## Backends
+
+TODO: explain how to configure backend(s)
+
 # Migration (prior to v 0.13.0)
 
 Before v 0.13.0, the data were handle into a plain json formated text file.
