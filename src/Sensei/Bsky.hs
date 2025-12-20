@@ -21,13 +21,12 @@ import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import Data.Char (ord)
-import Data.Functor (void)
+import Data.Functor (void, ($>))
 import qualified Data.Map as Map
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.String (IsString (fromString))
 import Data.Text (Text, isInfixOf, unpack)
 import qualified Data.Text as Text
-import Preface.Utils (decodeUtf8')
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import Data.Time.Format (defaultTimeLocale, formatTime, iso8601DateFormat)
@@ -35,7 +34,8 @@ import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
-import Sensei.Article (Article (PublishArticle, UpdateArticle, DeleteArticle), article, articleTimestamp, articleRkey)
+import Preface.Utils (decodeUtf8')
+import Sensei.Article (Article (DeleteArticle, PublishArticle, UpdateArticle), article, articleRkey, articleTimestamp)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
@@ -127,10 +127,8 @@ type PutRecord record =
 type DeleteRecord record =
   "xrpc"
     :> "com.atproto.repo.deleteRecord"
-    :> QueryParam' '[Required, Strict] "repo" BskyHandle
-    :> QueryParam' '[Required, Strict] "collection" (BskyType (Lexicon record))
-    :> QueryParam' '[Required, Strict] "rkey" (Key record)
-    :> Delete '[JSON] ()
+    :> ReqBody '[JSON] (BskyRecord record)
+    :> Post '[JSON] ()
 
 type ListRecords record =
   "xrpc"
@@ -164,10 +162,8 @@ bskyPutRecord = clientIn (Proxy @(PutRecord record)) Proxy
 
 bskyDeleteRecord ::
   forall record.
-  (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record)) =>
-  BskyHandle ->
-  BskyType (Lexicon record) ->
-  Key record ->
+  (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record), ToJSON record) =>
+  BskyRecord record ->
   ClientMonad BskyClientConfig ()
 bskyDeleteRecord = clientIn (Proxy @(DeleteRecord record)) Proxy
 
@@ -251,12 +247,9 @@ data BskyNet m = BskyNet
       m Record,
     doDeleteRecord ::
       forall record.
-      (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record)) =>
-      Proxy record ->
+      (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record), ToJSON record) =>
       BskyClientConfig ->
-      BskyHandle ->
-      BskyType (Lexicon record) ->
-      Key record ->
+      BskyRecord record ->
       m (),
     doLogin :: BskyClientConfig -> BskyLogin -> m BskySession,
     doRefresh :: BskyClientConfig -> m BskySession,
@@ -278,16 +271,7 @@ defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doDeleteRecord, doLogin, 
   where
     doCreateRecord config = send config . bskyCreateRecord
     doPutRecord config = send config . bskyPutRecord
-    doDeleteRecord ::
-      forall record.
-      (ToJSON (Key record), ToHttpApiData (Key record), KnownSymbol (Lexicon record)) =>
-      Proxy record ->
-      BskyClientConfig ->
-      BskyHandle ->
-      BskyType (Lexicon record) ->
-      Key record ->
-      IO ()
-    doDeleteRecord _ config repo collection rkey = send config $ bskyDeleteRecord @record repo collection rkey
+    doDeleteRecord config = send config . bskyDeleteRecord
     doLogin config = send config . bskyLogin
     doRefresh config = send config bskyRefresh
     doListRecords config repo collection limit cursor isReverse =
@@ -474,7 +458,7 @@ updateArticle doPut backend session articleTid articleOp = do
             BskyRecord
               { record = doc,
                 repo = BskyHandle authorDID,
-                rkey = articleTid,  -- Use provided TID instead of generating new one
+                rkey = articleTid, -- Use provided TID instead of generating new one
                 collection = BskyType
               }
         )
@@ -541,7 +525,7 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
       EventArticle articleOp@(UpdateArticle {}) -> do
         let credentials = login backend
             (metadata, _) = extractMetadata (articleOp ^. article)
-            docTitle = maybe "" Prelude.id (lookup "title" metadata)
+            docTitle = fromMaybe "" (lookup "title" metadata)
             rkey = articleOp ^. articleRkey
         session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
         -- Parse TID from text
@@ -584,16 +568,16 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
                   error = err
                 }
           Right articleTid -> do
+            let record :: BskyRecord Document =
+                  BskyRecord
+                    { repo = BskyHandle authorDID,
+                      collection = BskyType,
+                      rkey = articleTid,
+                      record = undefined
+                    }
+                config = BskyClientConfig {backend, bskySession = Just session}
             result <-
-              ( do
-                  doDeleteRecord
-                    (Proxy @Document)
-                    (BskyClientConfig {backend, bskySession = Just session})
-                    (BskyHandle authorDID)
-                    (BskyType @"pub.leaflet.document")
-                    articleTid
-                  pure (Right ())
-                )
+              (doDeleteRecord config record $> Right ())
                 `catch` \(e :: SomeException) ->
                   pure $ Left $ show e
             case result of

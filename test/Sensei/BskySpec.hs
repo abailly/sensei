@@ -254,7 +254,7 @@ newBskyMockNet = do
           { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login),
             doCreateRecord = \_ p -> modifyIORef' createPostCalls (mimeRender (Proxy @JSON) p :) >> pure (Record "foo" "bar"),
             doPutRecord = undefined,
-            doDeleteRecord = \_ _ _ _ _ -> pure (),
+            doDeleteRecord = \_ _ -> pure (),
             doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession,
             currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t,
             doListRecords = \_ _ _ _ _ _ -> pure (ListRecordsResponse Nothing [])
