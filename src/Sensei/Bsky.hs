@@ -148,14 +148,14 @@ bskyLogin :<|> bskyRefresh = clientIn (Proxy @BskyLoginAPI) Proxy
 
 bskyCreateRecord ::
   forall record.
-  (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+  (Sendable record) =>
   BskyRecord record ->
   ClientMonad BskyClientConfig Record
 bskyCreateRecord = clientIn (Proxy @(CreateRecord record)) Proxy
 
 bskyPutRecord ::
   forall record.
-  (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+  (Sendable record) =>
   BskyRecord record ->
   ClientMonad BskyClientConfig Record
 bskyPutRecord = clientIn (Proxy @(PutRecord record)) Proxy
@@ -235,13 +235,13 @@ decodeAuthToken (SerializedToken bytes) =
 data BskyNet m = BskyNet
   { doCreateRecord ::
       forall record.
-      (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+      (Sendable record) =>
       BskyClientConfig ->
       BskyRecord record ->
       m Record,
     doPutRecord ::
       forall record.
-      (MimeRender JSON record, ToJSON record, ToJSON (Key record), KnownSymbol (Lexicon record)) =>
+      (Sendable record) =>
       BskyClientConfig ->
       BskyRecord record ->
       m Record,
@@ -573,7 +573,7 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
                     { repo = BskyHandle authorDID,
                       collection = BskyType,
                       rkey = articleTid,
-                      record = undefined
+                      record = undefined -- FIXME
                     }
                 config = BskyClientConfig {backend, bskySession = Just session}
             result <-

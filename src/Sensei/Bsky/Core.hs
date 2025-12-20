@@ -1,3 +1,5 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Sensei.Bsky.Core where
@@ -156,3 +158,10 @@ instance (ToJSON record) => ToJSON (RecordWithMetadata record) where
         "cid" .= cid',
         "value" .= value'
       ]
+
+type Sendable record =
+  ( MimeRender JSON record,
+    ToJSON record,
+    ToJSON (Key record),
+    KnownSymbol (Lexicon record)
+  )
