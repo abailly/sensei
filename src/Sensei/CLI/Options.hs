@@ -132,6 +132,7 @@ data ArticleOptions
   | UpdateArticle
       { updateKey :: Text
       , updateFile :: FilePath
+      , updateDate :: Maybe UTCTime
       }
   | DeleteArticle
       { deleteKey :: Text
@@ -562,6 +563,15 @@ updateArticleParser =
           <> short 'f'
           <> metavar "FILE"
           <> help "Path to the updated article content"
+      )
+    <*> optional
+      ( option
+          (maybeReader parseDateOrDateTime)
+          ( long "date"
+              <> short 'd'
+              <> metavar "ISO8601_DATE"
+              <> help "Update date (ISO8601 format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)"
+          )
       )
 
 deleteArticleParser :: Parser ArticleOptions

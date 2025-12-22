@@ -202,9 +202,10 @@ ep config (ArticleOptions (PublishArticle filePath customDate)) userName timesta
   article <- Text.readFile filePath
   let articleTimestamp = fromMaybe timestamp customDate
   send config $ postEventC (UserName userName) [EventArticle $ Article.PublishArticle userName articleTimestamp currentDir article]
-ep config (ArticleOptions (UpdateArticle rkey filePath)) userName timestamp currentDir = do
+ep config (ArticleOptions (UpdateArticle rkey filePath customDate)) userName timestamp currentDir = do
   content <- Text.readFile filePath
-  send config $ postEventC (UserName userName) [EventArticle $ Article.UpdateArticle userName timestamp currentDir rkey content]
+  let articleTimestamp = fromMaybe timestamp customDate
+  send config $ postEventC (UserName userName) [EventArticle $ Article.UpdateArticle userName articleTimestamp currentDir rkey content]
 ep config (ArticleOptions (DeleteArticle rkey)) userName timestamp currentDir =
   send config $ postEventC (UserName userName) [EventArticle $ Article.DeleteArticle userName timestamp currentDir rkey]
 ep _config (ArticleOptions ListArticles) _userName _ _ = do

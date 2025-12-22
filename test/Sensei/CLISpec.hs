@@ -186,11 +186,26 @@ spec = describe "Command-Line Interface" $ do
 
       it "parses 'article --update <tid> --file <file>' as update article option with long form" $ do
         runOptionsParser Nothing ["article", "--update", "3jzfcijpj2z2a", "--file", "updated.md"]
-          `shouldBe` Right (ArticleOptions $ UpdateArticle "3jzfcijpj2z2a" "updated.md")
+          `shouldBe` Right (ArticleOptions $ UpdateArticle "3jzfcijpj2z2a" "updated.md" Nothing)
 
       it "parses 'article -u <tid> -f <file>' as update article option with short form" $ do
         runOptionsParser Nothing ["article", "-u", "abc123def456", "-f", "article.md"]
-          `shouldBe` Right (ArticleOptions $ UpdateArticle "abc123def456" "article.md")
+          `shouldBe` Right (ArticleOptions $ UpdateArticle "abc123def456" "article.md" Nothing)
+
+      it "parses 'article -u <tid> -f <file> --date <date>' as update with date (midnight UTC)" $ do
+        let expectedDate = Just $ UTCTime (fromGregorian 2025 12 18) 0
+        runOptionsParser Nothing ["article", "-u", "abc123", "-f", "article.md", "--date", "2025-12-18"]
+          `shouldBe` Right (ArticleOptions $ UpdateArticle "abc123" "article.md" expectedDate)
+
+      it "parses 'article --update <tid> -f <file> -d <datetime>' as update with date and time" $ do
+        let expectedDateTime = Just $ UTCTime (fromGregorian 2025 12 18) (secondsToDiffTime (15 * 3600 + 30 * 60))
+        runOptionsParser Nothing ["article", "--update", "xyz789", "-f", "article.md", "-d", "2025-12-18T15:30:00Z"]
+          `shouldBe` Right (ArticleOptions $ UpdateArticle "xyz789" "article.md" expectedDateTime)
+
+      it "parses 'article -u <tid> -f <file> --date <fulltime>' as update with full timestamp" $ do
+        let expectedDateTime = Just $ UTCTime (fromGregorian 2025 12 18) (secondsToDiffTime (23 * 3600 + 59 * 60 + 59))
+        runOptionsParser Nothing ["article", "-u", "tid123", "-f", "article.md", "--date", "2025-12-18T23:59:59Z"]
+          `shouldBe` Right (ArticleOptions $ UpdateArticle "tid123" "article.md" expectedDateTime)
 
       it "parses 'article --delete <tid>' as delete article option with long form" $ do
         runOptionsParser Nothing ["article", "--delete", "3jzfcijpj2z2a"]
