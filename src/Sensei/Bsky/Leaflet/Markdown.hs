@@ -27,6 +27,7 @@ import qualified Data.Text as Text
 import Sensei.Bsky.Leaflet
   ( Block (Block),
     BlockVariant (..),
+    Blockquote (..),
     ByteSlice (..),
     CodeBlock' (..),
     Facet (..),
@@ -141,7 +142,9 @@ instance IsBlock [Inline] [BlockVariant] where
     where
       (facets, plaintext) = extractFacets inlines
   thematicBreak = []
-  blockQuote = undefined
+  blockQuote blocks = [BlockquoteBlock Blockquote {plaintext, facets}]
+    where
+      (facets, plaintext) = extractBlockContent blocks
   codeBlock lang plaintext = [CodeBlock CodeBlock' {language = Just lang, plaintext, syntaxHighlightingTheme = Nothing}]
   heading level inlines = [HeaderBlock Header {level, facets, plaintext}]
     where
@@ -152,6 +155,33 @@ instance IsBlock [Inline] [BlockVariant] where
   list (BulletList _) _spacing items =
     [UnorderedListBlock $ UnorderedList {children = concatMap (mapMaybe mkListItem) items}]
   list _ _spacing _items = undefined
+
+-- | Extract plaintext and facets from a list of blocks (for blockquotes)
+-- Concatenates all text from nested blocks with newlines and adjusts facet positions
+extractBlockContent :: [BlockVariant] -> ([Facet], Text)
+extractBlockContent blocks =
+  let (_, facets, plaintext) = foldl extractFromBlock (0, [], "") blocks
+   in (facets, plaintext)
+  where
+    extractFromBlock :: (Int, [Facet], Text) -> BlockVariant -> (Int, [Facet], Text)
+    extractFromBlock (offset, fs, txt) block =
+      let (blockFacets, blockText) = getBlockContent block
+          adjustedFacets = map (adjustFacetOffset offset) blockFacets
+          separator = if Text.null txt then "" else "\n"
+          newText = txt <> separator <> blockText
+          newOffset = offset + Text.length separator + Text.length blockText
+       in (newOffset, fs <> adjustedFacets, newText)
+
+    getBlockContent :: BlockVariant -> ([Facet], Text)
+    getBlockContent (TextBlock RichText {plaintext, facets}) = (facets, plaintext)
+    getBlockContent (HeaderBlock Header {plaintext, facets}) = (facets, plaintext)
+    getBlockContent (CodeBlock CodeBlock' {plaintext}) = ([], plaintext)
+    getBlockContent (BlockquoteBlock Blockquote {plaintext, facets}) = (facets, plaintext)
+    getBlockContent _ = ([], "")
+
+    adjustFacetOffset :: Int -> Facet -> Facet
+    adjustFacetOffset offset facet@Facet {index = ByteSlice {byteStart, byteEnd}} =
+      facet {index = ByteSlice {byteStart = byteStart + offset, byteEnd = byteEnd + offset}}
 
 extractFacets :: [Inline] -> ([Facet], Text)
 extractFacets inlines =

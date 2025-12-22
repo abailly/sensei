@@ -10,6 +10,7 @@ import qualified Data.Text.IO as Text
 import Sensei.Bsky
   ( Block (..),
     BlockVariant (..),
+    Blockquote (..),
     ByteSlice (..),
     Facet (..),
     Feature (..),
@@ -167,3 +168,32 @@ spec = do
                            ]
             other -> error $ "Expected a single rich text block, got: " <> show other
         other -> error $ "Expected a single text block, got: " <> show other
+
+    it "converts simple blockquote to Blockquote block" $ do
+      let markdown = "> This is a simple blockquote."
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = BlockquoteBlock Blockquote {plaintext, facets}} -> do
+              plaintext `shouldBe` "This is a simple blockquote."
+              facets `shouldBe` []
+            other -> error $ "Expected a blockquote block, got: " <> show other
+        other -> error $ "Expected a single block, got: " <> show other
+    it "converts multi-paragraph blockquote" $ do
+      let markdown =
+            Text.unlines
+              [ "> First paragraph of the quote.",
+                ">",
+                "> Second paragraph of the quote."
+              ]
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = BlockquoteBlock Blockquote {plaintext, facets}} -> do
+              plaintext `shouldBe` "First paragraph of the quote.\nSecond paragraph of the quote."
+              facets `shouldBe` []
+            other -> error $ "Expected a blockquote block, got: " <> show other
+        other -> error $ "Expected a single block, got: " <> show other
+

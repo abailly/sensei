@@ -272,6 +272,7 @@ data BlockVariant
 
 instance ToJSON BlockVariant where
   toJSON (TextBlock rt) = toJSON rt
+  toJSON (BlockquoteBlock bq) = toJSON bq
   toJSON (HeaderBlock hdr) = toJSON hdr
   toJSON (CodeBlock code) = toJSON code
   toJSON (UnorderedListBlock list) = toJSON list
@@ -283,6 +284,7 @@ instance FromJSON BlockVariant where
     typ <- v .: "$type" :: Parser Text
     case typ of
       "pub.leaflet.blocks.text" -> TextBlock <$> parseJSON (Object v)
+      "pub.leaflet.blocks.blockquote" -> BlockquoteBlock <$> parseJSON (Object v)
       "pub.leaflet.blocks.image" -> pure $ ImageBlock Image -- TODO
       "pub.leaflet.blocks.header" -> HeaderBlock <$> parseJSON (Object v)
       "pub.leaflet.blocks.code" -> CodeBlock <$> parseJSON (Object v)
@@ -356,8 +358,25 @@ instance FromJSON RichText where
 -- | Blockquote block
 -- Lexicon: [pub.leaflet.blocks.blockquote](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/blockquote.json)
 data Blockquote = Blockquote
+  { plaintext :: Text,
+    facets :: [Facet]
+  }
   deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+
+instance ToJSON Blockquote where
+  toJSON Blockquote {plaintext, facets} =
+    object
+      [ "$type" .= BskyType @(Lexicon Blockquote),
+        "plaintext" .= plaintext,
+        "facets" .= facets
+      ]
+
+instance FromJSON Blockquote where
+  parseJSON = withObject "Blockquote" $ \v -> do
+    _ <- v .: "$type" :: Parser Text
+    Blockquote
+      <$> v .: "plaintext"
+      <*> (v .:? "facets" <&> fromMaybe [])
 
 -- | Header block
 -- Lexicon: [pub.leaflet.blocks.header](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/header.json)
