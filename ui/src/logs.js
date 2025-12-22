@@ -35,11 +35,44 @@ function formatFlowEntry(entry) {
   </tr>;
 }
 
+function formatArticleEntry(entry) {
+  switch(entry.event.operation) {
+    case 'PublishArticle':
+      return <tr class='log-entry entry-note'>
+        <td>{entry.index}</td>
+        <td>{entry.event.articleTimestamp}</td>
+        <td>Publish Article</td>
+        <td>{entry.event.articleDir}</td>
+        <td>{entry.event.article.substring(0, 100)}...</td>
+        </tr>;
+    case 'UpdateArticle':
+      return <tr class='log-entry entry-note'>
+        <td>{entry.index}</td>
+        <td>{entry.event.articleTimestamp}</td>
+        <td>Update Article ({entry.event.articleRkey})</td>
+        <td>{entry.event.articleDir}</td>
+        <td>{entry.event.article.substring(0, 100)}...</td>
+        </tr>;
+    case 'DeleteArticle':
+      return <tr class='log-entry entry-note'>
+        <td>{entry.index}</td>
+        <td>{entry.event.articleTimestamp}</td>
+        <td>Delete Article ({entry.event.articleRkey})</td>
+        <td>{entry.event.articleDir}</td>
+        <td></td>
+      </tr>;
+    default:
+     throw new Error(`Unknown article operation: ${entry.event.operation}`);
+  }
+}
+
+
 function formatLogEntry(entry) {
   switch (entry.event.tag) {
     case 'Trace': return formatTraceEntry(entry);
     case 'Note': return formatNoteEntry(entry);
     case 'Flow': return formatFlowEntry(entry);
+    case 'Article': return formatArticleEntry(entry);
     default: return '';
   };
 }
