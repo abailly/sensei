@@ -22,7 +22,7 @@ import Sensei.Bsky.Leaflet (Document, Publication, publication)
 import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
 import Sensei.Generators ()
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy, pendingWith)
+import Test.Hspec (Spec, describe, it, pendingWith, shouldBe, shouldSatisfy)
 
 spec :: Spec
 spec = do
@@ -109,6 +109,22 @@ spec = do
             other -> error $ "Expected a single rich text block, got: " <> show other
         other -> error $ "Expected a single text block, got: " <> show other
 
+    it "correctly assign facet for inline formatting annotations on multiline paragraphs" $ do
+      let markdown = "In the beginning, there was *Dungeons & Dragons*,\nthe ancestor of all modern **Role Playing Games**.\nIt was fun `and` exciting."
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "In the beginning, there was Dungeons & Dragons, the ancestor of all modern Role Playing Games. It was fun and exciting."
+              facets
+                `shouldBe` [ Facet {index = ByteSlice 28 46, features = [Italic]},
+                             Facet {index = ByteSlice 75 93, features = [Bold]},
+                             Facet {index = ByteSlice 106 109, features = [Code]}
+                           ]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
     it "correctly assign facet for link annotation" $ do
       let markdown = "This post was triggered by a [tweet from Alberto Brandolini](https://twitter.com/ziobrando/status/737619202538758145) on  [The rise and fall of the Dungeon Master](https://medium.com/@ziobrando/the-rise-and-fall-of-the-dungeon-master-c2d511eed12f#.erkso3y88)"
       result <- mkMarkdownDocument markdown
@@ -180,6 +196,36 @@ spec = do
               facets `shouldBe` []
             other -> error $ "Expected a blockquote block, got: " <> show other
         other -> error $ "Expected a single block, got: " <> show other
+
+    it "converts blockquote with inline formatting" $ do
+      let markdown = "> This is a blockquote with *emphasis* and **bold** text."
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = BlockquoteBlock Blockquote {plaintext, facets}} -> do
+              plaintext `shouldBe` "This is a blockquote with emphasis and bold text."
+              length facets `shouldBe` 2
+              facets
+                `shouldBe` [ Facet {index = ByteSlice 28 36, features = [Italic]},
+                             Facet {index = ByteSlice 41 45, features = [Bold]}
+                           ]
+            other -> error $ "Expected a blockquote block, got: " <> show other
+        other -> error $ "Expected a single block, got: " <> show other
+
+    it "converts blockquote with inline code" $ do
+      let markdown = "> Use the `println` function to print output."
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = BlockquoteBlock Blockquote {plaintext, facets}} -> do
+              plaintext `shouldBe` "Use the println function to print output."
+              facets
+                `shouldBe` [Facet {index = ByteSlice 10 17, features = [Code]}]
+            other -> error $ "Expected a blockquote block, got: " <> show other
+        other -> error $ "Expected a single block, got: " <> show other
+
     it "converts multi-paragraph blockquote" $ do
       let markdown =
             Text.unlines
@@ -197,3 +243,23 @@ spec = do
             other -> error $ "Expected a blockquote block, got: " <> show other
         other -> error $ "Expected a single block, got: " <> show other
 
+    it "converts multi-paragraph blockquote with inline formatting" $ do
+      let markdown =
+            Text.unlines
+              [ "> First line of first paragraph of the quote with *emphasis*.",
+                "> Second line with **bold** of the first paragraph of the quote.",
+                ">",
+                "> Second paragraph of the quote."
+              ]
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = BlockquoteBlock Blockquote {plaintext, facets}} -> do
+              plaintext `shouldBe` "First line of first paragraph of the quote with emphasis. Second line with bold of the first paragraph of the quote.\nSecond paragraph of the quote."
+              facets
+                `shouldBe` [ Facet {index = ByteSlice {byteStart = 50, byteEnd = 58}, features = [Italic]},
+                             Facet {index = ByteSlice {byteStart = 77, byteEnd = 81}, features = [Bold]}
+                           ]
+            other -> error $ "Expected a blockquote block, got: " <> show other
+        other -> error $ "Expected a single block, got: " <> show other

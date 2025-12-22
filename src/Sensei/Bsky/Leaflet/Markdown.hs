@@ -1,5 +1,7 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Sensei.Bsky.Leaflet.Markdown where
 
@@ -7,7 +9,6 @@ import Commonmark
   ( HasAttributes,
     IsBlock (..),
     IsInline (..),
-    ListType (..),
     Rangeable (..),
     SourceRange (..),
     defaultSyntaxSpec,
@@ -111,8 +112,8 @@ instance HasAttributes [Inline] where
   addAttributes _ x = x
 
 instance IsInline [Inline] where
-  lineBreak = []
-  softBreak = []
+  lineBreak = [Plain "\n"]
+  softBreak = [Plain "\n"]
   str = singleton . Plain
   entity = undefined
   escapedChar = undefined
@@ -128,7 +129,7 @@ instance HasMath [Inline] where
   displayMath txt = [Plain txt] -- TODO , Decorated DisplayMath Nothing]
 
 instance Rangeable [BlockVariant] where
-  ranged _ x = x
+  ranged _rge x = x
 
 instance HasAttributes [BlockVariant] where
   addAttributes _ x = x
@@ -152,9 +153,9 @@ instance IsBlock [Inline] [BlockVariant] where
 
   rawBlock = undefined
   referenceLinkDefinition = undefined
-  list (BulletList _) _spacing items =
+  list _ _spacing items =
+    -- NOTE: Leaflet only supports unordered list??
     [UnorderedListBlock $ UnorderedList {children = concatMap (mapMaybe mkListItem) items}]
-  list _ _spacing _items = undefined
 
 -- | Extract plaintext and facets from a list of blocks (for blockquotes)
 -- Concatenates all text from nested blocks with newlines and adjusts facet positions
@@ -185,23 +186,49 @@ extractBlockContent blocks =
 
 extractFacets :: [Inline] -> ([Facet], Text)
 extractFacets inlines =
-  let (_, f, t) = foldl (flip extractFacet) (0, [], "") inlines
-   in (f, t)
+  let Converter {facets, plaintext} = foldl (flip extractFacet) initialConverter inlines
+   in (facets, plaintext)
 
-extractFacet :: Inline -> (Int, [Facet], Text) -> (Int, [Facet], Text)
+-- | Data needed to convert `mmarkdown`'s source/col coordinates for markup into
+-- `Leaflet`'s linear offset for `Facet`s.
+data Converter = Converter
+  { -- | Accumulated markup characters in markdown source for current line
+    markup :: Int,
+    -- | Text length of last line seen
+    lastLine :: Int,
+    -- | Accumulated list of facets
+    facets :: [Facet],
+    -- | Accumulated plain text
+    plaintext :: Text
+  }
+  deriving (Show)
+
+initialConverter :: Converter
+initialConverter =
+  Converter
+    { markup = 0,
+      lastLine = 0,
+      facets = [],
+      plaintext = ""
+    }
+
+extractFacet :: Inline -> Converter -> Converter
 extractFacet = \case
   Decorated f rge -> makeFacet f rge
-  Plain t -> \(offset, f, t') -> (offset, f, t' <> t)
+  Plain "\n" -> \Converter {facets, plaintext} ->
+    Converter {markup = 0, lastLine = Text.length plaintext + 1, facets, plaintext = plaintext <> " "}
+  Plain t -> \Converter {plaintext, ..} -> Converter {plaintext = plaintext <> t, ..}
   where
-    makeFacet f rge (offset, fs, t) =
-      (offset + offset', fs <> [Facet {features = [f], index}], t)
+    makeFacet f rge Converter {markup, lastLine, facets, plaintext} =
+      Converter {markup = markup', lastLine, facets = facets <> [Facet {features = [f], index}], plaintext}
       where
-        offset' = case f of
-          Code -> 2
-          Italic -> 2
-          Bold -> 2
-          Link uri -> 4 + Text.length uri
-          _ -> 0
+        markup' =
+          markup + case f of
+            Code -> 2 -- `...`
+            Italic -> 2 -- `*...*` or `_..._`
+            Bold -> 4 -- `**...**`
+            Link uri -> 4 + Text.length uri -- [...](uri)
+            _ -> 0
         index = maybe (ByteSlice 0 0) toByteSlice rge
         toByteSlice (SourceRange ((beg, end) : _)) =
           -- NOTE: range is a line/column, not sure if 1 or zero based for columns
@@ -210,5 +237,5 @@ extractFacet = \case
           -- But we must also deduce all previously accumulated offsets in the same block
           -- of text, corresponding to previous facet/feature. Those must be accumulated
           -- as we traverse the list of inlines
-          ByteSlice (sourceColumn beg - 1 - offset) (sourceColumn end - 1 - (offset + offset'))
+          ByteSlice (lastLine + sourceColumn beg - 1 - markup) (lastLine + sourceColumn end - 1 - markup')
         toByteSlice (SourceRange []) = ByteSlice 0 0
