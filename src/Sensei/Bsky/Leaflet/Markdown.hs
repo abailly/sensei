@@ -21,10 +21,12 @@ import Commonmark.Extensions.Math (HasMath (..))
 import Commonmark.Types (HasAttributes (..))
 import Control.Monad.Identity (runIdentity)
 import Data.Bifunctor (Bifunctor (..), bimap)
+import qualified Data.ByteString as BS
 import Data.List (singleton)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Data.Text.Encoding (encodeUtf8)
 import Sensei.Bsky.Leaflet
   ( Block (Block),
     BlockVariant (..),
@@ -142,20 +144,38 @@ instance IsBlock [Inline] [BlockVariant] where
   plain inlines = [TextBlock RichText {plaintext, facets}]
     where
       (facets, plaintext) = extractFacets inlines
+
   thematicBreak = []
-  blockQuote blocks = [BlockquoteBlock Blockquote {plaintext, facets}]
+
+  blockQuote blocks =
+    [BlockquoteBlock Blockquote {plaintext, facets}]
     where
       (facets, plaintext) = extractBlockContent blocks
-  codeBlock lang plaintext = [CodeBlock CodeBlock' {language = Just lang, plaintext, syntaxHighlightingTheme = Nothing}]
+
+  codeBlock lang plaintext =
+    [CodeBlock CodeBlock' {language = Just lang, plaintext, syntaxHighlightingTheme = Nothing}]
+
   heading level inlines = [HeaderBlock Header {level, facets, plaintext}]
     where
       (facets, plaintext) = extractFacets inlines
 
   rawBlock = undefined
+
   referenceLinkDefinition = undefined
+
   list _ _spacing items =
     -- NOTE: Leaflet only supports unordered list??
-    [UnorderedListBlock $ UnorderedList {children = concatMap (mapMaybe mkListItem) items}]
+    [UnorderedListBlock $ UnorderedList {children = concatMap (mapMaybe (mkListItem . adjustFacet)) items}]
+
+adjustFacet :: BlockVariant -> BlockVariant
+adjustFacet = \case
+  TextBlock RichText {plaintext, facets} -> TextBlock RichText {plaintext, facets = shiftBy 2 <$> facets}
+  HeaderBlock Header {level, plaintext, facets} -> HeaderBlock Header {level, plaintext, facets = shiftBy 2 <$> facets}
+  b -> b
+  where
+    shiftBy :: Int -> Facet -> Facet
+    shiftBy offset f@Facet {index = ByteSlice {byteStart, byteEnd}} =
+      f {index = ByteSlice (byteStart - offset) (byteEnd - offset)}
 
 -- | Extract plaintext and facets from a list of blocks (for blockquotes)
 -- Concatenates all text from nested blocks with newlines and adjusts facet positions
@@ -173,16 +193,16 @@ extractBlockContent blocks =
           newOffset = offset + Text.length separator + Text.length blockText
        in (newOffset, fs <> adjustedFacets, newText)
 
-    getBlockContent :: BlockVariant -> ([Facet], Text)
-    getBlockContent (TextBlock RichText {plaintext, facets}) = (facets, plaintext)
-    getBlockContent (HeaderBlock Header {plaintext, facets}) = (facets, plaintext)
-    getBlockContent (CodeBlock CodeBlock' {plaintext}) = ([], plaintext)
-    getBlockContent (BlockquoteBlock Blockquote {plaintext, facets}) = (facets, plaintext)
-    getBlockContent _ = ([], "")
-
     adjustFacetOffset :: Int -> Facet -> Facet
     adjustFacetOffset offset facet@Facet {index = ByteSlice {byteStart, byteEnd}} =
       facet {index = ByteSlice {byteStart = byteStart + offset, byteEnd = byteEnd + offset}}
+
+getBlockContent :: BlockVariant -> ([Facet], Text)
+getBlockContent (TextBlock RichText {plaintext, facets}) = (facets, plaintext)
+getBlockContent (HeaderBlock Header {plaintext, facets}) = (facets, plaintext)
+getBlockContent (CodeBlock CodeBlock' {plaintext}) = ([], plaintext)
+getBlockContent (BlockquoteBlock Blockquote {plaintext, facets}) = (facets, plaintext)
+getBlockContent _ = ([], "")
 
 extractFacets :: [Inline] -> ([Facet], Text)
 extractFacets inlines =
@@ -194,7 +214,7 @@ extractFacets inlines =
 data Converter = Converter
   { -- | Accumulated markup characters in markdown source for current line
     markup :: Int,
-    -- | Text length of last line seen
+    -- | Text length of last line seen (in bytes)
     lastLine :: Int,
     -- | Accumulated list of facets
     facets :: [Facet],
@@ -216,7 +236,7 @@ extractFacet :: Inline -> Converter -> Converter
 extractFacet = \case
   Decorated f rge -> makeFacet f rge
   Plain "\n" -> \Converter {facets, plaintext} ->
-    Converter {markup = 0, lastLine = Text.length plaintext + 1, facets, plaintext = plaintext <> " "}
+    Converter {markup = 0, lastLine = BS.length (encodeUtf8 plaintext) + 1, facets, plaintext = plaintext <> " "}
   Plain t -> \Converter {plaintext, ..} -> Converter {plaintext = plaintext <> t, ..}
   where
     makeFacet f rge Converter {markup, lastLine, facets, plaintext} =

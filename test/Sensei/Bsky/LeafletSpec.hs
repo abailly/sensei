@@ -7,17 +7,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Data (Proxy (..))
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
-import Sensei.Bsky
-  ( Block (..),
-    BlockVariant (..),
-    Blockquote (..),
-    ByteSlice (..),
-    Facet (..),
-    Feature (..),
-    LinearDocument (LinearDocument, blocks),
-    RecordWithMetadata (cid, value),
-    RichText (..),
-  )
+import Sensei.Bsky (Block (..), BlockVariant (..), Blockquote (..), ByteSlice (..), Facet (..), Feature (..), LinearDocument (LinearDocument, blocks), ListItem (..), RecordWithMetadata (cid, value), RichText (..), UnorderedList (..))
 import Sensei.Bsky.Leaflet (Document, Publication, publication)
 import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
 import Sensei.Generators ()
@@ -81,6 +71,22 @@ spec = do
       remaining `shouldBe` markdown
 
     it "correctly assign facet for inline code annotations" $ do
+      let markdown = "Un entier est ici construit à l'aide de la méthode `succ` et de la constante `Zero`:"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "Un entier est ici construit à l'aide de la méthode succ et de la constante Zero:"
+              length facets `shouldBe` 2
+              facets
+                `shouldBe` [ Facet {index = ByteSlice 51 55, features = [Code]},
+                             Facet {index = ByteSlice 75 79, features = [Code]}
+                           ]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "computes facets offsets as bytes not characters" $ do
       let markdown = "Un entier est ici construit à l'aide de la méthode `succ` et de la constante `Zero`:"
       result <- mkMarkdownDocument markdown
       case result of
@@ -261,5 +267,31 @@ spec = do
                 `shouldBe` [ Facet {index = ByteSlice {byteStart = 50, byteEnd = 58}, features = [Italic]},
                              Facet {index = ByteSlice {byteStart = 77, byteEnd = 81}, features = [Bold]}
                            ]
+            other -> error $ "Expected a blockquote block, got: " <> show other
+        other -> error $ "Expected a single block, got: " <> show other
+
+    it "converts unordered list block with inline markup" $ do
+      let markdown =
+            Text.unlines
+              [ "* First line of the list with *emphasis* word",
+                "* Second line with `Code` fragment",
+                "* Third **bold** line with"
+              ]
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block
+              { block =
+                  UnorderedListBlock
+                    UnorderedList
+                      { children =
+                          [ TextListItem RichText {facets} [],
+                            TextListItem _two [],
+                            TextListItem _three []
+                            ]
+                      }
+              } -> do
+                facets `shouldBe` [Facet {index = ByteSlice {byteStart = 28, byteEnd = 36}, features = [Italic]}]
             other -> error $ "Expected a blockquote block, got: " <> show other
         other -> error $ "Expected a single block, got: " <> show other
