@@ -12,7 +12,7 @@ where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
 import Control.Exception.Safe (MonadCatch, SomeException, catch)
-import Control.Lens ((&), (?~), (^.), (.~), view, (^?))
+import Control.Lens ((&), (?~), (^.), (^?))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
 import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.:), (.=))
