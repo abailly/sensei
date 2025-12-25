@@ -208,18 +208,19 @@ generateArticle :: UTCTime -> Integer -> Gen Article
 generateArticle baseTime k = do
   let st = shiftTime baseTime k
   dir <- generateDir
-  -- Generate article content (markdown)
+  -- TODO: Generate article content (markdown)
   title <- pack <$> arbitrary
   content <- pack <$> arbitrary
+  date <- oneof [pure Nothing, Just <$> generateDate]
   let articleContent = "# " <> title <> "\n\n" <> content
   -- Generate all three types of Article constructors
   frequency
-    [ (5, pure $ PublishArticle "arnaud" st dir articleContent),
+    [ (5, pure $ PublishArticle "arnaud" st dir articleContent date),
       ( 3,
         do
           -- For UpdateArticle, generate a TID-like string
           tidStr <- pack . take 13 <$> arbitrary
-          pure $ UpdateArticle "arnaud" st dir tidStr articleContent
+          pure $ UpdateArticle "arnaud" st dir tidStr articleContent date
       ),
       ( 2,
         do
@@ -228,6 +229,10 @@ generateArticle baseTime k = do
           pure $ DeleteArticle "arnaud" st dir tidStr
       )
     ]
+
+generateDate :: Gen UTCTime
+generateDate =
+  (UTCTime . toEnum <$> arbitrary) <*> (fromInteger . getPositive <$> arbitrary)
 
 generateEvent :: UTCTime -> Integer -> Gen Event
 generateEvent baseTime off =

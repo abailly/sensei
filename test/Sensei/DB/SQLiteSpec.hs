@@ -180,7 +180,8 @@ spec = describe "SQLite DB" $ do
                 { _articleUser = "arnaud",
                   _articleTimestamp = articleTime,
                   _articleDir = "articles",
-                  _article = articleContent
+                  _article = articleContent,
+                  _articleDate = Nothing
                 }
 
         runDB tempdb "." fakeLogger $ do

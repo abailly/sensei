@@ -46,7 +46,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 --  should be provided in order to migrate data from previous
 --  versions.
 currentVersion :: Natural
-currentVersion = 13
+currentVersion = 14
 
 -- | Definition for versions used in some context
 --  We distinguish the versions of various parts of the system: The executable

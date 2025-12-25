@@ -24,7 +24,6 @@ import Data.Aeson.Encode.Pretty (encodePretty)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Functor (void)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
@@ -200,12 +199,10 @@ ep config (GoalOptions GetGraph) userName _ _ =
   send config (getGoalsC userName) >>= display
 ep config (ArticleOptions (PublishArticle filePath customDate)) userName timestamp currentDir = do
   article <- Text.readFile filePath
-  let articleTimestamp = fromMaybe timestamp customDate
-  send config $ postEventC (UserName userName) [EventArticle $ Article.PublishArticle userName articleTimestamp currentDir article]
+  send config $ postEventC (UserName userName) [EventArticle $ Article.PublishArticle userName timestamp currentDir article customDate]
 ep config (ArticleOptions (UpdateArticle rkey filePath customDate)) userName timestamp currentDir = do
   content <- Text.readFile filePath
-  let articleTimestamp = fromMaybe timestamp customDate
-  send config $ postEventC (UserName userName) [EventArticle $ Article.UpdateArticle userName articleTimestamp currentDir rkey content]
+  send config $ postEventC (UserName userName) [EventArticle $ Article.UpdateArticle userName timestamp currentDir rkey content customDate]
 ep config (ArticleOptions (DeleteArticle rkey)) userName timestamp currentDir =
   send config $ postEventC (UserName userName) [EventArticle $ Article.DeleteArticle userName timestamp currentDir rkey]
 ep _config (ArticleOptions ListArticles) _userName _ _ = do

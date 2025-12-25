@@ -342,7 +342,8 @@ articleWithTitle =
         \\n\
         \# Introduction\n\
         \\n\
-        \This is a test article.\n"
+        \This is a test article.\n",
+      _articleDate = Nothing
     }
 
 articleWithoutMetadata :: Article
@@ -354,7 +355,8 @@ articleWithoutMetadata =
       _article =
         "# Introduction\n\
         \\n\
-        \This is a test article without metadata.\n"
+        \This is a test article without metadata.\n",
+      _articleDate = Nothing
     }
 
 -- Mock doPublish implementations

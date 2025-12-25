@@ -12,7 +12,7 @@ where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
 import Control.Exception.Safe (MonadCatch, SomeException, catch)
-import Control.Lens ((&), (?~), (^.))
+import Control.Lens ((&), (?~), (^.), (.~), view, (^?))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
 import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.:), (.=))
@@ -30,12 +30,13 @@ import qualified Data.Text as Text
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import Data.Time.Format (defaultTimeLocale, formatTime, iso8601DateFormat)
+import Data.Time.Format.ISO8601 (iso8601ParseM)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
 import Preface.Utils (decodeUtf8')
-import Sensei.Article (Article (DeleteArticle, PublishArticle, UpdateArticle), article, articleRkey, articleTimestamp)
+import Sensei.Article (Article (DeleteArticle, PublishArticle, UpdateArticle), article, articleRkey, articleDate)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
@@ -48,6 +49,7 @@ import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT (encodeJWT))
 import Servant
 import Servant.Client.Core (clientIn)
 import Prelude hiding (exp)
+import Control.Monad (join)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken,
@@ -334,6 +336,27 @@ ensureAuthenticated logger BskyNet {doLogin, doRefresh, currentTime} sessionMap 
             \sessions -> Map.insert (identifier credentials) session sessions
       pure session
 
+-- | Determine the publication date for an article using the following precedence:
+-- 1. CLI option (if provided via -d flag)
+-- 2. Metadata date field (if present in markdown frontmatter)
+-- 3. Current time (fallback)
+determinePublicationDate ::
+  (MonadIO m) =>
+  -- | The article operation containing optional CLI date
+  Article ->
+  -- | Metadata extracted from the article
+  [(Text, Text)] ->
+  m UTCTime
+determinePublicationDate articleOp metadata = do
+  currentTime <- liftIO getCurrentTime
+  let cliDate = join $ articleOp ^? articleDate
+      lookupMeta key = lookup key metadata
+      metadataDate = lookupMeta "date" >>= \dateStr -> iso8601ParseM (Text.unpack dateStr)
+      publicationDate = case cliDate of
+        Just d -> d -- CLI option takes precedence
+        Nothing -> fromMaybe currentTime metadataDate -- Then metadata, then current time
+  pure publicationDate
+
 -- | Publish an article to Bluesky PDS as a Leaflet document.
 --
 -- This function extracts metadata from the article, converts markdown to a LinearDocument,
@@ -367,9 +390,9 @@ publishArticle doPublish backend session articleOp = do
       -- Generate new TID for the document
       docTid <- liftIO mkTid
 
-      -- Use Article timestamp and format as ISO8601
-      let articleTime = articleOp ^. articleTimestamp
-          iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) articleTime
+      -- Determine publication date with precedence: CLI option > metadata date > current time
+      publicationDate <- determinePublicationDate articleOp metadata
+      let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) publicationDate
 
       -- Extract userDID and publicationId from backend
       let DID authorDID = userDID backend
@@ -429,9 +452,9 @@ updateArticle doPut backend session articleTid articleOp = do
   case linearDocResult of
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
     Right linearDoc -> do
-      -- Use Article timestamp and format as ISO8601
-      let articleTime = articleOp ^. articleTimestamp
-          iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) articleTime
+      -- Determine publication date with precedence: CLI option > metadata date > current time
+      publicationDate <- determinePublicationDate articleOp metadata
+      let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) publicationDate
 
       -- Extract userDID and publicationId from backend
       let DID authorDID = userDID backend
