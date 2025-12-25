@@ -5,14 +5,18 @@ module Sensei.Bsky.LeafletSpec where
 import Data.Aeson (eitherDecode)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Data (Proxy (..))
+import Data.Maybe (fromJust)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
-import Sensei.Bsky (Block (..), BlockVariant (..), Blockquote (..), ByteSlice (..), Facet (..), Feature (..), LinearDocument (LinearDocument, blocks), ListItem (..), RecordWithMetadata (cid, value), RichText (..), UnorderedList (..))
+import Data.Time.Extra (Date (..), readDate)
+import Sensei.API (Article (..))
+import Sensei.Bsky (Block (..), BlockVariant (..), Blockquote (..), ByteSlice (..), Facet (..), Feature (..), LinearDocument (LinearDocument, blocks), ListItem (..), RecordWithMetadata (cid, value), RichText (..), UnorderedList (..), determinePublicationDate)
 import Sensei.Bsky.Leaflet (Document, Publication, publication)
 import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
-import Sensei.Generators ()
+import Sensei.Bsky.TID (mkTid, tidToText)
+import Sensei.Generators (startTime)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, describe, it, pendingWith, shouldBe, shouldSatisfy)
+import Test.Hspec (Spec, describe, it, pendingWith, shouldBe, shouldReturn, shouldSatisfy)
 
 spec :: Spec
 spec = do
@@ -69,6 +73,45 @@ spec = do
 
       metadata `shouldBe` []
       remaining `shouldBe` markdown
+
+    let front =
+          Text.unlines
+            [ "---",
+              "title: Notes sur \"Enquête sur les modes d'existence\"",
+              "author: Arnaud Bailly",
+              "date: 2013-01-27",
+              "---",
+              "",
+              "some text"
+            ]
+
+    it "uses frontmatter date as publication date when it exists" $ do
+      let (metadata, remaining) = extractMetadata front
+          article =
+            PublishArticle
+              { _articleUser = "bob",
+                _articleTimestamp = startTime,
+                _articleDir = ".",
+                _article = remaining,
+                _articleDate = Nothing
+              }
+
+      determinePublicationDate article metadata `shouldReturn` theDate (fromJust $ readDate "2013-01-27")
+
+    it "uses frontmatter date as updated publication date when it exists" $ do
+      tid <- mkTid
+      let (metadata, remaining) = extractMetadata front
+          article =
+            UpdateArticle
+              { _articleUser = "bob",
+                _articleTimestamp = startTime,
+                _articleDir = ".",
+                _articleRkey = tidToText tid,
+                _article = remaining,
+                _articleDate = Nothing
+              }
+
+      determinePublicationDate article metadata `shouldReturn` theDate (fromJust $ readDate "2013-01-27")
 
     it "correctly assign facet for inline code annotations" $ do
       let markdown = "Un entier est ici construit à l'aide de la méthode `succ` et de la constante `Zero`:"

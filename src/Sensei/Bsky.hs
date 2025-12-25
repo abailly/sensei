@@ -13,6 +13,7 @@ where
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
 import Control.Exception.Safe (MonadCatch, SomeException, catch)
 import Control.Lens ((&), (?~), (^.), (^?))
+import Control.Monad (join)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
 import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.:), (.=))
@@ -29,14 +30,14 @@ import Data.Text (Text, isInfixOf, unpack)
 import qualified Data.Text as Text
 import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
+import Data.Time.Extra (Date (..), readDate)
 import Data.Time.Format (defaultTimeLocale, formatTime, iso8601DateFormat)
-import Data.Time.Format.ISO8601 (iso8601ParseM)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
 import Preface.Utils (decodeUtf8')
-import Sensei.Article (Article (DeleteArticle, PublishArticle, UpdateArticle), article, articleRkey, articleDate)
+import Sensei.Article (Article (DeleteArticle, PublishArticle, UpdateArticle), article, articleDate, articleRkey)
 import Sensei.Backend.Class (BackendHandler (..))
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
@@ -49,7 +50,6 @@ import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT (encodeJWT))
 import Servant
 import Servant.Client.Core (clientIn)
 import Prelude hiding (exp)
-import Control.Monad (join)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken,
@@ -351,7 +351,7 @@ determinePublicationDate articleOp metadata = do
   currentTime <- liftIO getCurrentTime
   let cliDate = join $ articleOp ^? articleDate
       lookupMeta key = lookup key metadata
-      metadataDate = lookupMeta "date" >>= \dateStr -> iso8601ParseM (Text.unpack dateStr)
+      metadataDate = lookupMeta "date" >>= \dateStr -> theDate <$> readDate (Text.unpack dateStr)
       publicationDate = case cliDate of
         Just d -> d -- CLI option takes precedence
         Nothing -> fromMaybe currentTime metadataDate -- Then metadata, then current time
