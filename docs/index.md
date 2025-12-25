@@ -1,6 +1,6 @@
 # What is sensei?
 
-_sensei_ is a personal assistant for monitoring and, hopefully, improving one's workflow and work process. It allows one to record various _events_ and take notes while working in an as smooth and seamless as possible way, and then provides an API and an interface to explore those events.
+_sensei_ is a personal assistant for taking notes, writing blog posts, monitoring and, hopefully, improving one's workflow and work process. It allows one to record various _events_ and take notes while working in an as smooth and seamless as possible way, and then provides an API and an interface to explore those events.
 
 # Install
 
