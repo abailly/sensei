@@ -11,6 +11,7 @@ import Data.Maybe (fromMaybe)
 import Data.String (IsString (fromString))
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
+import Sensei.Bsky.CID (CID, cidToText, textToCID)
 import Sensei.Bsky.Core (BskyType (BskyType), Key, Lexicon)
 import Sensei.Bsky.TID (TID, mkTid)
 
@@ -64,15 +65,52 @@ data Theme = Theme
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 
--- | Placeholder for blob type (image files, max 1MB)
--- TODO: Implement proper blob handling
+-- | Blob type as defined in AT Protocol spec
+-- Represents a reference to binary content stored in the repository
+-- See: https://atproto.com/specs/data-model#blob-type
 data Blob = Blob
-  { mimeType :: Text,
+  { -- | MIME type of the blob content
+    mimeType :: Text,
+    -- | Size of the blob in bytes
     size :: Int,
-    ref :: Text
+    -- | CID reference to the blob content
+    ref :: BlobRef
   }
   deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+
+instance ToJSON Blob where
+  toJSON Blob {mimeType, size, ref} =
+    object
+      [ "$type" .= ("blob" :: Text),
+        "mimeType" .= mimeType,
+        "size" .= size,
+        "ref" .= ref
+      ]
+
+instance FromJSON Blob where
+  parseJSON = withObject "Blob" $ \v -> do
+    typ <- v .: "$type" :: Parser Text
+    case typ of
+      "blob" ->
+        Blob
+          <$> v .: "mimeType"
+          <*> v .: "size"
+          <*> v .: "ref"
+      _ -> fail $ "Expected blob type, got: " ++ show typ
+
+-- | Reference to blob content using CID
+newtype BlobRef = BlobRef {link :: CID}
+  deriving stock (Eq, Show, Generic)
+
+instance ToJSON BlobRef where
+  toJSON (BlobRef cid) = object ["$link" .= cidToText cid]
+
+instance FromJSON BlobRef where
+  parseJSON = withObject "BlobRef" $ \v -> do
+    cidText <- v .: "$link"
+    case textToCID cidText of
+      Left err -> fail $ "Failed to parse CID: " <> err
+      Right cid -> pure $ BlobRef cid
 
 -- | Placeholder for color type
 -- TODO: Implement RGBA/RGB union type from pub.leaflet.theme.color

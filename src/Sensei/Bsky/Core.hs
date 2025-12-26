@@ -167,3 +167,38 @@ type Sendable record =
     ToJSON (Key record),
     KnownSymbol (Lexicon record)
   )
+
+-- | Response from uploadBlob endpoint
+-- Contains the blob reference with CID
+data BlobUploadResponse = BlobUploadResponse
+  { blob :: BlobMetadata
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | Metadata for an uploaded blob
+data BlobMetadata = BlobMetadata
+  { blobType :: Text, -- Always "blob"
+    blobRef :: Text, -- CID reference
+    blobMimeType :: Text,
+    blobSize :: Int
+  }
+  deriving stock (Eq, Show, Generic)
+
+instance ToJSON BlobMetadata where
+  toJSON BlobMetadata {blobType, blobRef, blobMimeType, blobSize} =
+    object
+      [ "$type" .= blobType,
+        "ref" .= object ["$link" .= blobRef],
+        "mimeType" .= blobMimeType,
+        "size" .= blobSize
+      ]
+
+instance FromJSON BlobMetadata where
+  parseJSON = withObject "BlobMetadata" $ \v -> do
+    typ <- v .: "$type"
+    refObj <- v .: "ref"
+    ref <- withObject "ref" (.: "$link") refObj
+    BlobMetadata typ ref
+      <$> v .: "mimeType"
+      <*> v .: "size"

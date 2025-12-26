@@ -19,6 +19,7 @@ import Sensei.Bsky
   ( AtURI (..),
     BackgroundImage (..),
     Blob (..),
+    BlobRef (..),
     Block (..),
     BlockVariant (..),
     BskyAuth (..),
@@ -38,6 +39,7 @@ import Sensei.Bsky
     Theme (..),
     base32SortableAlphabet,
   )
+import Sensei.Bsky.CID (CID, computeCID)
 import qualified Sensei.Bsky as Bsky
 import Sensei.ColorSpec ()
 import Sensei.DB
@@ -364,8 +366,17 @@ instance Arbitrary StrongRef where
 instance Arbitrary Bsky.Color where
   arbitrary = Bsky.Color <$> choose (0, 255) <*> choose (0, 255) <*> choose (0, 255) <*> arbitrary
 
+instance Arbitrary CID where
+  arbitrary = do
+    -- Generate random bytes and compute CID
+    bytes <- BS.pack <$> vectorOf 32 arbitrary
+    pure $ computeCID bytes
+
+instance Arbitrary BlobRef where
+  arbitrary = BlobRef <$> arbitrary
+
 instance Arbitrary Blob where
-  arbitrary = Blob <$> elements ["image/png", "image/jpeg", "image/gif"] <*> choose (1, 1000000) <*> genSimpleText
+  arbitrary = Blob <$> elements ["image/png", "image/jpeg", "image/gif"] <*> choose (1, 1000000) <*> arbitrary
 
 instance Arbitrary BackgroundImage where
   arbitrary = BackgroundImage <$> arbitrary

@@ -257,7 +257,8 @@ newBskyMockNet = do
             doDeleteRecord = \_ _ -> pure (),
             doRefresh = \_ -> modifyIORef' refreshCount succ >> pure dummySession,
             currentTime = \t -> readIORef currentTimeCalls >>= \k -> pure $ k t,
-            doListRecords = \_ _ _ _ _ _ -> pure (ListRecordsResponse Nothing [])
+            doListRecords = \_ _ _ _ _ _ -> pure (ListRecordsResponse Nothing []),
+            doUploadBlob = \_ _ -> undefined
           }
   pure $ BskyMockNet {..}
 

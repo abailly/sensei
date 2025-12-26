@@ -16,7 +16,7 @@ import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
 import Sensei.Bsky.TID (mkTid, tidToText)
 import Sensei.Generators (startTime)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, describe, it, pendingWith, shouldBe, shouldReturn, shouldSatisfy)
+import Test.Hspec (Spec, describe, it, pending, pendingWith, shouldBe, shouldReturn, shouldSatisfy)
 
 spec :: Spec
 spec = do
@@ -338,3 +338,15 @@ spec = do
                 facets `shouldBe` [Facet {index = ByteSlice {byteStart = 28, byteEnd = 36}, features = [Italic]}]
             other -> error $ "Expected a blockquote block, got: " <> show other
         other -> error $ "Expected a single block, got: " <> show other
+
+    it "converts markdown with images" $ do
+      let markdown =
+            Text.unlines
+              [ "First line of the document",
+                "![some image](https://some.image/source.png)",
+                "Third line with some text"
+              ]
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [_firstTextBlock, _imageBlock, _secondTextBlock]} -> pending
+        _ -> error "Expected image block"

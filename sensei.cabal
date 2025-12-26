@@ -49,6 +49,7 @@ library
     Sensei.Backend
     Sensei.Backend.Class
     Sensei.Bsky
+    Sensei.Bsky.CID
     Sensei.Bsky.Core
     Sensei.Bsky.Leaflet
     Sensei.Bsky.Leaflet.Markdown
@@ -102,6 +103,7 @@ library
     , ansi-terminal
     , async
     , base
+    , base32
     , base64-bytestring
     , bytestring
     , case-insensitive

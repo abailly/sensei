@@ -142,6 +142,12 @@ type ListRecords record =
     :> QueryParam "reverse" Bool
     :> Get '[JSON] (ListRecordsResponse record)
 
+type UploadBlob =
+  "xrpc"
+    :> "com.atproto.repo.uploadBlob"
+    :> ReqBody '[OctetStream] BS.ByteString
+    :> Post '[JSON] BlobUploadResponse
+
 type BskyLoginAPI = Login :<|> Refresh
 
 bskyLogin :: BskyLogin -> ClientMonad BskyClientConfig BskySession
@@ -179,6 +185,11 @@ bskyListRecords ::
   Maybe Bool ->
   ClientMonad BskyClientConfig (ListRecordsResponse record)
 bskyListRecords = clientIn (Proxy @(ListRecords record)) Proxy
+
+bskyUploadBlob ::
+  BS.ByteString ->
+  ClientMonad BskyClientConfig BlobUploadResponse
+bskyUploadBlob = clientIn (Proxy @UploadBlob) Proxy
 
 data BskyLog
   = PostCreated {content :: !Text, session :: !BskySession}
@@ -265,11 +276,15 @@ data BskyNet m = BskyNet
       Maybe Text ->
       Maybe Bool ->
       m (ListRecordsResponse record),
+    doUploadBlob ::
+      BskyClientConfig ->
+      BS.ByteString ->
+      m BlobUploadResponse,
     currentTime :: UTCTime -> m UTCTime
   }
 
 defaultBskyNet :: BskyNet IO
-defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doDeleteRecord, doLogin, doRefresh, doListRecords, currentTime}
+defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doDeleteRecord, doLogin, doRefresh, doListRecords, doUploadBlob, currentTime}
   where
     doCreateRecord config = send config . bskyCreateRecord
     doPutRecord config = send config . bskyPutRecord
@@ -278,6 +293,7 @@ defaultBskyNet = BskyNet {doCreateRecord, doPutRecord, doDeleteRecord, doLogin, 
     doRefresh config = send config bskyRefresh
     doListRecords config repo collection limit cursor isReverse =
       send config $ bskyListRecords repo collection limit cursor isReverse
+    doUploadBlob config = send config . bskyUploadBlob
     currentTime = const $ liftIO getCurrentTime
 
 type Sessions = TVar (Map.Map Text BskySession)
