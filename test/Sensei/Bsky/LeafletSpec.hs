@@ -174,6 +174,158 @@ spec = do
             other -> error $ "Expected a single rich text block, got: " <> show other
         other -> error $ "Expected a single text block, got: " <> show other
 
+    it "correctly computes facet offset when emphasis is only on second line" $ do
+      let markdown = "First line without markup\nSecond line with *emphasis* here"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "First line without markup Second line with emphasis here"
+              -- "First line without markup " = 26 bytes (25 chars + 1 space for \n)
+              -- "Second line with " = 17 bytes (total: 43)
+              -- "emphasis" = 8 bytes (starts at 43, ends at 51)
+              facets `shouldBe` [Facet {index = ByteSlice 43 51, features = [Italic]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offset when emphasis is at start of second line" $ do
+      let markdown = "First line\n*emphasis* at start"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "First line emphasis at start"
+              -- "First line " = 11 bytes
+              -- "emphasis" = 8 bytes (starts at 11, ends at 19)
+              facets `shouldBe` [Facet {index = ByteSlice 11 19, features = [Italic]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offsets for multiple facets on different lines" $ do
+      let markdown = "Line one has *italic* text\nLine two has **bold** text\nLine three has `code` text"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "Line one has italic text Line two has bold text Line three has code text"
+              -- "Line one has " = 13 bytes
+              -- "italic" = 6 bytes (13 to 19)
+              -- " text Line two has " = 19 bytes (total: 38)
+              -- "bold" = 4 bytes (38 to 42)
+              -- " text Line three has " = 21 bytes (total: 63)
+              -- "code" = 4 bytes (63 to 67)
+              facets
+                `shouldBe` [ Facet {index = ByteSlice 13 19, features = [Italic]},
+                             Facet {index = ByteSlice 38 42, features = [Bold]},
+                             Facet {index = ByteSlice 63 67, features = [Code]}
+                           ]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offset for link on second line" $ do
+      let markdown = "First line of text\nSecond line has a [link](https://example.com) here"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "First line of text Second line has a link here"
+              -- "First line of text " = 19 bytes
+              -- "Second line has a " = 18 bytes (total: 37)
+              -- "link" = 4 bytes (starts at 37, ends at 41)
+              facets `shouldBe` [Facet {index = ByteSlice 37 41, features = [Link "https://example.com"]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offsets when first line has markup and second has markup" $ do
+      let markdown = "First line with *italic* word\nSecond line with **bold** word"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "First line with italic word Second line with bold word"
+              -- "First line with " = 16 bytes
+              -- "italic" = 6 bytes (16 to 22)
+              -- " word Second line with " = 23 bytes (total: 45)
+              -- "bold" = 4 bytes (45 to 49)
+              facets
+                `shouldBe` [ Facet {index = ByteSlice 16 22, features = [Italic]},
+                             Facet {index = ByteSlice 45 49, features = [Bold]}
+                           ]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offsets with multiple markups on same line after newline" $ do
+      let markdown = "Plain first line\nSecond with *italic* and **bold** text"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "Plain first line Second with italic and bold text"
+              -- "Plain first line " = 17 bytes
+              -- "Second with " = 12 bytes (total: 29)
+              -- "italic" = 6 bytes (29 to 35)
+              -- " and " = 5 bytes (total: 40)
+              -- "bold" = 4 bytes (40 to 44)
+              facets
+                `shouldBe` [ Facet {index = ByteSlice 29 35, features = [Italic]},
+                             Facet {index = ByteSlice 40 44, features = [Bold]}
+                           ]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offsets with code spanning across conceptual word boundaries" $ do
+      let markdown = "Start\nAnother line with `code snippet` here"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "Start Another line with code snippet here"
+              -- "Start " = 6 bytes
+              -- "Another line with " = 18 bytes (total: 24)
+              -- "code snippet" = 12 bytes (24 to 36)
+              facets `shouldBe` [Facet {index = ByteSlice 24 36, features = [Code]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offsets with UTF-8 multibyte characters" $ do
+      let markdown = "Première ligne\nDeuxième avec *français* ici"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "Première ligne Deuxième avec français ici"
+              -- "Première ligne " = "Premi" (5) + "è" (2 bytes) + "re ligne " (9) = 16 bytes
+              -- "Deuxième avec " = "Deuxi" (5) + "è" (2 bytes) + "me avec " (8) = 15 bytes (total: 31)
+              -- "français" = "fran" (4) + "ç" (2 bytes) + "ais" (3) = 9 bytes (31 to 40)
+              facets `shouldBe` [Facet {index = ByteSlice 31 40, features = [Italic]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
+    it "correctly computes facet offsets with emoji characters across lines" $ do
+      let markdown = "Hello 👋 world\nNext line has *emphasis* 🎉"
+      result <- mkMarkdownDocument markdown
+      case result of
+        Right LinearDocument {blocks = [firstBlock]} -> do
+          case firstBlock of
+            Block {block = TextBlock RichText {plaintext, facets}} -> do
+              plaintext `shouldBe` "Hello 👋 world Next line has emphasis 🎉"
+              -- "Hello " = 6 bytes
+              -- "👋" = 4 bytes
+              -- " world " = 7 bytes (total: 17)
+              -- "Next line has " = 14 bytes (total: 31)
+              -- "emphasis" = 8 bytes (31 to 39)
+              facets `shouldBe` [Facet {index = ByteSlice 31 39, features = [Italic]}]
+            other -> error $ "Expected a single rich text block, got: " <> show other
+        other -> error $ "Expected a single text block, got: " <> show other
+
     it "correctly assign facet for link annotation" $ do
       let markdown = "This post was triggered by a [tweet from Alberto Brandolini](https://twitter.com/ziobrando/status/737619202538758145) on  [The rise and fall of the Dungeon Master](https://medium.com/@ziobrando/the-rise-and-fall-of-the-dungeon-master-c2d511eed12f#.erkso3y88)"
       result <- mkMarkdownDocument markdown
