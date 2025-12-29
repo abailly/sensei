@@ -190,7 +190,8 @@ extractBlockContent blocks =
           adjustedFacets = map (adjustFacetOffset offset) blockFacets
           separator = if Text.null txt then "" else "\n"
           newText = txt <> separator <> blockText
-          newOffset = offset + Text.length separator + Text.length blockText
+          -- Use byte length, not character length, for proper UTF-8 handling
+          newOffset = offset + BS.length (encodeUtf8 separator) + BS.length (encodeUtf8 blockText)
        in (newOffset, fs <> adjustedFacets, newText)
 
     adjustFacetOffset :: Int -> Facet -> Facet
@@ -219,7 +220,9 @@ data Converter = Converter
     -- | Accumulated list of facets
     facets :: [Facet],
     -- | Accumulated plain text
-    plaintext :: Text
+    plaintext :: Text,
+    -- | Plaintext added on current line (for UTF-8 character-to-byte conversion)
+    currentLinePlaintext :: Text
   }
   deriving (Show)
 
@@ -229,18 +232,30 @@ initialConverter =
     { markup = 0,
       lastLine = 0,
       facets = [],
-      plaintext = ""
+      plaintext = "",
+      currentLinePlaintext = ""
     }
 
 extractFacet :: Inline -> Converter -> Converter
 extractFacet = \case
   Decorated f rge -> makeFacet f rge
   Plain "\n" -> \Converter {facets, plaintext} ->
-    Converter {markup = 0, lastLine = BS.length (encodeUtf8 plaintext) + 1, facets, plaintext = plaintext <> " "}
-  Plain t -> \Converter {plaintext, ..} -> Converter {plaintext = plaintext <> t, ..}
+    Converter
+      { markup = 0,
+        lastLine = BS.length (encodeUtf8 plaintext) + 1,
+        facets,
+        plaintext = plaintext <> " ",
+        currentLinePlaintext = "" -- Reset for new line
+      }
+  Plain t -> \Converter {plaintext, currentLinePlaintext, ..} ->
+    Converter
+      { plaintext = plaintext <> t,
+        currentLinePlaintext = currentLinePlaintext <> t, -- Track current line text
+        ..
+      }
   where
-    makeFacet f rge Converter {markup, lastLine, facets, plaintext} =
-      Converter {markup = markup', lastLine, facets = facets <> [Facet {features = [f], index}], plaintext}
+    makeFacet f rge Converter {markup, lastLine, facets, plaintext, currentLinePlaintext} =
+      Converter {markup = markup', lastLine, facets = facets <> [Facet {features = [f], index}], plaintext, currentLinePlaintext}
       where
         markup' =
           markup + case f of
@@ -251,11 +266,17 @@ extractFacet = \case
             _ -> 0
         index = maybe (ByteSlice 0 0) toByteSlice rge
         toByteSlice (SourceRange ((beg, end) : _)) =
-          -- NOTE: range is a line/column, not sure if 1 or zero based for columns
-          -- let's asssume it's 1-based. The range includes delimitation characters so
-          -- we should deduce those.
-          -- But we must also deduce all previously accumulated offsets in the same block
-          -- of text, corresponding to previous facet/feature. Those must be accumulated
-          -- as we traverse the list of inlines
-          ByteSlice (lastLine + sourceColumn beg - 1 - markup) (lastLine + sourceColumn end - 1 - markup')
+          -- sourceColumn gives CHARACTER positions in source (including markup)
+          -- We need to convert to BYTE positions in plaintext (excluding markup)
+          -- markup tracks markup characters seen so far on this line
+          let -- Character position in plaintext on current line
+              charPosBeg = sourceColumn beg - 1 - markup
+              charPosEnd = sourceColumn end - 1 - markup'
+              -- Convert character positions to byte positions using current line's plaintext
+              -- Take the prefix up to the character position and measure its byte length
+              prefixBeg = Text.take charPosBeg currentLinePlaintext
+              prefixEnd = Text.take charPosEnd currentLinePlaintext
+              bytePosInCurrentLineBeg = BS.length (encodeUtf8 prefixBeg)
+              bytePosInCurrentLineEnd = BS.length (encodeUtf8 prefixEnd)
+           in ByteSlice (lastLine + bytePosInCurrentLineBeg) (lastLine + bytePosInCurrentLineEnd)
         toByteSlice (SourceRange []) = ByteSlice 0 0
