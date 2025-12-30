@@ -18,6 +18,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import Data.Word (Word8)
+import Control.Exception.Safe (Exception)
 
 -- | Content Identifier (CID) version 1
 -- Format: <multibase-prefix><version><multicodec><multihash>
@@ -66,6 +67,8 @@ data CIDError
   | DecodeError {found :: Text, reason :: Text}
   | UnsupportedVersion {found :: Text, foundVersion :: Word8}
   deriving (Eq, Show)
+
+instance Exception CIDError
 
 -- | Parse CID from text representation
 -- Expects base32 encoding with 'b' prefix

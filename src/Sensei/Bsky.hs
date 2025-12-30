@@ -12,14 +12,14 @@ module Sensei.Bsky
 where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
-import Control.Exception.Safe (MonadCatch, SomeException, catch, try)
+import Control.Exception.Safe (Exception, Handler (Handler), MonadCatch, SomeException, catch, catches, throwM)
 import Control.Lens ((&), (?~), (^.), (^?))
 import Control.Monad (join)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
 import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.:), (.=))
 import Data.Aeson.Types (FromJSON (..))
-import Data.Bifunctor (Bifunctor (second), first)
+import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import Data.Char (ord)
@@ -49,8 +49,8 @@ import Sensei.Client.Monad (ClientConfig (..), ClientMonad, Config, send)
 import Sensei.Event (Event (..))
 import Sensei.Flow (noteContent, noteTimestamp)
 import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT (encodeJWT))
-import Servant
-import Servant.Client.Core (clientIn, ClientError)
+import Servant hiding (Handler)
+import Servant.Client.Core (ClientError, clientIn)
 import Prelude hiding (exp, id)
 
 data BskySession = BskySession
@@ -376,10 +376,12 @@ determinePublicationDate articleOp metadata = do
   pure publicationDate
 
 data ImageResolutionError
-  = FileNotFound {filePath :: FilePath}
-  | InvalidCID {reason :: CIDError}
-  | ImageUploaderError {message :: Text}
+  = FileNotFound {reason :: Text}
+  | InvalidCID {cidError :: CIDError}
+  | ImageUploaderError {reason :: Text}
   deriving (Eq, Show)
+
+instance Exception ImageResolutionError
 
 resolveImages ::
   forall m.
@@ -388,26 +390,25 @@ resolveImages ::
   LinearDocument ->
   m (Either ImageResolutionError LinearDocument)
 resolveImages blobUploader LinearDocument {id, blocks} =
-  second (LinearDocument id) . sequence <$> mapM resolveBlock blocks
+  (Right . LinearDocument id <$> mapM resolveBlock blocks)
+    `catches` [ Handler $ \(err :: IOError) ->
+                  pure $ Left $ FileNotFound $ Text.pack $ show err,
+                Handler $ \(err :: ClientError) ->
+                  pure $ Left $ ImageUploaderError (Text.pack $ show err),
+                Handler $ \(err :: CIDError) ->
+                  pure $ Left $ InvalidCID err
+              ]
   where
-    resolveBlock :: Block -> m (Either ImageResolutionError Block)
+    resolveBlock :: Block -> m Block
     resolveBlock Block {block = ImageBlock (Image {image = Ref url, ..}), alignment} = do
-      rawImage <- try $ liftIO $ BS.readFile (unpack url)
-      case rawImage of
-        Left (_ :: IOError) ->
-          pure $ Left $ FileNotFound (unpack url)
-        Right imgData -> do
-          response <- try $ blobUploader imgData
-          case response of
-            Left (err :: ClientError) ->
-              pure $ Left $ ImageUploaderError (Text.pack $ show err)
-            Right BlobUploadResponse {blob = BlobMetadata {blobRef, blobMimeType, blobSize}} -> do
-              case textToCID blobRef of
-                Left err -> pure $ Left $ InvalidCID err
-                Right ref -> do
-                  let blob = Stored Blob {mimeType = blobMimeType, ref = BlobRef ref, size = blobSize}
-                  pure $ Right $ Block {block = ImageBlock (Image {image = blob, ..}), alignment}
-    resolveBlock b = pure $ Right b
+      imgData <- liftIO $ BS.readFile (unpack url)
+      BlobUploadResponse {blob = BlobMetadata {blobRef, blobMimeType, blobSize}} <- blobUploader imgData
+      case textToCID blobRef of
+        Left err -> throwM err
+        Right ref -> do
+          let blob = Stored Blob {mimeType = blobMimeType, ref = BlobRef ref, size = blobSize}
+          pure $ Block {block = ImageBlock (Image {image = blob, ..}), alignment}
+    resolveBlock b = pure b
 
 -- | Publish an article to Bluesky PDS as a Leaflet document.
 --
