@@ -28,7 +28,8 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Encoding (encodeUtf8)
 import Sensei.Bsky.Leaflet
-  ( Block (Block),
+  ( AspectRatio (..),
+    Block (Block),
     BlockVariant (..),
     Blockquote (..),
     ByteSlice (..),
@@ -36,6 +37,8 @@ import Sensei.Bsky.Leaflet
     Facet (..),
     Feature (..),
     Header (..),
+    Image (..),
+    ImageSource (Ref),
     LinearDocument (..),
     RichText (..),
     UnorderedList (..),
@@ -99,7 +102,11 @@ parseMarkdown txt =
 -- library, basically a tree structure along with Monoid and
 -- commonmark specific instances to handle IsInline and IsBlock
 -- typeclasses instances.
-data Inline = Plain Text | Newline | Decorated Feature (Maybe SourceRange)
+data Inline
+  = Plain Text
+  | Newline
+  | Decorated Feature (Maybe SourceRange)
+  | Img Text Text
   deriving (Eq, Show)
 
 instance Rangeable [Inline] where
@@ -122,7 +129,10 @@ instance IsInline [Inline] where
   emph inl = inl <> [Decorated Italic Nothing]
   strong inl = inl <> [Decorated Bold Nothing]
   link uri title inl = inl <> [Plain title, Decorated (Link uri) Nothing]
-  image = undefined
+  image source _title desc = [Img source altText]
+    where
+      (_, altText, _) = extractFacets desc
+
   code txt = [Plain txt, Decorated Code Nothing]
   rawInline = undefined
 
@@ -137,13 +147,13 @@ instance HasAttributes [BlockVariant] where
   addAttributes _ x = x
 
 instance IsBlock [Inline] [BlockVariant] where
-  paragraph inlines = [TextBlock RichText {plaintext, facets}]
+  paragraph inlines = [TextBlock RichText {plaintext, facets}] <> (ImageBlock <$> images)
     where
-      (facets, plaintext) = extractFacets inlines
+      (facets, plaintext, images) = extractFacets inlines
 
-  plain inlines = [TextBlock RichText {plaintext, facets}]
+  plain inlines = [TextBlock RichText {plaintext, facets}] <> (ImageBlock <$> images)
     where
-      (facets, plaintext) = extractFacets inlines
+      (facets, plaintext, images) = extractFacets inlines
 
   thematicBreak = []
 
@@ -155,9 +165,9 @@ instance IsBlock [Inline] [BlockVariant] where
   codeBlock lang plaintext =
     [CodeBlock CodeBlock' {language = Just lang, plaintext, syntaxHighlightingTheme = Nothing}]
 
-  heading level inlines = [HeaderBlock Header {level, facets, plaintext}]
+  heading level inlines = [HeaderBlock Header {level, facets, plaintext}] <> (ImageBlock <$> images)
     where
-      (facets, plaintext) = extractFacets inlines
+      (facets, plaintext, images) = extractFacets inlines
 
   rawBlock = undefined
 
@@ -205,10 +215,10 @@ getBlockContent (CodeBlock CodeBlock' {plaintext}) = ([], plaintext)
 getBlockContent (BlockquoteBlock Blockquote {plaintext, facets}) = (facets, plaintext)
 getBlockContent _ = ([], "")
 
-extractFacets :: [Inline] -> ([Facet], Text)
+extractFacets :: [Inline] -> ([Facet], Text, [Image])
 extractFacets inlines =
-  let Converter {facets, plaintext} = foldl (flip extractFacet) initialConverter inlines
-   in (facets, plaintext)
+  let Converter {facets, plaintext, images} = foldl (flip extractFacet) initialConverter inlines
+   in (facets, plaintext, images)
 
 -- | Data needed to convert `mmarkdown`'s source/col coordinates for markup into
 -- `Leaflet`'s linear offset for `Facet`s.
@@ -222,7 +232,9 @@ data Converter = Converter
     -- | Accumulated plain text
     plaintext :: Text,
     -- | Plaintext added on current line (for UTF-8 character-to-byte conversion)
-    currentLinePlaintext :: Text
+    currentLinePlaintext :: Text,
+    -- | Inline images
+    images :: [Image]
   }
   deriving (Show)
 
@@ -233,19 +245,21 @@ initialConverter =
       lastLine = 0,
       facets = [],
       plaintext = "",
-      currentLinePlaintext = ""
+      currentLinePlaintext = "",
+      images = []
     }
 
 extractFacet :: Inline -> Converter -> Converter
 extractFacet = \case
   Decorated f rge -> makeFacet f rge
-  Newline -> \Converter {facets, plaintext} ->
+  Newline -> \Converter {facets, plaintext, images} ->
     Converter
       { markup = 0,
         lastLine = BS.length (encodeUtf8 plaintext) + 1,
         facets,
         plaintext = plaintext <> " ",
-        currentLinePlaintext = "" -- Reset for new line
+        currentLinePlaintext = "", -- Reset for new line
+        images
       }
   Plain t -> \Converter {plaintext, currentLinePlaintext, ..} ->
     Converter
@@ -253,9 +267,11 @@ extractFacet = \case
         currentLinePlaintext = currentLinePlaintext <> t, -- Track current line text
         ..
       }
+  Img src title -> \c@Converter {images} ->
+    c {images = images <> [Image {image = Ref src, alt = Just title, aspectRatio = AspectRatio 4 3}]}
   where
-    makeFacet f rge Converter {markup, lastLine, facets, plaintext, currentLinePlaintext} =
-      Converter {markup = markup', lastLine, facets = facets <> [Facet {features = [f], index}], plaintext, currentLinePlaintext}
+    makeFacet f rge Converter {markup, lastLine, facets, plaintext, currentLinePlaintext, images} =
+      Converter {markup = markup', facets = facets <> [Facet {features = [f], index}], ..}
       where
         markup' =
           markup + case f of

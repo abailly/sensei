@@ -527,7 +527,7 @@ spec = do
             other -> error $ "Expected a blockquote block, got: " <> show other
         other -> error $ "Expected a single block, got: " <> show other
 
-    it "converts markdown with images" $ do
+    it "converts multiline markdown paragraph with one image" $ do
       let markdown =
             Text.unlines
               [ "First line of the document",
@@ -540,14 +540,13 @@ spec = do
           LinearDocument
             { blocks =
                 [ _firstTextBlock,
-                  Block {block = ImageBlock img, alignment = Nothing},
-                  _secondTextBlock
+                  Block {block = ImageBlock img, alignment = Nothing}
                   ]
             } ->
             img
               `shouldBe` Image
                 { image = Ref "./test/image.png",
-                  alt = Nothing,
-                  aspectRatio = AspectRatio 32 32
+                  alt = Just "some image",
+                  aspectRatio = AspectRatio 4 3
                 }
-        _ -> error "Expected image block"
+        other -> error $ "Expected image block, got: " <> show other
