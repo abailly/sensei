@@ -32,21 +32,10 @@ import Sensei.API (Article (..), Event (EventNote), NoteFlow (..), UserProfile (
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky
-  ( BskyAuth (..),
-    BskyNet (..),
-    BskyPost,
-    BskyRecord,
-    BskySession (..),
-    ListRecordsResponse (..),
-    Record (..),
-    bskyEventHandler,
-    decodeAuthToken,
-    publishArticle,
-    record,
-    text,
-  )
+import Sensei.Bsky (Blob (..), BlobRef (..), BlobUploadResponse, Block (..), BlockVariant (ImageBlock), BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Image (..), ImageSource (..), LinearDocument (..), ListRecordsResponse (..), Record (..), bskyEventHandler, decodeAuthToken, publishArticle, record, resolveImages, text)
+import Sensei.Bsky.CID (computeCID)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
+import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument)
 import Sensei.Builder (aDay, postNote, postNote_)
 import Sensei.DB (DB (..))
 import Sensei.Generators ()
@@ -159,10 +148,8 @@ spec = do
         bskyMockNet `calledCreatePost` ((\p -> text p == "some note ") :: BskyPost -> Bool)
 
   describe "publishArticle function" $ do
-    let session = BskySession defaultToken defaultToken
-
     it "publishes article with title metadata successfully" $ do
-      result <- publishArticle successfulDoPublish bskyBackend session articleWithTitle
+      result <- publishArticle successfulDoPublish bskyBackend articleWithTitle
       case result of
         Right Record {uri, cid} -> do
           uri `shouldBe` "test-uri"
@@ -170,7 +157,7 @@ spec = do
         Left err -> fail $ "Expected Right but got Left: " <> err
 
     it "publishes article without metadata with empty title" $ do
-      result <- publishArticle successfulDoPublish bskyBackend session articleWithoutMetadata
+      result <- publishArticle successfulDoPublish bskyBackend articleWithoutMetadata
       case result of
         Right Record {uri, cid} -> do
           uri `shouldBe` "test-uri"
@@ -178,10 +165,24 @@ spec = do
         Left _ -> fail "Expected Right but got Left"
 
     it "returns Left when doPublish throws exception" $ do
-      result <- publishArticle failingDoPublish bskyBackend session articleWithTitle
+      result <- publishArticle failingDoPublish bskyBackend articleWithTitle
       case result of
         Left err -> err `shouldContain` "Failed to publish article:"
         Right _ -> fail "Expected Left but got Right"
+
+    it "upload and resolve local images" $ do
+      Right document <- mkMarkdownDocument "![test image](test/image.png)"
+      Right doc <- resolveImages successfulBlobUploader document
+
+      expectedCID <- computeCID <$> BS.readFile "test/image.png"
+
+      case doc of
+        LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} ->
+          image `shouldBe` Stored Blob {ref = BlobRef expectedCID, mimeType = "image/png", size = 3798}
+        other -> fail $ "Unexpected document structure: " <> show other
+
+successfulBlobUploader :: BS.ByteString -> IO BlobUploadResponse
+successfulBlobUploader = error "not implemented"
 
 calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet BskyPost -> match -> IO ()
 calledCreatePost net matcher = do
@@ -248,7 +249,7 @@ newBskyMockNet = do
   refreshCount <- newIORef (0 :: Int)
   let dummySession = BskySession defaultToken defaultToken
   loginCalls <- newIORef $ const dummySession
-  currentTimeCalls <- newIORef id
+  currentTimeCalls <- newIORef Prelude.id
   let bskyNet =
         BskyNet
           { doLogin = \_ login -> modifyIORef' loginCount succ >> readIORef loginCalls >>= \k -> pure (k login),
@@ -361,11 +362,11 @@ articleWithoutMetadata =
     }
 
 -- Mock doPublish implementations
-successfulDoPublish :: (MonadIO m) => a -> b -> m Record
-successfulDoPublish _ _ = pure $ Record "test-uri" "test-cid"
+successfulDoPublish :: (MonadIO m) => a -> m Record
+successfulDoPublish _ = pure $ Record "test-uri" "test-cid"
 
-failingDoPublish :: (MonadIO m, MonadThrow m) => a -> b -> m Record
-failingDoPublish _ _ = throwM $ TestDBError "Simulated publish failure"
+failingDoPublish :: (MonadIO m, MonadThrow m) => a -> m Record
+failingDoPublish _ = throwM $ TestDBError "Simulated publish failure"
 
 shouldContain :: String -> String -> IO ()
 shouldContain actual expected =

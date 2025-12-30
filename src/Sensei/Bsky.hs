@@ -373,6 +373,9 @@ determinePublicationDate articleOp metadata = do
         Nothing -> fromMaybe currentTime metadataDate -- Then metadata, then current time
   pure publicationDate
 
+resolveImages :: (Applicative m) => (BS.ByteString -> m BlobUploadResponse) -> LinearDocument -> m (Either String LinearDocument)
+resolveImages _ document = pure $ Right document -- Placeholder for image resolution logic
+
 -- | Publish an article to Bluesky PDS as a Leaflet document.
 --
 -- This function extracts metadata from the article, converts markdown to a LinearDocument,
@@ -383,19 +386,17 @@ publishArticle ::
   forall m.
   (MonadIO m, MonadCatch m) =>
   -- | Function to publish the record (typically doCreateRecord)
-  (BskyClientConfig -> BskyRecord Document -> m Record) ->
+  (BskyRecord Document -> m Record) ->
   -- | Backend configuration
   BskyBackend ->
-  -- | Authenticated session
-  BskySession ->
   -- | Article to publish
   Article ->
   m (Either String Record)
-publishArticle doPublish backend session articleOp = do
+publishArticle doPublish backend articleOp = do
   let articleContent = articleOp ^. article
       (metadata, body) = extractMetadata articleContent
       lookupMeta key = lookup key metadata
-      docTitle = maybe "" Prelude.id (lookupMeta "title")
+      docTitle = fromMaybe "" (lookupMeta "title")
 
   -- Convert markdown to LinearDocument
   linearDocResult <- liftIO $ mkMarkdownDocument body
@@ -431,7 +432,6 @@ publishArticle doPublish backend session articleOp = do
       -- Try to create and submit the record
       ( Right
           <$> doPublish
-            (BskyClientConfig {backend, bskySession = Just session})
             BskyRecord
               { record = Just doc,
                 repo = BskyHandle authorDID,
@@ -460,7 +460,7 @@ updateArticle doPut backend session articleTid articleOp = do
   let articleContent = articleOp ^. article
       (metadata, body) = extractMetadata articleContent
       lookupMeta key = lookup key metadata
-      docTitle = maybe "" Prelude.id (lookupMeta "title")
+      docTitle = fromMaybe "" (lookupMeta "title")
 
   -- Convert markdown to LinearDocument
   linearDocResult <- liftIO $ mkMarkdownDocument body
@@ -545,9 +545,13 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
       EventArticle articleOp@(PublishArticle {}) -> do
         let credentials = login backend
             (metadata, _) = extractMetadata (articleOp ^. article)
-            docTitle = maybe "" Prelude.id (lookup "title" metadata)
+            docTitle = fromMaybe "" (lookup "title" metadata)
         session <- ensureAuthenticated logger bskyNet sessionMap backend credentials
-        result <- publishArticle doCreateRecord backend session articleOp
+        result <-
+          publishArticle
+            (doCreateRecord (BskyClientConfig {backend, bskySession = Just session}))
+            backend
+            articleOp
         case result of
           Left err ->
             logInfo logger $
