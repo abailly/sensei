@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Sensei.Bsky.Leaflet where
 
@@ -314,6 +315,7 @@ instance ToJSON BlockVariant where
   toJSON (HeaderBlock hdr) = toJSON hdr
   toJSON (CodeBlock code) = toJSON code
   toJSON (UnorderedListBlock list) = toJSON list
+  toJSON (ImageBlock img) = toJSON img
   -- For now, other block types are not implemented
   toJSON _ = object ["$type" .= ("pub.leaflet.blocks.unknown" :: Text)]
 
@@ -323,11 +325,11 @@ instance FromJSON BlockVariant where
     case typ of
       "pub.leaflet.blocks.text" -> TextBlock <$> parseJSON (Object v)
       "pub.leaflet.blocks.blockquote" -> BlockquoteBlock <$> parseJSON (Object v)
-      "pub.leaflet.blocks.image" -> pure $ ImageBlock Image -- TODO
+      "pub.leaflet.blocks.image" -> ImageBlock <$> parseJSON (Object v)
       "pub.leaflet.blocks.header" -> HeaderBlock <$> parseJSON (Object v)
       "pub.leaflet.blocks.code" -> CodeBlock <$> parseJSON (Object v)
       "pub.leaflet.blocks.unorderedList" -> UnorderedListBlock <$> parseJSON (Object v)
-      -- For now, only text blocks are supported
+      -- other block types are ignored
       _ -> fail $ "Unsupported block type: " ++ show typ
 
 -- Lexicon instances for block variants
@@ -440,8 +442,46 @@ instance FromJSON Header where
 -- | Image block
 -- Lexicon: [pub.leaflet.blocks.image](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/image.json)
 data Image = Image
+  { image :: Blob,
+    aspectRatio :: AspectRatio,
+    alt :: Maybe Text
+  }
   deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+
+instance ToJSON Image where
+  toJSON Image {image, aspectRatio, alt} =
+    object $
+      [ "$type" .= BskyType @(Lexicon Image),
+        "aspectRatio" .= aspectRatio,
+        "image" .= image
+      ]
+        <> maybe [] (\txt -> ["alt" .= txt]) alt
+
+instance FromJSON Image where
+  parseJSON = withObject "Image" $ \v -> do
+    aspectRatio <- v .: "aspectRatio"
+    image <- v .: "image"
+    alt <- v .:?  "alt"
+    pure $ Image {..}
+
+data AspectRatio = AspectRatio
+  { width :: Int,
+    height :: Int
+  }
+  deriving stock (Eq, Show, Generic)
+
+instance ToJSON AspectRatio where
+  toJSON AspectRatio {width, height} =
+    object
+      [ "width" .= width,
+        "height" .= height
+      ]
+
+instance FromJSON AspectRatio where
+  parseJSON = withObject "AspectRatio" $ \v -> do
+    AspectRatio
+      <$> v .: "width"
+      <*> v .: "height"
 
 -- | Unordered list block
 -- Lexicon: [pub.leaflet.blocks.unorderedList](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/unorderedList.json)
@@ -473,7 +513,6 @@ mkListItem = \case
   HeaderBlock hdr -> Just $ HeaderListItem hdr []
   _ -> Nothing
 
-
 instance ToJSON ListItem where
   toJSON (TextListItem rt children) = object ["content" .= toJSON rt, "children" .= children]
   toJSON (HeaderListItem hdr children) = object ["content" .= toJSON hdr, "children" .= children]
@@ -483,9 +522,10 @@ instance FromJSON ListItem where
   parseJSON = withObject "ListItem" $ \v -> do
     contentVal <- v .: "content"
     children :: [ListItem] <- v .:? "children" <&> fromMaybe []
-    p <- TextListItem <$> parseJSON contentVal
-      <|> HeaderListItem <$> parseJSON contentVal
-      <|> ImageListItem <$> parseJSON contentVal
+    p <-
+      TextListItem <$> parseJSON contentVal
+        <|> HeaderListItem <$> parseJSON contentVal
+        <|> ImageListItem <$> parseJSON contentVal
     pure $ p children
 
 -- | Website block

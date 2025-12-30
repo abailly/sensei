@@ -16,7 +16,8 @@ import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
 import Sensei.Backend (Backend (..))
 import Sensei.Bsky
-  ( AtURI (..),
+  ( AspectRatio (..),
+    AtURI (..),
     BackgroundImage (..),
     Blob (..),
     BlobRef (..),
@@ -30,6 +31,7 @@ import Sensei.Bsky
     Document (..),
     Facet (..),
     Feature (..),
+    Image (..),
     LinearDocument (..),
     Page (..),
     RichText (..),
@@ -39,8 +41,8 @@ import Sensei.Bsky
     Theme (..),
     base32SortableAlphabet,
   )
-import Sensei.Bsky.CID (CID, computeCID)
 import qualified Sensei.Bsky as Bsky
+import Sensei.Bsky.CID (CID, computeCID)
 import Sensei.ColorSpec ()
 import Sensei.DB
 import Test.QuickCheck
@@ -59,6 +61,7 @@ import Test.QuickCheck
     vectorOf,
   )
 import Prelude hiding (exp)
+import Sensei.Bsky (Header(..))
 
 -- * Orphan Instances
 
@@ -344,8 +347,27 @@ instance Arbitrary TextAlignment where
   arbitrary = elements [TextAlignLeft, TextAlignCenter, TextAlignRight, TextAlignJustify]
 
 instance Arbitrary BlockVariant where
-  -- Only support TextBlock for now
-  arbitrary = TextBlock <$> arbitrary
+  arbitrary = oneof [TextBlock <$> arbitrary, ImageBlock <$> arbitrary, HeaderBlock <$> arbitrary]
+
+instance Arbitrary Header where
+  arbitrary = do
+    plaintext <- genSimpleText
+    level <- genPositiveInt
+    facets <- arbitrary
+    pure Header {..}
+
+instance Arbitrary Image where
+  arbitrary = do
+    image <- arbitrary
+    aspectRatio <- arbitrary
+    alt <- oneof [pure Nothing, Just <$> genSimpleText]
+    pure Image {image, aspectRatio, alt}
+
+instance Arbitrary AspectRatio where
+  arbitrary = AspectRatio <$> genPositiveInt <*> genPositiveInt
+
+genPositiveInt :: Gen Int
+genPositiveInt = getPositive <$> arbitrary
 
 instance Arbitrary Block where
   arbitrary = Block <$> arbitrary <*> arbitrary
