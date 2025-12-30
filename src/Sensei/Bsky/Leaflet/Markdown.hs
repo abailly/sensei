@@ -99,7 +99,7 @@ parseMarkdown txt =
 -- library, basically a tree structure along with Monoid and
 -- commonmark specific instances to handle IsInline and IsBlock
 -- typeclasses instances.
-data Inline = Plain Text | Decorated Feature (Maybe SourceRange)
+data Inline = Plain Text | Newline | Decorated Feature (Maybe SourceRange)
   deriving (Eq, Show)
 
 instance Rangeable [Inline] where
@@ -107,15 +107,15 @@ instance Rangeable [Inline] where
 
 instance Rangeable Inline where
   ranged range = \case
-    Plain t -> Plain t
     Decorated f _ -> Decorated f (Just range)
+    other -> other
 
 instance HasAttributes [Inline] where
   addAttributes _ x = x
 
 instance IsInline [Inline] where
-  lineBreak = [Plain "\n"]
-  softBreak = [Plain "\n"]
+  lineBreak = [Newline]
+  softBreak = [Newline]
   str = singleton . Plain
   entity = undefined
   escapedChar = undefined
@@ -239,7 +239,7 @@ initialConverter =
 extractFacet :: Inline -> Converter -> Converter
 extractFacet = \case
   Decorated f rge -> makeFacet f rge
-  Plain "\n" -> \Converter {facets, plaintext} ->
+  Newline -> \Converter {facets, plaintext} ->
     Converter
       { markup = 0,
         lastLine = BS.length (encodeUtf8 plaintext) + 1,

@@ -10,13 +10,29 @@ import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import Data.Time.Extra (Date (..), readDate)
 import Sensei.API (Article (..))
-import Sensei.Bsky (Block (..), BlockVariant (..), Blockquote (..), ByteSlice (..), Facet (..), Feature (..), LinearDocument (LinearDocument, blocks), ListItem (..), RecordWithMetadata (cid, value), RichText (..), UnorderedList (..), determinePublicationDate)
+import Sensei.Bsky
+  ( AspectRatio (..),
+    Block (..),
+    BlockVariant (..),
+    Blockquote (..),
+    ByteSlice (..),
+    Facet (..),
+    Feature (..),
+    Image (..),
+    ImageSource (..),
+    LinearDocument (LinearDocument, blocks),
+    ListItem (..),
+    RecordWithMetadata (cid, value),
+    RichText (..),
+    UnorderedList (..),
+    determinePublicationDate,
+  )
 import Sensei.Bsky.Leaflet (Document, Publication, publication)
 import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
 import Sensei.Bsky.TID (mkTid, tidToText)
 import Sensei.Generators (startTime)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (Spec, describe, it, pending, pendingWith, shouldBe, shouldReturn, shouldSatisfy)
+import Test.Hspec (Spec, describe, it, pendingWith, shouldBe, shouldReturn, shouldSatisfy)
 
 spec :: Spec
 spec = do
@@ -515,10 +531,23 @@ spec = do
       let markdown =
             Text.unlines
               [ "First line of the document",
-                "![some image](https://some.image/source.png)",
+                "![some image](./test/image.png)",
                 "Third line with some text"
               ]
       result <- mkMarkdownDocument markdown
       case result of
-        Right LinearDocument {blocks = [_firstTextBlock, _imageBlock, _secondTextBlock]} -> pending
+        Right
+          LinearDocument
+            { blocks =
+                [ _firstTextBlock,
+                  Block {block = ImageBlock img, alignment = Nothing},
+                  _secondTextBlock
+                  ]
+            } ->
+            img
+              `shouldBe` Image
+                { image = Ref "./test/image.png",
+                  alt = Nothing,
+                  aspectRatio = AspectRatio 32 32
+                }
         _ -> error "Expected image block"

@@ -15,32 +15,7 @@ import Network.URI.Extra (URI (..), URIAuth (..))
 import Preface.Codec (Base64, Encoded (..), Hex, toBase64, toHex)
 import Sensei.API
 import Sensei.Backend (Backend (..))
-import Sensei.Bsky
-  ( AspectRatio (..),
-    AtURI (..),
-    BackgroundImage (..),
-    Blob (..),
-    BlobRef (..),
-    Block (..),
-    BlockVariant (..),
-    BskyAuth (..),
-    BskyBackend (BskyBackend),
-    BskyLogin (..),
-    ByteSlice (..),
-    DID (..),
-    Document (..),
-    Facet (..),
-    Feature (..),
-    Image (..),
-    LinearDocument (..),
-    Page (..),
-    RichText (..),
-    StrongRef (..),
-    TID (..),
-    TextAlignment (..),
-    Theme (..),
-    base32SortableAlphabet,
-  )
+import Sensei.Bsky (AspectRatio (..), AtURI (..), BackgroundImage (..), Blob (..), BlobRef (..), Block (..), BlockVariant (..), BskyAuth (..), BskyBackend (BskyBackend), BskyLogin (..), ByteSlice (..), DID (..), Document (..), Facet (..), Feature (..), Header (..), Image (..), ImageSource (Stored), LinearDocument (..), Page (..), RichText (..), StrongRef (..), TID (..), TextAlignment (..), Theme (..), base32SortableAlphabet)
 import qualified Sensei.Bsky as Bsky
 import Sensei.Bsky.CID (CID, computeCID)
 import Sensei.ColorSpec ()
@@ -61,7 +36,6 @@ import Test.QuickCheck
     vectorOf,
   )
 import Prelude hiding (exp)
-import Sensei.Bsky (Header(..))
 
 -- * Orphan Instances
 
@@ -358,7 +332,7 @@ instance Arbitrary Header where
 
 instance Arbitrary Image where
   arbitrary = do
-    image <- arbitrary
+    image <- Stored <$> arbitrary
     aspectRatio <- arbitrary
     alt <- oneof [pure Nothing, Just <$> genSimpleText]
     pure Image {image, aspectRatio, alt}

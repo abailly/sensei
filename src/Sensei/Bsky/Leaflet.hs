@@ -1,5 +1,5 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 module Sensei.Bsky.Leaflet where
 
@@ -442,7 +442,7 @@ instance FromJSON Header where
 -- | Image block
 -- Lexicon: [pub.leaflet.blocks.image](https://tangled.org/leaflet.pub/leaflet/blob/main/lexicons/pub/leaflet/blocks/image.json)
 data Image = Image
-  { image :: Blob,
+  { image :: ImageSource,
     aspectRatio :: AspectRatio,
     alt :: Maybe Text
   }
@@ -461,8 +461,28 @@ instance FromJSON Image where
   parseJSON = withObject "Image" $ \v -> do
     aspectRatio <- v .: "aspectRatio"
     image <- v .: "image"
-    alt <- v .:?  "alt"
+    alt <- v .:? "alt"
     pure $ Image {..}
+
+-- | Different sources for an image's data.
+-- A valid `Document` requires the image to be a `Blob` which can then be retrieved like
+-- other blobs from the PDS, but when we create the document for example from a markdown
+-- source, we only have a reference that will need to be resolved before we can publish
+-- to PDS.
+data ImageSource
+  = -- | Image is available from IPLD as a blob with a proper CID
+    Stored Blob
+  | -- | Image is a reference that needs to be resolved before it can be used.
+    Ref Text
+  deriving stock (Eq, Show, Generic)
+
+instance ToJSON ImageSource where
+  toJSON (Stored blob) = toJSON blob
+  toJSON (Ref text) = object ["url" .= text]
+
+instance FromJSON ImageSource where
+  parseJSON = withObject "ImageSource" $ \v ->
+    (Ref <$> v .: "url") <|> Stored <$> parseJSON (Object v)
 
 data AspectRatio = AspectRatio
   { width :: Int,
