@@ -32,7 +32,7 @@ import Sensei.API (Article (..), Event (EventNote), NoteFlow (..), UserProfile (
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (Blob (..), BlobRef (..), BlobUploadResponse, Block (..), BlockVariant (ImageBlock), BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Image (..), ImageSource (..), LinearDocument (..), ListRecordsResponse (..), Record (..), bskyEventHandler, decodeAuthToken, publishArticle, record, resolveImages, text)
+import Sensei.Bsky (Blob (..), BlobMetadata (..), BlobRef (..), BlobUploadResponse (..), Block (..), BlockVariant (ImageBlock), BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Image (..), ImageSource (..), LinearDocument (..), ListRecordsResponse (..), Record (..), bskyEventHandler, decodeAuthToken, publishArticle, record, resolveImages, text)
 import Sensei.Bsky.CID (computeCID)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument)
@@ -171,18 +171,27 @@ spec = do
         Right _ -> fail "Expected Left but got Right"
 
     it "upload and resolve local images" $ do
-      Right document <- mkMarkdownDocument "![test image](test/image.png)"
-      Right doc <- resolveImages successfulBlobUploader document
-
       expectedCID <- computeCID <$> BS.readFile "test/image.png"
+      Right document <- mkMarkdownDocument "![test image](test/image.png)"
+      resolved <- resolveImages successfulBlobUploader document
 
-      case doc of
-        LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} ->
+      case resolved of
+        Right LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} -> do
           image `shouldBe` Stored Blob {ref = BlobRef expectedCID, mimeType = "image/png", size = 3798}
-        other -> fail $ "Unexpected document structure: " <> show other
+        other -> fail $ "Unexpected document resolution result: " <> show other
 
 successfulBlobUploader :: BS.ByteString -> IO BlobUploadResponse
-successfulBlobUploader = error "not implemented"
+successfulBlobUploader =
+  const $
+    pure
+      BlobUploadResponse
+        { blob =
+            BlobMetadata
+              { blobMimeType = "image/png",
+                blobSize = 3798,
+                blobRef = "bafkreidwpogn5u2vos7j3aldvn72i3jvhbymicuh5q4wqx63fu4azxhjve"
+              }
+        }
 
 calledCreatePost :: (HasCallStack, IsMatcher match) => BskyMockNet BskyPost -> match -> IO ()
 calledCreatePost net matcher = do

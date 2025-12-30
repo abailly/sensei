@@ -227,18 +227,18 @@ data BlobUploadResponse = BlobUploadResponse
   deriving anyclass (ToJSON, FromJSON)
 
 -- | Metadata for an uploaded blob
+-- FIXME: This is just a `Blob`
 data BlobMetadata = BlobMetadata
-  { blobType :: BskyType (Lexicon Blob),
-    blobRef :: Text, -- CID reference
+  { blobRef :: Text, -- CID reference
     blobMimeType :: Text,
     blobSize :: Int
   }
   deriving stock (Eq, Show, Generic)
 
 instance ToJSON BlobMetadata where
-  toJSON BlobMetadata {blobType, blobRef, blobMimeType, blobSize} =
+  toJSON BlobMetadata {blobRef, blobMimeType, blobSize} =
     object
-      [ "$type" .= blobType,
+      [ "$type" .= BskyType @(Lexicon Blob),
         "ref" .= object ["$link" .= blobRef],
         "mimeType" .= blobMimeType,
         "size" .= blobSize
@@ -246,9 +246,8 @@ instance ToJSON BlobMetadata where
 
 instance FromJSON BlobMetadata where
   parseJSON = withObject "BlobMetadata" $ \v -> do
-    typ <- v .: "$type"
     refObj <- v .: "ref"
     ref <- withObject "ref" (.: "$link") refObj
-    BlobMetadata typ ref
+    BlobMetadata ref
       <$> v .: "mimeType"
       <*> v .: "size"

@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
@@ -18,7 +19,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Crypto.JWT (Audience (..), NumericDate (..), addClaim, claimAud, claimExp, claimIat, claimSub, emptyClaimsSet)
 import Data.Aeson (FromJSON, ToJSON (..), Value (String), eitherDecodeStrict', object, withObject, (.:), (.=))
 import Data.Aeson.Types (FromJSON (..))
-import Data.Bifunctor (first)
+import Data.Bifunctor (Bifunctor (second), first)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import Data.Char (ord)
@@ -39,6 +40,7 @@ import Preface.Log (LoggerEnv (withLog), logInfo)
 import Preface.Utils (decodeUtf8')
 import Sensei.Article (Article (DeleteArticle, PublishArticle, UpdateArticle), article, articleDate, articleRkey)
 import Sensei.Backend.Class (BackendHandler (..))
+import Sensei.Bsky.CID (textToCID)
 import Sensei.Bsky.Core
 import Sensei.Bsky.Leaflet
 import Sensei.Bsky.Leaflet.Markdown (extractMetadata, mkMarkdownDocument)
@@ -49,7 +51,7 @@ import Sensei.Flow (noteContent, noteTimestamp)
 import Sensei.Server.Auth (FromJWT, SerializedToken (..), ToJWT (encodeJWT))
 import Servant
 import Servant.Client.Core (clientIn)
-import Prelude hiding (exp)
+import Prelude hiding (id, exp)
 
 data BskySession = BskySession
   { accessJwt :: SerializedToken,
@@ -373,8 +375,25 @@ determinePublicationDate articleOp metadata = do
         Nothing -> fromMaybe currentTime metadataDate -- Then metadata, then current time
   pure publicationDate
 
-resolveImages :: (Applicative m) => (BS.ByteString -> m BlobUploadResponse) -> LinearDocument -> m (Either String LinearDocument)
-resolveImages _ document = pure $ Right document -- Placeholder for image resolution logic
+resolveImages ::
+  forall m.
+  (MonadIO m) =>
+  (BS.ByteString -> m BlobUploadResponse) ->
+  LinearDocument ->
+  m (Either String LinearDocument)
+resolveImages blobUploader LinearDocument {id, blocks} =
+  second (LinearDocument id) . sequence <$> mapM resolveBlock blocks
+  where
+    resolveBlock :: Block -> m (Either String Block)
+    resolveBlock Block {block = ImageBlock (Image {image = Ref url, ..}), alignment} = do
+      imgData <- liftIO $ BS.readFile (unpack url)
+      BlobUploadResponse {blob = BlobMetadata {blobRef, blobMimeType, blobSize}} <- blobUploader imgData
+      case textToCID blobRef of
+        Left err -> pure $ Left $ "Failed to parse CID from blobRef: " <> err
+        Right ref -> do
+          let blob = Stored Blob {mimeType = blobMimeType, ref = BlobRef ref, size = blobSize}
+          pure $ Right $ Block {block = ImageBlock (Image {image = blob, ..}), alignment}
+    resolveBlock b = pure $ Right b
 
 -- | Publish an article to Bluesky PDS as a Leaflet document.
 --
