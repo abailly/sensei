@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Sensei.Bsky.Leaflet.Markdown where
 
@@ -147,17 +148,14 @@ instance HasAttributes [BlockVariant] where
   addAttributes _ x = x
 
 instance IsBlock [Inline] [BlockVariant] where
-  paragraph inlines = [TextBlock RichText {plaintext, facets}] <> (ImageBlock <$> images)
-    where
-      (facets, plaintext, images) = extractFacets inlines
+  paragraph = makeTextBlock
 
-  plain inlines = [TextBlock RichText {plaintext, facets}] <> (ImageBlock <$> images)
-    where
-      (facets, plaintext, images) = extractFacets inlines
+  plain = makeTextBlock
 
-  thematicBreak = []
+  thematicBreak = [] -- FIXME: What's this?
 
   blockQuote blocks =
+    -- TODO: what if block quote contain images?
     [BlockquoteBlock Blockquote {plaintext, facets}]
     where
       (facets, plaintext) = extractBlockContent blocks
@@ -165,9 +163,11 @@ instance IsBlock [Inline] [BlockVariant] where
   codeBlock lang plaintext =
     [CodeBlock CodeBlock' {language = Just lang, plaintext, syntaxHighlightingTheme = Nothing}]
 
-  heading level inlines = [HeaderBlock Header {level, facets, plaintext}] <> (ImageBlock <$> images)
+  heading level inlines =
+    -- NOTE: Does it make sense to have images in a header?
+    [HeaderBlock Header {level, facets, plaintext}]
     where
-      (facets, plaintext, images) = extractFacets inlines
+      (facets, plaintext, _) = extractFacets inlines
 
   rawBlock = undefined
 
@@ -176,6 +176,12 @@ instance IsBlock [Inline] [BlockVariant] where
   list _ _spacing items =
     -- NOTE: Leaflet only supports unordered list??
     [UnorderedListBlock $ UnorderedList {children = concatMap (mapMaybe (mkListItem . adjustFacet)) items}]
+
+makeTextBlock :: [Inline] -> [BlockVariant]
+makeTextBlock inlines =
+  case extractFacets inlines of
+    ([], "", images) -> ImageBlock <$> images
+    (facets, plaintext, images) -> TextBlock RichText {plaintext, facets} : (ImageBlock <$> images)
 
 adjustFacet :: BlockVariant -> BlockVariant
 adjustFacet = \case
@@ -264,7 +270,7 @@ extractFacet = \case
   Plain t -> \Converter {plaintext, currentLinePlaintext, ..} ->
     Converter
       { plaintext = plaintext <> t,
-        currentLinePlaintext = currentLinePlaintext <> t, -- Track current line text
+        currentLinePlaintext = currentLinePlaintext <> t,
         ..
       }
   Img src title -> \c@Converter {images} ->
