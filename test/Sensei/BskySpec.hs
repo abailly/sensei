@@ -10,7 +10,7 @@
 module Sensei.BskySpec (spec) where
 
 import Control.Exception (Exception, throwIO)
-import Control.Exception.Safe (MonadCatch, MonadThrow, catch, throwM)
+import Control.Exception.Safe (MonadCatch, MonadThrow, SomeException (SomeException), catch, throwM)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
@@ -32,7 +32,7 @@ import Sensei.API (Article (..), Event (EventNote), NoteFlow (..), UserProfile (
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (Blob (..), BlobMetadata (..), BlobRef (..), BlobUploadResponse (..), Block (..), BlockVariant (ImageBlock), BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Image (..), ImageSource (..), LinearDocument (..), ListRecordsResponse (..), Record (..), bskyEventHandler, decodeAuthToken, publishArticle, record, resolveImages, text)
+import Sensei.Bsky (Blob (..), BlobMetadata (..), BlobRef (..), BlobUploadResponse (..), Block (..), BlockVariant (ImageBlock), BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Image (..), ImageResolutionError (..), ImageSource (..), LinearDocument (..), ListRecordsResponse (..), Record (..), bskyEventHandler, decodeAuthToken, publishArticle, record, resolveImages, text)
 import Sensei.Bsky.CID (computeCID)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument)
@@ -42,9 +42,10 @@ import Sensei.Generators ()
 import Sensei.Server (SerializedToken (..))
 import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBackends, withDBRunner)
 import Servant (JSON, mimeRender)
+import Servant.Client.Core (ClientError (ConnectionError))
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
-import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn)
+import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn, shouldSatisfy)
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
@@ -179,6 +180,27 @@ spec = do
         Right LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} -> do
           image `shouldBe` Stored Blob {ref = BlobRef expectedCID, mimeType = "image/png", size = 3798}
         other -> fail $ "Unexpected document resolution result: " <> show other
+
+    it "return error when failing to resolve local image" $ do
+      Right document <- mkMarkdownDocument "![test image](test/not-existing.png)"
+      resolved <- resolveImages successfulBlobUploader document
+
+      case resolved of
+        Left err -> err `shouldSatisfy` \FileNotFound {} -> True
+        Right other -> fail $ "expected failure, got: " <> show other
+
+    it "return error when uploader fails and throws ClientError" $ do
+      Right document <- mkMarkdownDocument "![test image](test/image.png)"
+      resolved <- resolveImages failingBlobUploader document
+
+      case resolved of
+        Left err -> err `shouldSatisfy` \case
+           ImageUploaderError{} -> True
+           _ -> False
+        Right other -> fail $ "expected failure, got: " <> show other
+
+failingBlobUploader :: BS.ByteString -> IO BlobUploadResponse
+failingBlobUploader = const $ throwIO $ ConnectionError (SomeException $ userError "some error")
 
 successfulBlobUploader :: BS.ByteString -> IO BlobUploadResponse
 successfulBlobUploader =

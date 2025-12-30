@@ -2,6 +2,7 @@
 
 module Sensei.Bsky.CID
   ( CID,
+    CIDError (..),
     computeCID,
     cidToText,
     textToCID,
@@ -59,16 +60,23 @@ cidToText (CID bytes) =
   -- 'b' prefix indicates base32 lowercase encoding
   "b" <> Text.toLower (Base32.encodeBase32Unpadded bytes)
 
+data CIDError
+  = EmptyCID
+  | InvalidPrefix {found :: Text}
+  | DecodeError {found :: Text, reason :: Text}
+  | UnsupportedVersion {found :: Text, foundVersion :: Word8}
+  deriving (Eq, Show)
+
 -- | Parse CID from text representation
 -- Expects base32 encoding with 'b' prefix
-textToCID :: Text -> Either String CID
+textToCID :: Text -> Either CIDError CID
 textToCID txt
-  | Text.null txt = Left "Empty CID"
-  | Text.head txt /= 'b' = Left "CID must start with 'b' (base32) prefix"
+  | Text.null txt = Left EmptyCID
+  | Text.head txt /= 'b' = Left (InvalidPrefix txt)
   | otherwise =
       case Base32.decodeBase32Unpadded (encodeUtf8 $ Text.tail txt) of
-        Left err -> Left $ "Failed to decode base32: " <> show err
+        Left err -> Left $ DecodeError { found = txt, reason = err }
         Right bytes
-          | BS.null bytes -> Left "Empty CID bytes"
-          | BS.head bytes /= cidV1 -> Left "Only CIDv1 is supported"
+          | BS.null bytes -> Left EmptyCID
+          | BS.head bytes /= cidV1 -> Left (UnsupportedVersion {found = txt, foundVersion = BS.head bytes})
           | otherwise -> Right $ CID bytes

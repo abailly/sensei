@@ -215,7 +215,7 @@ instance FromJSON BlobRef where
   parseJSON = withObject "BlobRef" $ \v -> do
     cidText <- v .: "$link"
     case textToCID cidText of
-      Left err -> fail $ "Failed to parse CID: " <> err
+      Left err -> fail $ "Failed to parse CID: " <> show err
       Right cid -> pure $ BlobRef cid
 
 -- | Response from uploadBlob endpoint
