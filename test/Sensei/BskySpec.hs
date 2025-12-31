@@ -13,7 +13,7 @@ import Control.Exception (Exception, throwIO)
 import Control.Exception.Safe (MonadCatch, MonadThrow, SomeException (SomeException), catch, throwM)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader, ReaderT (ReaderT), ask, runReaderT)
 import Data.Aeson (FromJSON, decode)
 import qualified Data.ByteString as BS
@@ -24,9 +24,11 @@ import Data.Either (isLeft)
 import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, isInfixOf, pack)
+import qualified Data.Text as Text
 import Data.Time (UTCTime (..), addUTCTime)
 import GHC.IO (unsafePerformIO)
 import Network.URI.Extra (uriFromString)
+import Preface.Codec (Encoded, Hex)
 import Preface.Log (LoggerEnv, fakeLogger)
 import Sensei.API (Article (..), Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.Backend (Backend (..))
@@ -37,17 +39,21 @@ import Sensei.Bsky.CID (computeCID)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument)
 import Sensei.Builder (aDay, postNote, postNote_)
+import Sensei.Client (ClientMonad, SenseiClientConfig)
 import Sensei.DB (DB (..))
 import Sensei.Generators ()
 import Sensei.Server (SerializedToken (..))
-import Sensei.TestHelper (app, putJSON_, serializedSampleToken, withApp, withBackends, withDBRunner)
-import Servant (JSON, mimeRender)
-import Servant.Client.Core (ClientError (ConnectionError))
+import Sensei.TestHelper (WaiSession, app, putJSON_, serializedSampleToken, shouldRespondWith, with, withApp, withBackends, withDBRunner)
+import Sensei.WaiTestHelper (isExpectedToBe, runRequest)
+import qualified Sensei.WaiTestHelper as Helper
+import Servant (Application, Get, JSON, OctetStream, err404, mimeRender, serve, (:>))
+import Servant.API ((:<|>) (..))
+import Servant.Client.Core (ClientError (ConnectionError), clientIn)
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
 import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn, shouldSatisfy)
 import Test.Hspec.QuickCheck (prop)
-import Test.Hspec.Wai
+import Test.Hspec.Wai ()
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
 
 spec :: Spec
@@ -174,35 +180,74 @@ spec = do
     it "upload and resolve local images" $ do
       expectedCID <- computeCID <$> BS.readFile "test/image.png"
       let Right document = mkMarkdownDocument "![test image](test/image.png)"
-      resolved <- resolveImages successfulBlobUploader document
+      resolved <- resolveImages (const $ pure "") successfulBlobUploader document
 
       case resolved of
         Right LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} -> do
           image `shouldBe` Stored Blob {ref = BlobRef expectedCID, mimeType = "image/png", size = 3798}
         other -> fail $ "Unexpected document resolution result: " <> show other
 
-    it "return error when failing to resolve local image" $ do
-      let Right document = mkMarkdownDocument "![test image](test/not-existing.png)"
-      resolved <- resolveImages successfulBlobUploader document
-
-      case resolved of
-        Left err -> err `shouldSatisfy` \FileNotFound {} -> True
-        Right other -> fail $ "expected failure, got: " <> show other
-
     it "return error when uploader fails and throws ClientError" $ do
       let Right document = mkMarkdownDocument "![test image](test/image.png)"
-      resolved <- resolveImages failingBlobUploader document
+      resolved <- resolveImages (const $ pure "") failingBlobUploader document
 
       case resolved of
-        Left err -> err `shouldSatisfy` \case
-           ImageUploaderError{} -> True
-           _ -> False
+        Left err ->
+          err `shouldSatisfy` \case
+            ImageUploaderError {} -> True
+            _ -> False
         Right other -> fail $ "expected failure, got: " <> show other
 
-failingBlobUploader :: BS.ByteString -> IO BlobUploadResponse
-failingBlobUploader = const $ throwIO $ ConnectionError (SomeException $ userError "some error")
+  with imageServer $
+    describe "Image download" $ do
+      it "upload and resolve remote images referenced by their URLs" $ do
+        expectedCID <- computeCID <$> liftIO (BS.readFile "test/image.png")
+        let Right document = mkMarkdownDocument "![test image](http://example.com/test/image.png)"
+        resolved <- resolveImages imageDownloader successfulBlobUploader document
 
-successfulBlobUploader :: BS.ByteString -> IO BlobUploadResponse
+        case resolved of
+          Right LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} ->
+            image `isExpectedToBe` Stored Blob {ref = BlobRef expectedCID, mimeType = "image/png", size = 3798}
+          other -> fail $ "Unexpected document resolution result: " <> show other
+
+      it "return error when failing to resolve image" $ do
+        let Right document = mkMarkdownDocument "![test image](test/not-existing.png)"
+        resolved <- resolveImages imageDownloader successfulBlobUploader document
+
+        case resolved of
+          Left err ->
+            err `Helper.matches` \case
+              FileNotFound {} -> True
+              _other -> False
+          Right other -> fail $ "expected failure, got: " <> show other
+
+imageDownloader :: Text -> WaiSession (Maybe (Encoded Hex)) BS.ByteString
+imageDownloader url =
+  if "test/image.png" `Text.isSuffixOf` url
+    then runRequest @SenseiClientConfig downloadImage
+    else runRequest @SenseiClientConfig failImage
+
+type ServeImage =
+  "success" :> Get '[OctetStream] BS.ByteString
+    :<|> "failure" :> Get '[OctetStream] BS.ByteString
+
+imageServer :: IO Application
+imageServer =
+  pure $
+    serve
+      (Proxy @ServeImage)
+      ( liftIO (BS.readFile "test/image.png")
+          :<|> throwM err404
+      )
+
+downloadImage :: ClientMonad SenseiClientConfig BS.ByteString
+failImage :: ClientMonad SenseiClientConfig BS.ByteString
+downloadImage :<|> failImage = clientIn (Proxy @ServeImage) Proxy
+
+failingBlobUploader :: (MonadThrow m) => BS.ByteString -> m BlobUploadResponse
+failingBlobUploader = const $ throwM $ ConnectionError (SomeException $ userError "some error")
+
+successfulBlobUploader :: (Applicative m) => BS.ByteString -> m BlobUploadResponse
 successfulBlobUploader =
   const $
     pure

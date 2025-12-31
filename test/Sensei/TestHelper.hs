@@ -1,51 +1,53 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
-module Sensei.TestHelper (
-  app,
-  withoutStorage,
-  withFailingStorage,
-  withEnv,
-  withTempFile,
-  withTempDir,
-  withApp,
-  buildApp,
+module Sensei.TestHelper
+  ( app,
+    withoutStorage,
+    withFailingStorage,
+    withEnv,
+    withTempFile,
+    withTempDir,
+    withApp,
+    buildApp,
 
-  -- * REST Helpers
-  getJSON,
-  postJSON,
-  postJSON_,
-  putJSON,
-  putJSON_,
-  patchJSON,
-  getSessionCookie,
+    -- * REST Helpers
+    getJSON,
+    postJSON,
+    postJSON_,
+    putJSON,
+    putJSON_,
+    patchJSON,
+    getSessionCookie,
 
-  -- * Assertion helpers
-  bodyContains,
-  bodySatisfies,
-  jsonBodyEquals,
-  jsonBodyMatches,
-  module W,
-  SResponse,
-  shouldRespondJSONBody,
-  shouldMatchJSONBody,
-  shouldNotThrow,
-  clearCookies,
+    -- * Assertion helpers
+    bodyContains,
+    bodySatisfies,
+    jsonBodyEquals,
+    jsonBodyMatches,
+    module W,
+    SResponse,
+    shouldRespondJSONBody,
+    shouldMatchJSONBody,
+    shouldNotThrow,
+    clearCookies,
 
-  -- * Useful data
-  validAuthToken,
-  validSerializedToken,
-  authTokenFor,
-  sampleKey,
-  wrongKey,
-  defaultHeaders,
-  withoutRootUser,
-  withRootUser,
-  withRootPassword,
-  withBackends,
-  withDBRunner,
-  serializedSampleToken,
-) where
+    -- * Useful data
+    validAuthToken,
+    validSerializedToken,
+    authTokenFor,
+    sampleKey,
+    wrongKey,
+    defaultHeaders,
+    withoutRootUser,
+    withRootUser,
+    withRootPassword,
+    withBackends,
+    withDBRunner,
+    serializedSampleToken,
+    with,
+  )
+where
 
 import Control.Concurrent.MVar
 import Control.Exception.Safe (Exception, bracket, catch)
@@ -87,94 +89,99 @@ import Test.Hspec.Wai.Matcher as W
 import Web.Cookie (parseCookies)
 
 data AppBuilder db = AppBuilder
-  { rootUser :: Maybe Text
-  , rootPassword :: Maybe (Encoded Base64, Encoded Base64)
-  , withStorage :: Bool
-  , withFailingStorage :: Bool
-  , withEnv :: Env
-  , backends :: Backends
-  , dbRunner :: forall x. FilePath -> FilePath -> LoggerEnv -> (db x -> IO x)
+  { rootUser :: Maybe Text,
+    rootPassword :: Maybe (Encoded Base64, Encoded Base64),
+    withStorage :: Bool,
+    withFailingStorage :: Bool,
+    withEnv :: Env,
+    backends :: Backends,
+    dbRunner :: forall x. FilePath -> FilePath -> LoggerEnv -> (db x -> IO x)
   }
 
 app :: AppBuilder SQLiteDB
 app =
   AppBuilder
-    { rootUser = Just "arnaud"
-    , rootPassword = Nothing
-    , withStorage = True
-    , withFailingStorage = False
-    , withEnv = Dev
-    , backends = Backend.empty
-    , dbRunner = runDB
+    { rootUser = Just "arnaud",
+      rootPassword = Nothing,
+      withStorage = True,
+      withFailingStorage = False,
+      withEnv = Dev,
+      backends = Backend.empty,
+      dbRunner = runDB
     }
 
 withoutStorage :: AppBuilder db -> AppBuilder db
-withoutStorage builder = builder{withStorage = False}
+withoutStorage builder = builder {withStorage = False}
 
 withoutRootUser :: AppBuilder db -> AppBuilder db
-withoutRootUser builder = builder{rootUser = Nothing}
+withoutRootUser builder = builder {rootUser = Nothing}
 
 withRootUser :: Text -> AppBuilder db -> AppBuilder db
-withRootUser user builder = builder{rootUser = Just user}
+withRootUser user builder = builder {rootUser = Just user}
 
-withRootPassword :: HasCallStack => Text -> AppBuilder db -> AppBuilder db
+withRootPassword :: (HasCallStack) => Text -> AppBuilder db -> AppBuilder db
 withRootPassword password builder =
   let salt = BS.pack $ take 16 $ randoms (mkStdGen 12)
       encrypted = encryptWithSalt salt password
-   in builder{rootPassword = Just encrypted}
+   in builder {rootPassword = Just encrypted}
 
 withBackends :: Backends -> AppBuilder db -> AppBuilder db
 withBackends backends builder =
-  builder{backends}
+  builder {backends}
+
+with :: IO Application -> SpecWith (Maybe (Encoded Hex), Application) -> Spec
+with webApp = around $ \action -> do
+  application <- webApp
+  action (Nothing, application)
 
 withApp :: (MonadIO db, MonadError ServerError db, DB db, HasCallStack) => AppBuilder db -> SpecWith (Maybe (Encoded Hex), Application) -> Spec
 withApp builder = around (buildApp builder)
 
 withDBRunner :: (forall x. FilePath -> FilePath -> LoggerEnv -> (db2 x -> IO x)) -> AppBuilder db1 -> AppBuilder db2
-withDBRunner db AppBuilder{..} =
-  AppBuilder{dbRunner = db, ..}
+withDBRunner db AppBuilder {..} =
+  AppBuilder {dbRunner = db, ..}
 
-withTempFile :: HasCallStack => (FilePath -> IO a) -> IO a
+withTempFile :: (HasCallStack) => (FilePath -> IO a) -> IO a
 withTempFile =
   bracket mkTempFile (\fp -> removePathForcibly fp >> removePathForcibly (fp <.> "old"))
 
-withTempDir :: HasCallStack => (FilePath -> IO a) -> IO a
+withTempDir :: (HasCallStack) => (FilePath -> IO a) -> IO a
 withTempDir =
   bracket (mkTempFile >>= (\fp -> removePathForcibly fp >> createDirectory fp >> pure fp)) removePathForcibly
 
-buildApp :: forall db . (MonadIO db, MonadError ServerError db, DB db, HasCallStack) => AppBuilder db -> ActionWith (Maybe (Encoded Hex), Application) -> IO ()
-buildApp AppBuilder{..} act =
+buildApp :: forall db. (MonadIO db, MonadError ServerError db, DB db, HasCallStack) => AppBuilder db -> ActionWith (Maybe (Encoded Hex), Application) -> IO ()
+buildApp AppBuilder {..} act =
   withTempFile $ \file -> do
     unless withStorage $ removePathForcibly file
     withTempDir $ \config -> do
       signal <- newEmptyMVar
-      let dbRun :: forall x . db x -> IO x
+      let dbRun :: forall x. db x -> IO x
           dbRun = dbRunner file config fakeLogger
       userId <- initDB rootUser rootPassword dbRun
       application <- senseiApp Nothing signal sampleKey (runApp dbRun fakeLogger) backends
       when withFailingStorage $ removePathForcibly file
       act (Just userId, application)
 
-mkTempFile :: HasCallStack => IO FilePath
+mkTempFile :: (HasCallStack) => IO FilePath
 mkTempFile = mkstemp "test-sensei" >>= \(fp, h) -> hClose h >> pure fp
 
-postJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
+postJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
 postJSON path payload =
   defaultHeaders >>= \h -> request "POST" path h (A.encode payload)
 
-putJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
+putJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
 putJSON path payload =
   defaultHeaders >>= \h -> request "PUT" path h (A.encode payload)
 
-patchJSON :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
+patchJSON :: (A.ToJSON a) => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) SResponse
 patchJSON path payload =
   defaultHeaders >>= \h -> request "PATCH" path h (A.encode payload)
 
-postJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) ()
+postJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) ()
 postJSON_ path payload =
   postJSON path payload `shouldRespondWith` 200
 
-putJSON_ :: A.ToJSON a => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) ()
+putJSON_ :: (A.ToJSON a) => ByteString -> a -> WaiSession (Maybe (Encoded Hex)) ()
 putJSON_ path payload = void $ putJSON path payload
 
 getJSON :: ByteString -> WaiSession (Maybe (Encoded Hex)) SResponse
@@ -185,9 +192,9 @@ defaultHeaders :: WaiSession (Maybe (Encoded Hex)) [HTTP.Header]
 defaultHeaders = do
   userId <- getState
   pure $
-    [ ("Accept", "application/json")
-    , ("Content-Type", "application/json")
-    , ("X-API-Version", toHeader senseiVersion)
+    [ ("Accept", "application/json"),
+      ("Content-Type", "application/json"),
+      ("X-API-Version", toHeader senseiVersion)
     ]
       <> maybe [] (\u -> [("Authorization", LBS.toStrict $ "Bearer " <> validAuthToken u)]) userId
 
@@ -227,7 +234,7 @@ jsonBodyMatches predicate = MatchBody $ \_ body ->
         else Nothing
     Left err -> Just ("body cannot be properly decoded: got " <> show body <> " with error " <> err)
 
-bodyContains :: HasCallStack => ByteString -> MatchBody
+bodyContains :: (HasCallStack) => ByteString -> MatchBody
 bodyContains fragment =
   MatchBody $
     \_ body ->
@@ -235,7 +242,7 @@ bodyContains fragment =
         then Nothing
         else Just ("String " <> unpack (decodeUtf8 fragment) <> " not found in " <> unpack (decodeUtf8 $ toStrict body))
 
-bodySatisfies :: HasCallStack => (ByteString -> Bool) -> MatchBody
+bodySatisfies :: (HasCallStack) => (ByteString -> Bool) -> MatchBody
 bodySatisfies p =
   MatchBody $
     \_ body ->
@@ -253,10 +260,10 @@ validAuthToken userId = unsafePerformIO $ authTokenFor (AuthToken userId 1) samp
 validSerializedToken :: Encoded Hex -> SerializedToken
 validSerializedToken = SerializedToken . LBS.toStrict . validAuthToken
 
-authTokenFor :: ToJWT a => a -> JWK -> IO LBS.ByteString
+authTokenFor :: (ToJWT a) => a -> JWK -> IO LBS.ByteString
 authTokenFor claims key = either (error . show) id <$> makeJWT claims (defaultJWTSettings key) Nothing
 
-serializedSampleToken :: ToJWT a => a -> IO SerializedToken
+serializedSampleToken :: (ToJWT a) => a -> IO SerializedToken
 serializedSampleToken = fmap (SerializedToken . LBS.toStrict) . (`authTokenFor` sampleKey)
 
 sampleKey, wrongKey :: JWK

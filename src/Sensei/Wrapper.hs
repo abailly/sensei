@@ -130,12 +130,11 @@ wrapProg WrapperIO {..} curUser realProg progArgs currentDir = do
   pure ex
   where
     recordExecutionSafely st en ex =
-      ( send
-          ( postEventC
-              (UserName curUser)
-              [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)]
-          )
-      )
+      send
+        ( postEventC
+            (UserName curUser)
+            [EventTrace $ Trace curUser en currentDir (pack realProg) (fmap pack progArgs) (toInt ex) (diffUTCTime en st)]
+        )
         `catch` \(err :: ClientError) -> notify ("failed to send execution result to server: " <> show err)
 
 toInt :: ExitCode -> Int

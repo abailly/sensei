@@ -12,7 +12,7 @@ module Sensei.Bsky
 where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
-import Control.Exception.Safe (Exception, Handler (Handler), MonadCatch, SomeException, catch, catches, throwM)
+import Control.Exception.Safe (Exception, Handler (Handler), MonadCatch, SomeException, catch, catches, throwM, try)
 import Control.Lens ((&), (?~), (^.), (^?))
 import Control.Monad (join)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -386,12 +386,15 @@ instance Exception ImageResolutionError
 resolveImages ::
   forall m.
   (MonadIO m, MonadCatch m) =>
+  (Text -> m BS.ByteString) ->
   (BS.ByteString -> m BlobUploadResponse) ->
   LinearDocument ->
   m (Either ImageResolutionError LinearDocument)
-resolveImages blobUploader LinearDocument {id, blocks} =
+resolveImages imageDownloader blobUploader LinearDocument {id, blocks} =
   (Right . LinearDocument id <$> mapM resolveBlock blocks)
     `catches` [ Handler $ \(err :: IOError) ->
+                  pure $ Left $ FileNotFound $ Text.pack $ show err,
+                Handler $ \(err :: ServerError) ->
                   pure $ Left $ FileNotFound $ Text.pack $ show err,
                 Handler $ \(err :: ClientError) ->
                   pure $ Left $ ImageUploaderError (Text.pack $ show err),
@@ -401,7 +404,7 @@ resolveImages blobUploader LinearDocument {id, blocks} =
   where
     resolveBlock :: Block -> m Block
     resolveBlock Block {block = ImageBlock (Image {image = Ref url, ..}), alignment} = do
-      imgData <- liftIO $ BS.readFile (unpack url)
+      imgData <- resolveImageData url
       BlobUploadResponse {blob = BlobMetadata {blobRef, blobMimeType, blobSize}} <- blobUploader imgData
       case textToCID blobRef of
         Left err -> throwM err
@@ -409,6 +412,13 @@ resolveImages blobUploader LinearDocument {id, blocks} =
           let blob = Stored Blob {mimeType = blobMimeType, ref = BlobRef ref, size = blobSize}
           pure $ Block {block = ImageBlock (Image {image = blob, ..}), alignment}
     resolveBlock b = pure b
+
+    resolveImageData :: Text -> m BS.ByteString
+    resolveImageData url = do
+      try (liftIO $ BS.readFile (unpack url)) >>= \case
+        Right bytes -> pure bytes
+        Left (_ioErr :: IOError) ->
+          imageDownloader url
 
 -- | Publish an article to Bluesky PDS as a Leaflet document.
 --
@@ -441,7 +451,7 @@ publishArticle doPublish uploadBlobs backend articleOp = do
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
     Right result -> do
       -- Resolve images in the document
-      resolvedDocResult <- resolveImages uploadBlobs result
+      resolvedDocResult <- resolveImages undefined uploadBlobs result
 
       case resolvedDocResult of
         Left imgErr -> pure $ Left $ "Failed to resolve images: " <> show imgErr
@@ -511,7 +521,7 @@ updateArticle doPut uploadBlobs backend articleTid articleOp = do
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
     Right result -> do
       -- Resolve images in the document
-      resolvedDocResult <- resolveImages uploadBlobs result
+      resolvedDocResult <- resolveImages undefined uploadBlobs result
 
       case resolvedDocResult of
         Left imgErr -> pure $ Left $ "Failed to resolve images: " <> show imgErr
