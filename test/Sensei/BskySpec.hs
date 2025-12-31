@@ -173,7 +173,7 @@ spec = do
 
     it "upload and resolve local images" $ do
       expectedCID <- computeCID <$> BS.readFile "test/image.png"
-      Right document <- mkMarkdownDocument "![test image](test/image.png)"
+      let Right document = mkMarkdownDocument "![test image](test/image.png)"
       resolved <- resolveImages successfulBlobUploader document
 
       case resolved of
@@ -182,7 +182,7 @@ spec = do
         other -> fail $ "Unexpected document resolution result: " <> show other
 
     it "return error when failing to resolve local image" $ do
-      Right document <- mkMarkdownDocument "![test image](test/not-existing.png)"
+      let Right document = mkMarkdownDocument "![test image](test/not-existing.png)"
       resolved <- resolveImages successfulBlobUploader document
 
       case resolved of
@@ -190,7 +190,7 @@ spec = do
         Right other -> fail $ "expected failure, got: " <> show other
 
     it "return error when uploader fails and throws ClientError" $ do
-      Right document <- mkMarkdownDocument "![test image](test/image.png)"
+      let Right document = mkMarkdownDocument "![test image](test/image.png)"
       resolved <- resolveImages failingBlobUploader document
 
       case resolved of

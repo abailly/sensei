@@ -53,7 +53,7 @@ spec = do
   describe "Markdown to Leaflet conversion" $ do
     it "converts markdown to leaflet document" $ do
       markdown <- Text.readFile "test/sample-markdown.md"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       result `shouldSatisfy` \case
         Right doc -> not (null (blocks doc))
         Left _ -> False
@@ -131,7 +131,7 @@ spec = do
 
     it "correctly assign facet for inline code annotations" $ do
       let markdown = "Un entier est ici construit à l'aide de la méthode `succ` et de la constante `Zero`:"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -151,7 +151,7 @@ spec = do
 
     it "computes facets offsets as bytes not characters" $ do
       let markdown = "Un entier est ici construit à l'aide de la méthode `succ` et de la constante `Zero`:"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -171,7 +171,7 @@ spec = do
 
     it "correctly assign facet for inline emphasis annotations" $ do
       let markdown = "In the beginning, there was Dungeons & Dragons, the ancestor of all modern *Role Playing Games*."
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -184,7 +184,7 @@ spec = do
 
     it "correctly assign facet for inline formatting annotations on multiline paragraphs" $ do
       let markdown = "In the beginning, there was *Dungeons & Dragons*,\nthe ancestor of all modern **Role Playing Games**.\nIt was fun `and` exciting."
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -200,7 +200,7 @@ spec = do
 
     it "correctly computes facet offset when emphasis is only on second line" $ do
       let markdown = "First line without markup\nSecond line with *emphasis* here"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -215,7 +215,7 @@ spec = do
 
     it "correctly computes facet offset when emphasis is at start of second line" $ do
       let markdown = "First line\n*emphasis* at start"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -229,7 +229,7 @@ spec = do
 
     it "correctly computes facet offsets for multiple facets on different lines" $ do
       let markdown = "Line one has *italic* text\nLine two has **bold** text\nLine three has `code` text"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -251,7 +251,7 @@ spec = do
 
     it "correctly computes facet offset for link on second line" $ do
       let markdown = "First line of text\nSecond line has a [link](https://example.com) here"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -266,7 +266,7 @@ spec = do
 
     it "correctly computes facet offsets when first line has markup and second has markup" $ do
       let markdown = "First line with *italic* word\nSecond line with **bold** word"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -285,7 +285,7 @@ spec = do
 
     it "correctly computes facet offsets with multiple markups on same line after newline" $ do
       let markdown = "Plain first line\nSecond with *italic* and **bold** text"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -305,7 +305,7 @@ spec = do
 
     it "correctly computes facet offsets with code spanning across conceptual word boundaries" $ do
       let markdown = "Start\nAnother line with `code snippet` here"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -320,7 +320,7 @@ spec = do
 
     it "correctly computes facet offsets with UTF-8 multibyte characters" $ do
       let markdown = "Première ligne\nDeuxième avec *français* ici"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -335,7 +335,7 @@ spec = do
 
     it "correctly computes facet offsets with emoji characters across lines" $ do
       let markdown = "Hello 👋 world\nNext line has *emphasis* 🎉"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -352,7 +352,7 @@ spec = do
 
     it "correctly assign facet for link annotation" $ do
       let markdown = "This post was triggered by a [tweet from Alberto Brandolini](https://twitter.com/ziobrando/status/737619202538758145) on  [The rise and fall of the Dungeon Master](https://medium.com/@ziobrando/the-rise-and-fall-of-the-dungeon-master-c2d511eed12f#.erkso3y88)"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -373,7 +373,7 @@ spec = do
 
     it "FIXME: assign code facet for inline math" $ do
       let markdown = "In the beginning, there was $\\sin(x)$, the ancestor of functions."
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -387,7 +387,7 @@ spec = do
     it "correctly assign multiple facets" $ do
       pendingWith "FIXME: correctly handle nested facets"
       let markdown = "This post was triggered by a [*tweet* from `Alberto Brandolini`](https://twitter.com/ziobrando/status/737619202538758145)"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -412,7 +412,7 @@ spec = do
 
     it "converts simple blockquote to Blockquote block" $ do
       let markdown = "> This is a simple blockquote."
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -424,7 +424,7 @@ spec = do
 
     it "converts blockquote with inline formatting" $ do
       let markdown = "> This is a blockquote with *emphasis* and **bold** text."
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -443,7 +443,7 @@ spec = do
 
     it "converts blockquote with inline code" $ do
       let markdown = "> Use the `println` function to print output."
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -464,7 +464,7 @@ spec = do
                 ">",
                 "> Second paragraph of the quote."
               ]
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -482,7 +482,7 @@ spec = do
                 ">",
                 "> Second paragraph of the quote."
               ]
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -505,7 +505,7 @@ spec = do
                 "* Second line with `Code` fragment",
                 "* Third **bold** line with"
               ]
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right LinearDocument {blocks = [firstBlock]} -> do
           case firstBlock of
@@ -541,7 +541,7 @@ spec = do
                 "![some image](./test/image.png)",
                 "Third line with some text"
               ]
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right
           LinearDocument
@@ -555,7 +555,7 @@ spec = do
 
     it "converts image reference to a single image block" $ do
       let markdown = "![some image](./test/image.png)"
-      result <- mkMarkdownDocument markdown
+      let result = mkMarkdownDocument markdown
       case result of
         Right
           LinearDocument {blocks = [Block {block = ImageBlock img, alignment = Nothing}]} ->

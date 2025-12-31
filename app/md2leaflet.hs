@@ -25,7 +25,7 @@ main = do
 
 convert :: Text -> IO ()
 convert content = do
-  result <- mkMarkdownDocument content
+  let result = mkMarkdownDocument content
   case result of
     Left err -> do
       hPutStrLn stderr $ "Error parsing markdown: " <> err

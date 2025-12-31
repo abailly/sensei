@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ViewPatterns #-}
+
 
 module Sensei.Bsky.Leaflet.Markdown where
 
@@ -45,7 +45,6 @@ import Sensei.Bsky.Leaflet
     UnorderedList (..),
     mkListItem,
   )
-import Sensei.Bsky.TID (mkTid)
 
 -- | Extract YAML frontmatter metadata from markdown text.
 -- Metadata is delimited by "---" at the start and end, with key-value pairs in between.
@@ -78,18 +77,16 @@ extractMetadata text
         _ -> Nothing
 
 -- | Create a LinearDocument from markdown text
-mkMarkdownDocument :: Text -> IO (Either String LinearDocument)
-mkMarkdownDocument text = do
-  tid <- mkTid
+mkMarkdownDocument :: Text -> Either String LinearDocument
+mkMarkdownDocument text =
   case parseMarkdown text of
-    Left err -> pure $ Left err
+    Left err -> Left err
     Right markdown ->
-      pure $
-        Right $
-          LinearDocument
-            { id = Just tid,
-              blocks = markdown
-            }
+      Right $
+        LinearDocument
+          { id = Nothing,
+            blocks = markdown
+          }
 
 parseMarkdown :: Text -> Either String [Block]
 parseMarkdown txt =

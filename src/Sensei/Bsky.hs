@@ -435,7 +435,7 @@ publishArticle doPublish uploadBlobs backend articleOp = do
       docTitle = fromMaybe "" (lookupMeta "title")
 
   -- Convert markdown to LinearDocument
-  linearDocResult <- liftIO $ mkMarkdownDocument body
+  let linearDocResult = mkMarkdownDocument body
 
   case linearDocResult of
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
@@ -505,7 +505,7 @@ updateArticle doPut uploadBlobs backend articleTid articleOp = do
       docTitle = fromMaybe "" (lookupMeta "title")
 
   -- Convert markdown to LinearDocument
-  linearDocResult <- liftIO $ mkMarkdownDocument body
+  let linearDocResult = mkMarkdownDocument body
 
   case linearDocResult of
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
