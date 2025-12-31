@@ -11,6 +11,7 @@ module Sensei.Bsky
   )
 where
 
+import Codec.Picture (Image (imageHeight, imageWidth), decodeImage, dynamicMap)
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', newTVarIO, readTVarIO)
 import Control.Exception.Safe (Exception, Handler (Handler), MonadCatch, SomeException, catch, catches, throwM, try)
 import Control.Lens ((&), (?~), (^.), (^?))
@@ -409,12 +410,19 @@ resolveImages imageResolver blobUploader LinearDocument {id, blocks} =
     resolveBlock :: Block -> m Block
     resolveBlock Block {block = ImageBlock (Image {image = Ref url, ..}), alignment} = do
       imgData <- imageResolver url
+      let ratio = case decodeImage imgData of
+            Left err -> Prelude.error $ "Failed to decode image: " <> err
+            Right img ->
+              AspectRatio
+                { width = dynamicMap imageWidth img,
+                  height = dynamicMap imageHeight img
+                }
       BlobUploadResponse {blob = BlobMetadata {blobRef, blobMimeType, blobSize}} <- blobUploader imgData
       case textToCID blobRef of
         Left err -> throwM err
         Right ref -> do
           let blob = Stored Blob {mimeType = blobMimeType, ref = BlobRef ref, size = blobSize}
-          pure $ Block {block = ImageBlock (Image {image = blob, ..}), alignment}
+          pure $ Block {block = ImageBlock (Image {image = blob, aspectRatio = ratio, ..}), alignment}
     resolveBlock b = pure b
 
 -- | Resolve image data from a URL or local file path.

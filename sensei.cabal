@@ -122,6 +122,7 @@ library
     , http-link-header
     , http-types
     , insert-ordered-containers
+    , JuicyPixels
     , jose
     , lens
     , memory

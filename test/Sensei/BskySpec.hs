@@ -49,6 +49,7 @@ import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shou
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai ()
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
+import Sensei.Bsky (AspectRatio(..))
 
 spec :: Spec
 spec = do
@@ -172,13 +173,15 @@ spec = do
         Right _ -> fail "Expected Left but got Right"
 
     it "upload and resolve local images" $ do
-      expectedCID <- computeCID <$> BS.readFile "test/image.png"
+      bytes <- BS.readFile "test/image.png"
+      let expectedCID = computeCID bytes
       let Right document = mkMarkdownDocument "![test image](test/image.png)"
-      resolved <- resolveImages (const $ pure "") successfulBlobUploader document
+      resolved <- resolveImages (const $ pure bytes) successfulBlobUploader document
 
       case resolved of
-        Right LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} -> do
+        Right LinearDocument {blocks = [Block {block = ImageBlock Image {image, aspectRatio}, alignment = Nothing}]} -> do
           image `shouldBe` Stored Blob {ref = BlobRef expectedCID, mimeType = "image/png", size = 3798}
+          aspectRatio `shouldBe` AspectRatio 32 32
         other -> fail $ "Unexpected document resolution result: " <> show other
 
     it "return error when uploader fails and throws ClientError" $ do
