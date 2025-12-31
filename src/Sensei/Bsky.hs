@@ -22,6 +22,7 @@ import Data.Aeson.Types (FromJSON (..))
 import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
+import qualified Data.ByteString.Lazy as LBS
 import Data.Char (ord)
 import Data.Functor (void, ($>))
 import qualified Data.Map as Map
@@ -35,6 +36,9 @@ import Data.Time.Extra (Date (..), readDate)
 import Data.Time.Format (defaultTimeLocale, formatTime, iso8601DateFormat)
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol)
+import Network.HTTP.Client (Response (responseStatus), httpLbs, parseRequest, responseBody)
+import Network.HTTP.Client.TLS (newTlsManager)
+import Network.HTTP.Types (statusIsSuccessful)
 import Network.URI.Extra (uriFromString)
 import Preface.Log (LoggerEnv (withLog), logInfo)
 import Preface.Utils (decodeUtf8')
@@ -390,7 +394,7 @@ resolveImages ::
   (BS.ByteString -> m BlobUploadResponse) ->
   LinearDocument ->
   m (Either ImageResolutionError LinearDocument)
-resolveImages imageDownloader blobUploader LinearDocument {id, blocks} =
+resolveImages imageResolver blobUploader LinearDocument {id, blocks} =
   (Right . LinearDocument id <$> mapM resolveBlock blocks)
     `catches` [ Handler $ \(err :: IOError) ->
                   pure $ Left $ FileNotFound $ Text.pack $ show err,
@@ -404,7 +408,7 @@ resolveImages imageDownloader blobUploader LinearDocument {id, blocks} =
   where
     resolveBlock :: Block -> m Block
     resolveBlock Block {block = ImageBlock (Image {image = Ref url, ..}), alignment} = do
-      imgData <- resolveImageData url
+      imgData <- imageResolver url
       BlobUploadResponse {blob = BlobMetadata {blobRef, blobMimeType, blobSize}} <- blobUploader imgData
       case textToCID blobRef of
         Left err -> throwM err
@@ -413,12 +417,18 @@ resolveImages imageDownloader blobUploader LinearDocument {id, blocks} =
           pure $ Block {block = ImageBlock (Image {image = blob, ..}), alignment}
     resolveBlock b = pure b
 
-    resolveImageData :: Text -> m BS.ByteString
-    resolveImageData url = do
-      try (liftIO $ BS.readFile (unpack url)) >>= \case
-        Right bytes -> pure bytes
-        Left (_ioErr :: IOError) ->
-          imageDownloader url
+-- | Resolve image data from a URL or local file path.
+resolveImageData :: (MonadCatch m, MonadIO m) => Text -> m BS.ByteString
+resolveImageData url = do
+  try (liftIO $ BS.readFile (unpack url)) >>= \case
+    Right bytes -> pure bytes
+    Left (_ioErr :: IOError) -> liftIO $ do
+      manager <- newTlsManager
+      request <- parseRequest (unpack url)
+      response <- httpLbs request manager
+      case responseStatus response of
+        status | statusIsSuccessful status -> pure $ LBS.toStrict $ responseBody response
+        _ -> throwM $ FileNotFound $ "Failed to download image from URL: " <> url
 
 -- | Publish an article to Bluesky PDS as a Leaflet document.
 --
@@ -451,7 +461,7 @@ publishArticle doPublish uploadBlobs backend articleOp = do
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
     Right result -> do
       -- Resolve images in the document
-      resolvedDocResult <- resolveImages undefined uploadBlobs result
+      resolvedDocResult <- resolveImages resolveImageData uploadBlobs result
 
       case resolvedDocResult of
         Left imgErr -> pure $ Left $ "Failed to resolve images: " <> show imgErr
@@ -521,7 +531,7 @@ updateArticle doPut uploadBlobs backend articleTid articleOp = do
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
     Right result -> do
       -- Resolve images in the document
-      resolvedDocResult <- resolveImages undefined uploadBlobs result
+      resolvedDocResult <- resolveImages resolveImageData uploadBlobs result
 
       case resolvedDocResult of
         Left imgErr -> pure $ Left $ "Failed to resolve images: " <> show imgErr

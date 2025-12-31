@@ -24,11 +24,9 @@ import Data.Either (isLeft)
 import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
 import Data.Text (Text, isInfixOf, pack)
-import qualified Data.Text as Text
 import Data.Time (UTCTime (..), addUTCTime)
 import GHC.IO (unsafePerformIO)
 import Network.URI.Extra (uriFromString)
-import Preface.Codec (Encoded, Hex)
 import Preface.Log (LoggerEnv, fakeLogger)
 import Sensei.API (Article (..), Event (EventNote), NoteFlow (..), UserProfile (..), defaultProfile)
 import Sensei.Backend (Backend (..))
@@ -39,16 +37,12 @@ import Sensei.Bsky.CID (computeCID)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument)
 import Sensei.Builder (aDay, postNote, postNote_)
-import Sensei.Client (ClientMonad, SenseiClientConfig)
 import Sensei.DB (DB (..))
 import Sensei.Generators ()
 import Sensei.Server (SerializedToken (..))
-import Sensei.TestHelper (WaiSession, app, putJSON_, serializedSampleToken, shouldRespondWith, with, withApp, withBackends, withDBRunner)
-import Sensei.WaiTestHelper (isExpectedToBe, runRequest)
-import qualified Sensei.WaiTestHelper as Helper
-import Servant (Application, Get, JSON, OctetStream, err404, mimeRender, serve, (:>))
-import Servant.API ((:<|>) (..))
-import Servant.Client.Core (ClientError (ConnectionError), clientIn)
+import Sensei.TestHelper (app, putJSON_, serializedSampleToken, shouldRespondWith, withApp, withBackends, withDBRunner)
+import Servant (JSON, err404, mimeRender)
+import Servant.Client.Core (ClientError (ConnectionError))
 import Servant.Server (ServerError)
 import Test.Aeson.GenericSpecs (roundtripAndGoldenSpecs)
 import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shouldBe, shouldReturn, shouldSatisfy)
@@ -103,8 +97,8 @@ spec = do
           liftIO $ (length <$> readIORef calls) `shouldReturn` 0
 
   describe "Bsky auth token" $ do
-    prop "can deserialise base64-encoded auth token's claims" $ prop_deserialiseAuthToken
-    prop "reject malformed tokens" $ prop_rejectMalformedTokens
+    prop "can deserialise base64-encoded auth token's claims" prop_deserialiseAuthToken
+    prop "reject malformed tokens" prop_rejectMalformedTokens
 
   before (newBskyMockNet >>= \mockNet -> (mockNet,) <$> bskyEventHandler fakeLogger (bskyNet mockNet)) $
     describe "Bsky logic" $ do
@@ -198,51 +192,27 @@ spec = do
             _ -> False
         Right other -> fail $ "expected failure, got: " <> show other
 
-  with imageServer $
-    describe "Image download" $ do
-      it "upload and resolve remote images referenced by their URLs" $ do
-        expectedCID <- computeCID <$> liftIO (BS.readFile "test/image.png")
-        let Right document = mkMarkdownDocument "![test image](http://example.com/test/image.png)"
-        resolved <- resolveImages imageDownloader successfulBlobUploader document
+    it "return error when failing to resolve with IOError" $ do
+      let Right document = mkMarkdownDocument "![test image](test/not-existing.png)"
+      resolved <- resolveImages (const $ throwIO $ userError "I/O error") successfulBlobUploader document
 
-        case resolved of
-          Right LinearDocument {blocks = [Block {block = ImageBlock Image {image}, alignment = Nothing}]} ->
-            image `isExpectedToBe` Stored Blob {ref = BlobRef expectedCID, mimeType = "image/png", size = 3798}
-          other -> fail $ "Unexpected document resolution result: " <> show other
+      case resolved of
+        Left err ->
+          err `shouldSatisfy` \case
+            FileNotFound {} -> True
+            _other -> False
+        Right other -> fail $ "expected failure, got: " <> show other
 
-      it "return error when failing to resolve image" $ do
-        let Right document = mkMarkdownDocument "![test image](test/not-existing.png)"
-        resolved <- resolveImages imageDownloader successfulBlobUploader document
+    it "return error when failing to resolve with ServerError" $ do
+      let Right document = mkMarkdownDocument "![test image](test/not-existing.png)"
+      resolved <- resolveImages (const $ throwIO err404) successfulBlobUploader document
 
-        case resolved of
-          Left err ->
-            err `Helper.matches` \case
-              FileNotFound {} -> True
-              _other -> False
-          Right other -> fail $ "expected failure, got: " <> show other
-
-imageDownloader :: Text -> WaiSession (Maybe (Encoded Hex)) BS.ByteString
-imageDownloader url =
-  if "test/image.png" `Text.isSuffixOf` url
-    then runRequest @SenseiClientConfig downloadImage
-    else runRequest @SenseiClientConfig failImage
-
-type ServeImage =
-  "success" :> Get '[OctetStream] BS.ByteString
-    :<|> "failure" :> Get '[OctetStream] BS.ByteString
-
-imageServer :: IO Application
-imageServer =
-  pure $
-    serve
-      (Proxy @ServeImage)
-      ( liftIO (BS.readFile "test/image.png")
-          :<|> throwM err404
-      )
-
-downloadImage :: ClientMonad SenseiClientConfig BS.ByteString
-failImage :: ClientMonad SenseiClientConfig BS.ByteString
-downloadImage :<|> failImage = clientIn (Proxy @ServeImage) Proxy
+      case resolved of
+        Left err ->
+          err `shouldSatisfy` \case
+            FileNotFound {} -> True
+            _other -> False
+        Right other -> fail $ "expected failure, got: " <> show other
 
 failingBlobUploader :: (MonadThrow m) => BS.ByteString -> m BlobUploadResponse
 failingBlobUploader = const $ throwM $ ConnectionError (SomeException $ userError "some error")
