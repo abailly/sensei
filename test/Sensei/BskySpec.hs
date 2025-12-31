@@ -3,9 +3,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use fewer imports" #-}
 
 module Sensei.BskySpec (spec) where
 
@@ -32,7 +29,32 @@ import Sensei.API (Article (..), Event (EventNote), NoteFlow (..), UserProfile (
 import Sensei.Backend (Backend (..))
 import Sensei.Backend.Class (BackendHandler (..), Backends)
 import qualified Sensei.Backend.Class as Backend
-import Sensei.Bsky (Blob (..), BlobMetadata (..), BlobRef (..), BlobUploadResponse (..), Block (..), BlockVariant (ImageBlock), BskyAuth (..), BskyNet (..), BskyPost, BskyRecord, BskySession (..), Image (..), ImageResolutionError (..), ImageSource (..), LinearDocument (..), ListRecordsResponse (..), Record (..), bskyEventHandler, decodeAuthToken, publishArticle, record, resolveImages, text)
+import Sensei.Bsky
+  ( AspectRatio (..),
+    Blob (..),
+    BlobMetadata (..),
+    BlobRef (..),
+    BlobUploadResponse (..),
+    Block (..),
+    BlockVariant (ImageBlock),
+    BskyAuth (..),
+    BskyNet (..),
+    BskyPost,
+    BskyRecord,
+    BskySession (..),
+    Image (..),
+    ImageResolutionError (..),
+    ImageSource (..),
+    LinearDocument (..),
+    ListRecordsResponse (..),
+    Record (..),
+    bskyEventHandler,
+    decodeAuthToken,
+    publishArticle,
+    record,
+    resolveImages,
+    text,
+  )
 import Sensei.Bsky.CID (computeCID)
 import Sensei.Bsky.Core (BskyBackend (..), BskyLogin (..))
 import Sensei.Bsky.Leaflet.Markdown (mkMarkdownDocument)
@@ -49,7 +71,6 @@ import Test.Hspec (HasCallStack, Spec, after_, before, describe, it, runIO, shou
 import Test.Hspec.QuickCheck (prop)
 import Test.Hspec.Wai ()
 import Test.QuickCheck (Property, arbitrary, forAll, (===))
-import Sensei.Bsky (AspectRatio(..))
 
 spec :: Spec
 spec = do
