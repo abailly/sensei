@@ -421,12 +421,14 @@ publishArticle ::
   (MonadIO m, MonadCatch m) =>
   -- | Function to publish the record (typically doCreateRecord)
   (BskyRecord Document -> m Record) ->
+  -- | Function to upload blobs
+  (BS.ByteString -> m BlobUploadResponse) ->
   -- | Backend configuration
   BskyBackend ->
   -- | Article to publish
   Article ->
   m (Either String Record)
-publishArticle doPublish backend articleOp = do
+publishArticle doPublish uploadBlobs backend articleOp = do
   let articleContent = articleOp ^. article
       (metadata, body) = extractMetadata articleContent
       lookupMeta key = lookup key metadata
@@ -437,60 +439,66 @@ publishArticle doPublish backend articleOp = do
 
   case linearDocResult of
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
-    Right linearDoc -> do
-      -- Generate new TID for the document
-      docTid <- liftIO mkTid
+    Right result -> do
+      -- Resolve images in the document
+      resolvedDocResult <- resolveImages uploadBlobs result
 
-      -- Determine publication date with precedence: CLI option > metadata date > current time
-      publicationDate <- determinePublicationDate articleOp metadata
-      let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) publicationDate
+      case resolvedDocResult of
+        Left imgErr -> pure $ Left $ "Failed to resolve images: " <> show imgErr
+        Right linearDoc -> do
+          -- Generate new TID for the document
+          docTid <- liftIO mkTid
 
-      -- Extract userDID and publicationId from backend
-      let DID authorDID = userDID backend
-          AtURI pubId = publicationId backend
+          -- Determine publication date with precedence: CLI option > metadata date > current time
+          publicationDate <- determinePublicationDate articleOp metadata
+          let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) publicationDate
 
-      -- Build the Document
-      let doc =
-            Document
-              { title = docTitle,
-                description = lookupMeta "description",
-                author = authorDID,
-                pages = [Linear linearDoc],
-                tags = Nothing,
-                publishedAt = Just iso8601Time,
-                postRef = Nothing,
-                publication = Just pubId,
-                theme = Nothing
-              }
+          -- Extract userDID and publicationId from backend
+          let DID authorDID = userDID backend
+              AtURI pubId = publicationId backend
 
-      -- Try to create and submit the record
-      ( Right
-          <$> doPublish
-            BskyRecord
-              { record = Just doc,
-                repo = BskyHandle authorDID,
-                rkey = docTid,
-                collection = BskyType
-              }
-        )
-        `catch` \(e :: SomeException) ->
-          pure $ Left $ "Failed to publish article: " <> show e
+          -- Build the Document
+          let doc =
+                Document
+                  { title = docTitle,
+                    description = lookupMeta "description",
+                    author = authorDID,
+                    pages = [Linear linearDoc],
+                    tags = Nothing,
+                    publishedAt = Just iso8601Time,
+                    postRef = Nothing,
+                    publication = Just pubId,
+                    theme = Nothing
+                  }
+
+          -- Try to create and submit the record
+          ( Right
+              <$> doPublish
+                BskyRecord
+                  { record = Just doc,
+                    repo = BskyHandle authorDID,
+                    rkey = docTid,
+                    collection = BskyType
+                  }
+            )
+            `catch` \(e :: SomeException) ->
+              pure $ Left $ "Failed to publish article: " <> show e
 
 updateArticle ::
   forall m.
   (MonadIO m, MonadCatch m) =>
   -- | Function to update the record (typically doPutRecord)
-  (BskyClientConfig -> BskyRecord Document -> m Record) ->
+  (BskyRecord Document -> m Record) ->
+  -- | Function to upload blobs
+  (BS.ByteString -> m BlobUploadResponse) ->
   -- | Backend configuration
   BskyBackend ->
-  -- | Authenticated session
-  BskySession ->
   -- | TID/rkey of the article to update
   TID ->
   -- | Article content to update
   Article ->
   m (Either String Record)
-updateArticle doPut backend session articleTid articleOp = do
+updateArticle doPut uploadBlobs backend articleTid articleOp = do
   let articleContent = articleOp ^. article
       (metadata, body) = extractMetadata articleContent
       lookupMeta key = lookup key metadata
@@ -501,42 +509,47 @@ updateArticle doPut backend session articleTid articleOp = do
 
   case linearDocResult of
     Left err -> pure $ Left $ "Failed to parse markdown: " <> err
-    Right linearDoc -> do
-      -- Determine publication date with precedence: CLI option > metadata date > current time
-      publicationDate <- determinePublicationDate articleOp metadata
-      let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) publicationDate
+    Right result -> do
+      -- Resolve images in the document
+      resolvedDocResult <- resolveImages uploadBlobs result
 
-      -- Extract userDID and publicationId from backend
-      let DID authorDID = userDID backend
-          AtURI pubId = publicationId backend
+      case resolvedDocResult of
+        Left imgErr -> pure $ Left $ "Failed to resolve images: " <> show imgErr
+        Right linearDoc -> do
+          -- Determine publication date with precedence: CLI option > metadata date > current time
+          publicationDate <- determinePublicationDate articleOp metadata
+          let iso8601Time = Text.pack $ formatTime defaultTimeLocale (iso8601DateFormat (Just "%H:%M:%SZ")) publicationDate
 
-      -- Build the Document
-      let doc =
-            Document
-              { title = docTitle,
-                description = lookupMeta "description",
-                author = authorDID,
-                pages = [Linear linearDoc],
-                tags = Nothing,
-                publishedAt = Just iso8601Time,
-                postRef = Nothing,
-                publication = Just pubId,
-                theme = Nothing
-              }
+          -- Extract userDID and publicationId from backend
+          let DID authorDID = userDID backend
+              AtURI pubId = publicationId backend
 
-      -- Try to update and submit the record
-      ( Right
-          <$> doPut
-            (BskyClientConfig {backend, bskySession = Just session})
-            BskyRecord
-              { record = Just doc,
-                repo = BskyHandle authorDID,
-                rkey = articleTid, -- Use provided TID instead of generating new one
-                collection = BskyType
-              }
-        )
-        `catch` \(e :: SomeException) ->
-          pure $ Left $ "Failed to update article: " <> show e
+          -- Build the Document
+          let doc =
+                Document
+                  { title = docTitle,
+                    description = lookupMeta "description",
+                    author = authorDID,
+                    pages = [Linear linearDoc],
+                    tags = Nothing,
+                    publishedAt = Just iso8601Time,
+                    postRef = Nothing,
+                    publication = Just pubId,
+                    theme = Nothing
+                  }
+
+          -- Try to update and submit the record
+          ( Right
+              <$> doPut
+                BskyRecord
+                  { record = Just doc,
+                    repo = BskyHandle authorDID,
+                    rkey = articleTid, -- Use provided TID instead of generating new one
+                    collection = BskyType
+                  }
+            )
+            `catch` \(e :: SomeException) ->
+              pure $ Left $ "Failed to update article: " <> show e
 
 -- | An Event handler that transforms `FlowNote` into `BskyPost`s.
 --
@@ -547,7 +560,7 @@ bskyEventHandler ::
   LoggerEnv ->
   BskyNet m ->
   m (BackendHandler BskyBackend m)
-bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRecord} = do
+bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRecord, doUploadBlob} = do
   sessionMap <- liftIO $ newTVarIO emptySessions
   pure $ BackendHandler {handleEvent = handleEvent sessionMap}
   where
@@ -584,6 +597,7 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
         result <-
           publishArticle
             (doCreateRecord (BskyClientConfig {backend, bskySession = Just session}))
+            (doUploadBlob (BskyClientConfig {backend, bskySession = Just session}))
             backend
             articleOp
         case result of
@@ -616,7 +630,13 @@ bskyEventHandler logger bskyNet@BskyNet {doCreateRecord, doPutRecord, doDeleteRe
                   error = err
                 }
           Right articleTid -> do
-            result <- updateArticle doPutRecord backend session articleTid articleOp
+            result <-
+              updateArticle
+                (doPutRecord (BskyClientConfig {backend, bskySession = Just session}))
+                (doUploadBlob (BskyClientConfig {backend, bskySession = Just session}))
+                backend
+                articleTid
+                articleOp
             case result of
               Left err ->
                 logInfo logger $

@@ -150,7 +150,7 @@ spec = do
 
   describe "publishArticle function" $ do
     it "publishes article with title metadata successfully" $ do
-      result <- publishArticle successfulDoPublish bskyBackend articleWithTitle
+      result <- publishArticle successfulDoPublish successfulBlobUploader bskyBackend articleWithTitle
       case result of
         Right Record {uri, cid} -> do
           uri `shouldBe` "test-uri"
@@ -158,7 +158,7 @@ spec = do
         Left err -> fail $ "Expected Right but got Left: " <> err
 
     it "publishes article without metadata with empty title" $ do
-      result <- publishArticle successfulDoPublish bskyBackend articleWithoutMetadata
+      result <- publishArticle successfulDoPublish successfulBlobUploader bskyBackend articleWithoutMetadata
       case result of
         Right Record {uri, cid} -> do
           uri `shouldBe` "test-uri"
@@ -166,7 +166,7 @@ spec = do
         Left _ -> fail "Expected Right but got Left"
 
     it "returns Left when doPublish throws exception" $ do
-      result <- publishArticle failingDoPublish bskyBackend articleWithTitle
+      result <- publishArticle failingDoPublish successfulBlobUploader bskyBackend articleWithTitle
       case result of
         Left err -> err `shouldContain` "Failed to publish article:"
         Right _ -> fail "Expected Left but got Right"
