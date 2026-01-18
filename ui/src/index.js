@@ -7,12 +7,14 @@ import { config } from './config';
 import { summaries } from './summaries';
 import { goals } from './goals';
 import { record } from './record';
+import { initMobileNav } from './mobile-nav';
 import { setUserProfile } from './user.js';
 import { formatISODate } from './date.js';
 import Navigo from 'navigo';
 import { LocalDate } from "@js-joda/core";
 
 document.addEventListener('DOMContentLoaded', () => {
+  initMobileNav();
   google.charts.load('current', { 'packages': ['corechart', 'bar', 'timeline', 'calendar'] });
 
   const root = null;

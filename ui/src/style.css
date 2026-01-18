@@ -544,3 +544,208 @@ div.goals {
   border-radius: 4px;
   border: 1px solid #f5c6cb;
 }
+
+/* Mobile Navigation - Hamburger Menu */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 110;
+  position: absolute;
+  left: 1em;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.hamburger span {
+  width: 100%;
+  height: 3px;
+  background-color: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+
+  div#navbar {
+    height: auto;
+    min-height: 50px;
+    padding: 0.5em 0;
+  }
+
+  div#navbar ul {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    padding-top: 50px;
+    height: auto;
+    background-color: black;
+  }
+
+  div#navbar ul.nav-open {
+    display: flex;
+  }
+
+  div#navbar li {
+    display: block;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  div#navbar li a {
+    display: block;
+    padding: 1em;
+    font-size: 1.1em;
+    border-bottom: 1px solid #333;
+  }
+
+  div#navbar li a:hover {
+    background-color: #444;
+  }
+
+  div#navbar li#logout {
+    float: none;
+  }
+
+  div#main {
+    padding: 0.5em;
+  }
+
+  /* Larger text for mobile readability */
+  body {
+    font-size: 16px;
+  }
+
+  /* Timeline adjustments for mobile */
+  div [id^='timeline-container-'] {
+    grid-template-columns: repeat(24, 50px);
+    overflow-x: auto;
+  }
+
+  .timeline-time ul li {
+    width: 50px;
+    font-size: 10px;
+  }
+
+  /* Notes page mobile adjustments */
+  .note-full h3,
+  .note-full h4 {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.3em;
+  }
+
+  .note-content {
+    display: block;
+    width: 100%;
+  }
+
+  /* Summary charts mobile */
+  .summaryChart {
+    overflow-x: auto;
+  }
+
+  /* Goals graph mobile */
+  div.goals {
+    width: 100%;
+    height: 70vh;
+  }
+
+  /* Log table mobile */
+  table.tbl-log {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Login form mobile */
+  div#login {
+    width: 90%;
+    min-width: auto;
+  }
+
+  div#login .field label {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 0.3em;
+  }
+
+  div#login .field input {
+    width: 100%;
+  }
+
+  div#login .control {
+    padding-left: 0;
+    text-align: center;
+  }
+
+  /* Dialog mobile */
+  .c-dialog {
+    padding: 1em;
+  }
+
+  .c-dialog__box {
+    padding: 1.5em;
+    max-width: 100%;
+  }
+
+  /* Record page mobile - already handled but ensure buttons are large enough */
+  .record-button {
+    min-height: 70px;
+    font-size: 1em;
+  }
+}
+
+/* Extra small devices (phones in portrait) */
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  div#navbar li a {
+    padding: 0.8em;
+    font-size: 1em;
+  }
+
+  .record-page h2 {
+    font-size: 1.3em;
+  }
+
+  .record-description {
+    font-size: 0.9em;
+  }
+
+  /* Even smaller timeline grid for very small screens */
+  div [id^='timeline-container-'] {
+    grid-template-columns: repeat(24, 40px);
+  }
+
+  .timeline-time ul li {
+    width: 40px;
+    font-size: 9px;
+  }
+}
