@@ -60,6 +60,7 @@ export function record(router, container) {
   clearElement(container);
 
   const flowTypes = config.userProfile.userFlowTypes || {};
+  flowTypes['End'] = '#333333'; // Always include 'End' flow type
   const flowTypeEntries = Object.entries(flowTypes);
 
   // Status message container
