@@ -6,6 +6,7 @@ import { login } from './auth';
 import { config } from './config';
 import { summaries } from './summaries';
 import { goals } from './goals';
+import { record } from './record';
 import { setUserProfile } from './user.js';
 import { formatISODate } from './date.js';
 import Navigo from 'navigo';
@@ -55,6 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .on('/goals', function() {
       goals(router, document.getElementById('main'));
+    })
+    .on('/record', function() {
+      record(router, document.getElementById('main'));
     })
     .on(function() {
       // default to flows for today

@@ -433,3 +433,114 @@ div.goals {
   width: 90vw;
   height: 90vh;
 }
+
+/* Record page styles */
+.record-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1em;
+}
+
+.record-page h2 {
+  margin-bottom: 0.5em;
+}
+
+.record-description {
+  color: #666;
+  margin-bottom: 1.5em;
+}
+
+.record-buttons {
+  display: grid;
+  gap: 1em;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 1200px) {
+  .record-buttons {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .record-buttons {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .record-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .record-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+.record-button {
+  padding: 1.5em 1em;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  font-size: 1.1em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  min-height: 80px;
+}
+
+.record-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  filter: brightness(1.1);
+}
+
+.record-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.record-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.record-button-loading {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.record-status {
+  min-height: 2em;
+  margin-bottom: 1em;
+}
+
+.record-status-success {
+  padding: 0.8em 1em;
+  background-color: #d4edda;
+  color: #155724;
+  border-radius: 4px;
+  border: 1px solid #c3e6cb;
+}
+
+.record-status-error {
+  padding: 0.8em 1em;
+  background-color: #f8d7da;
+  color: #721c24;
+  border-radius: 4px;
+  border: 1px solid #f5c6cb;
+}
