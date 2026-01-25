@@ -1,10 +1,10 @@
 ;;; sensei.el --- A client for sensei  -*- lexical-binding: t; -*-
 
-;; Copyright (c) Arnaud Bailly - 2022
+;; Copyright (c) Arnaud Bailly - 2022-2026
 ;; Author: Arnaud Bailly <arnaud@pankzsoft.com>
 ;; Package-Requires: ((emacs "27.1") (projectile "2.5.0") (request "0.3.2"))
 ;; Keywords: hypermedia
-;; Version: 0.43.3
+;; Version: 0.45.2
 ;; Homepage: https://abailly.github.io/sensei
 
 ;; Redistribution and use in source and binary forms, with or without
@@ -70,9 +70,6 @@
 This variable is updated every time one starts recording a note,
 according to what 'projectile-project-root' says for the current
 directory.
-
-TODO: Remove this global variable and find a way to pass the
-project directory when starting note edition.
 ")
 
 (defun sensei-send-event-note (directory on-success)
@@ -168,6 +165,10 @@ DIRECTORY is the project to record note for."
     (setq sensei-cur-directory directory)
     (switch-to-buffer buffer-name)
     (use-local-map nil)
+    ;; activate markdown mode in buffer if available
+    ;; note there's no minor markdown mode, so we rebind C-c C-c after activation
+    (when (fboundp 'markdown-mode)
+      (markdown-mode))
     (local-set-key
      (kbd "C-c C-c")
      #'sensei-send-note-and-close)))
